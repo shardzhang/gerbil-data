@@ -1,8 +1,8 @@
 package sample
 
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.log4j.{Level, Logger}
 import org.apache.hadoop.fs.{FileSystem, Path}
+import utils.LogUtils.{green_println, setLogLevel}
 
 /**
  * @author shard zhang
@@ -18,9 +18,10 @@ object CleanSampleV1 {
 
   /**
    * 读取并解析原始评分数据
+   *
    * @param spark SparkSession
-   * @param path 数据根目录
-   * @return 清洗后的 DataFrame（user_id, movie_id, rating, time_stamp, day）
+   * @param path  数据根目录
+   * @return 清洗后的 DataFrame(user_id, movie_id, rating, time_stamp, day)
    */
   private def getRawSample(spark: SparkSession, path: String): DataFrame = {
     import org.apache.spark.sql.functions._
@@ -38,35 +39,26 @@ object CleanSampleV1 {
     rawSample
   }
 
-  def setLogLevel(): Unit = {
-    Logger.getRootLogger.setLevel(Level.WARN) // 全局根日志器
-    // Logger.getLogger("org").setLevel(Level.WARN)
-    // Logger.getLogger("org.apache.hadoop").setLevel(Level.WARN)
-    // Logger.getLogger("org.apache.spark").setLevel(Level.WARN)
-    // Logger.getLogger("akka").setLevel(Level.WARN)
-    // Logger.getLogger("io.netty").setLevel(Level.WARN)
-  }
-
   def main(args: Array[String]): Unit = {
     if (args.length != 2) {
       println(s"Usage: ${this.getClass.getSimpleName.stripSuffix("$")} <data_path> <yesterday>")
       System.exit(1)
     }
     val Array(path, yesterday) = args
-    println(s"path = $path, yesterday = $yesterday")
+    green_println(s"path = $path, yesterday = $yesterday")
 
     setLogLevel()
 
     val spark = SparkSession.builder()
       .appName(this.getClass.getSimpleName.stripSuffix("$"))
-      .enableHiveSupport()  // 关联本地 Hive 元数据
+      .enableHiveSupport() // 关联本地 Hive 元数据
       .getOrCreate()
     import spark.implicits._
     spark.sparkContext.setLogLevel("WARN") // org.apache.spark
 
     try {
       val rawSampleDF = getRawSample(spark, path).cache()
-      println(s"rawSampleDF.count() = ${rawSampleDF.count()}")
+      green_println(s"rawSampleDF.count() = ${rawSampleDF.count()}")
 
       // TODO样本清洗：
       // 1. 去重. 按照user_id, movie_id, rating, time_stamp
