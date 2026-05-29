@@ -7,7 +7,7 @@ import org.apache.hadoop.fs.{FileSystem, Path}
 /**
  * @author shard zhang
  * @date 2026/5/28 17:45
- * @note 处理 ml-1m 评分数据, 清洗并输出 CSV
+ * @note 处理 ml-1m 原始评分数据, 清洗并输出 CSV
  */
 object CleanSampleV1 {
   private val INPUT_FILE = "ratings.dat"
@@ -59,6 +59,7 @@ object CleanSampleV1 {
 
     val spark = SparkSession.builder()
       .appName(this.getClass.getSimpleName.stripSuffix("$"))
+      .enableHiveSupport()  // 关联本地 Hive 元数据
       .getOrCreate()
     import spark.implicits._
     spark.sparkContext.setLogLevel("WARN") // org.apache.spark
@@ -66,6 +67,11 @@ object CleanSampleV1 {
     try {
       val rawSampleDF = getRawSample(spark, path).cache()
       println(s"rawSampleDF.count() = ${rawSampleDF.count()}")
+
+      // TODO样本清洗：
+      // 1. 去重. 按照user_id, movie_id, rating, time_stamp
+      // 2. 异常值过滤. rating: 1-5, id: 非负
+      // 3. 缺失值处理.
 
       val outputPath = new Path(s"$path/$OUTPUT_DIR")
       val fs = FileSystem.get(spark.sparkContext.hadoopConfiguration)

@@ -6,7 +6,7 @@
 
 cd "$(dirname "$0")"
 
-source ../env.sh
+source .env.sh
 yesterday=$1
 
 spark-submit \
