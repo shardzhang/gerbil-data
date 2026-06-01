@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # name: shard zhang
-# date: 2026/5/29 21:47
-# note:  
+# date: 2026/5/29 12:09
+# note:
 
-cd $(dirname $0)
+cd "$(dirname "$0")"
 
 source ../env.sh
 
@@ -12,7 +12,7 @@ path=${ML_1M_PATH}
 
 "${SPARK_HOME}/bin/spark-submit" \
 --master 'local[*]' \
---class feature.UserMovieRateV1 \
+--class sample.ML1MJoinSample \
 --conf spark.ui.port=8688 \
 --queue root.dataming.prd \
 --conf spark.driver.maxResultSize=10g \

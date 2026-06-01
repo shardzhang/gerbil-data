@@ -24,7 +24,7 @@ import utils.LogUtils.{green_println, setLogLevel}
  *       4. 对每个 user_id 保留最近 200 个 item
  *       5. 聚合成行为序列
  */
-object UserMovieRateV1 {
+object UserMovieRateML1M {
   private val TOP_N = 200
   private val RAW_SEP = "::"
   private val SEP = "\t"
@@ -122,6 +122,8 @@ object UserMovieRateV1 {
 
       val result = spark.sql(sql).cache()
       println(s"result.count() = ${result.count()}")
+      result.show()
+      result.printSchema()
 
       result
         .selectExpr("user_id", "feature")

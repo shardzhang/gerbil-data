@@ -21,7 +21,7 @@ import utils.LogUtils.{green_println, setLogLevel}
   *       1. 读取原始文本并拆分字段
   *       2. 过滤非法数据
   */
-object CleanSampleV1 {
+object ML1MCleanSample {
   private val RAW_SEP = "::"
   private val SEP = "\t"
 
@@ -81,6 +81,8 @@ object CleanSampleV1 {
            |""".stripMargin
       val cleanSample = spark.sql(sql).cache()
       green_println(s"cleanSample.count() = ${cleanSample.count()}")
+      cleanSample.show()
+      cleanSample.printSchema()
 
       // 4. 输出
       cleanSample

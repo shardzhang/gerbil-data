@@ -12,7 +12,7 @@ path=${ML_1M_PATH}
 
 "${SPARK_HOME}/bin/spark-submit" \
 --master 'local[*]' \
---class sample.CleanSampleV1 \
+--class sample.ML1MCleanSample \
 --conf spark.ui.port=8688 \
 --queue root.dataming.prd \
 --conf spark.driver.maxResultSize=10g \

@@ -25,7 +25,7 @@ import utils.LogUtils.{green_println, setLogLevel}
  *       3. 拼接用户特征 + 物品特征 + 用户行为序列特征
  *       4. 形成最终明文样本
  */
-object JoinSampleV1 {
+object ML1MJoinSample {
   private val RAW_SEP = "::"
   private val SEP = "\t"
 
@@ -112,32 +112,38 @@ object JoinSampleV1 {
            |)
            |
            | SELECT
-           |     r.user_id,
-           |     r.item_id,
-           |     r.time_stamp,
-           |     r.rating,
-           |     r.day,
+           |     s.user_id,
+           |     s.item_id,
+           |     s.time_stamp,
+           |     s.rating,
+           |     s.day,
            |     COALESCE(u.feature, '{}') AS user_profile,
            |     COALESCE(i.feature, '{}') AS item_feature,
-           |     to_json(named_struct('user_movie_rate', COALESCE(b.feature, ''))) AS user_behavior
-           | FROM clean_sample r
+           |     to_json(
+           |        named_struct(
+           |          'user_movie_rate', COALESCE(r.feature, '')
+           |        )
+           |     ) AS user_behavior
+           | FROM clean_sample s
            | LEFT JOIN user_profile u
-           | ON r.user_id = u.user_id
+           | ON s.user_id = u.user_id
            | LEFT JOIN item_feature i
-           | ON r.item_id = i.item_id
-           | LEFT JOIN user_movie_rate b
-           | ON r.user_id = b.user_id
+           | ON s.item_id = i.item_id
+           | LEFT JOIN user_movie_rate r
+           | ON s.user_id = r.user_id
            |""".stripMargin
-      val result = spark.sql(sql).cache()
-      green_println(f"result.count(): ${result.count()}")
+      val joinSample = spark.sql(sql).cache()
+      green_println(f"joinSample.count(): ${joinSample.count()}")
+      joinSample.show()
+      joinSample.printSchema()
 
-      result
+      joinSample
         .selectExpr("user_id", "item_id", "time_stamp", "rating", "day", "user_profile", "item_feature", "user_behavior")
         .write
         .mode("overwrite")
         .option("sep", SEP)
         .csv(savePath)
-      result.unpersist()
+      joinSample.unpersist()
     } finally {
       spark.stop()
     }
