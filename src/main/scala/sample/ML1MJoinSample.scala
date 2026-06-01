@@ -30,10 +30,7 @@ object ML1MJoinSample {
   private val SEP = "\t"
 
   def main(args: Array[String]): Unit = {
-    if (args.length != 1) {
-      green_println(s"Usage: ${this.getClass.getSimpleName.stripSuffix("$")} <data_path>")
-      System.exit(1)
-    }
+    require(args.length >= 1, "Usage: ML1MJoinSample <path>")
     val path = args(0)
     val savePath = s"$path/join_sample"
     green_println(s"path = $path, save_path = $savePath")

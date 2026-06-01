@@ -1,5 +1,6 @@
 package feature
 
+import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.SparkSession
 import utils.LogUtils.{green_println, setLogLevel}
 
@@ -24,14 +25,13 @@ import utils.LogUtils.{green_println, setLogLevel}
  *       4. 对每个 user_id 保留最近 200 个 item
  *       5. 聚合成行为序列
  */
-object UserMovieRateML1M {
+object ML1MUserMovieRate {
   private val TOP_N = 200
   private val RAW_SEP = "::"
   private val SEP = "\t"
 
   def main(args: Array[String]): Unit = {
-    require(args.length >= 1, "Usage: UserMovieRateSqlV1 <input_base_path>")
-
+    require(args.length >= 1, "Usage: ML1MUserMovieRate <input_base_path>")
     val basePath = args(0)
     val inputPath = s"$basePath/ratings.dat"
     val outputPath = s"$basePath/user_movie_rate"
@@ -42,7 +42,7 @@ object UserMovieRateML1M {
     val spark = SparkSession.builder()
       .appName(this.getClass.getSimpleName.stripSuffix("$"))
       .getOrCreate()
-    spark.sparkContext.setLogLevel("WARN")
+    spark.sparkContext.setLogLevel("OFF")
     green_println("Spark Version: " + spark.version)
 
     try {

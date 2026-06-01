@@ -1,5 +1,6 @@
 package sample
 
+import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.SparkSession
 import utils.LogUtils.{green_println, setLogLevel}
 
@@ -26,8 +27,7 @@ object ML1MCleanSample {
   private val SEP = "\t"
 
   def main(args: Array[String]): Unit = {
-    require(args.length >= 1, f"${this.getClass.getSimpleName.stripSuffix("$")} <data_path>")
-
+    require(args.length >= 1, "Usage: ML1MCleanSample <path>")
     val path = args(0)
     val outputPath = s"$path/clean_sample"
     green_println(s"path = $path, outputPath: ${outputPath}")
@@ -38,6 +38,7 @@ object ML1MCleanSample {
       .appName(this.getClass.getSimpleName.stripSuffix("$"))
       .getOrCreate()
     spark.sparkContext.setLogLevel("WARN") // org.apache.spark
+    green_println("Spark Version: " + spark.version)
 
     try {
       // user_id::movie_id::rating::timestamp
