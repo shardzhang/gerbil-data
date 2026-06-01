@@ -6,10 +6,11 @@
 
 cd "$(dirname "$0")"
 
-source .env.sh
-yesterday=$1
+source ../env.sh
 
-spark-submit \
+path=${ML_1M_PATH}
+
+"${SPARK_HOME}/bin/spark-submit" \
 --master 'local[*]' \
 --class sample.CleanSampleV1 \
 --conf spark.ui.port=8688 \
@@ -27,5 +28,4 @@ spark-submit \
 --driver-memory 4g \
 --executor-memory 2g \
 ${JAR_PATH} \
-${ML_1M_PATH} \
-${yesterday}
+${path}

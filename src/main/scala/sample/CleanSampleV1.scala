@@ -1,7 +1,6 @@
 package sample
 
-import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.hadoop.fs.{FileSystem, Path}
+import org.apache.spark.sql.SparkSession
 import utils.LogUtils.{green_println, setLogLevel}
 
 /**
@@ -10,72 +9,74 @@ import utils.LogUtils.{green_println, setLogLevel}
  * @note 处理 ml-1m 原始评分数据, 清洗并输出 CSV
  */
 object CleanSampleV1 {
-  private val INPUT_FILE = "ratings.dat"
-  private val OUTPUT_DIR = "raw_sample_clean"
-  private val INPUT_SEP = "::"
-  private val OUTPUT_SEP = ","
-  private val DATE_FORMAT = "yyyy-MM-dd"
-
-  /**
-   * 读取并解析原始评分数据
-   *
-   * @param spark SparkSession
-   * @param path  数据根目录
-   * @return 清洗后的 DataFrame(user_id, movie_id, rating, time_stamp, day)
-   */
-  private def getRawSample(spark: SparkSession, path: String): DataFrame = {
-    import org.apache.spark.sql.functions._
-
-    val rawSample = spark.read.text(s"${path}/${INPUT_FILE}")
-      .withColumn("split_arr", split(col("value"), INPUT_SEP))
-      .filter(size(col("split_arr")) === 4)
-      .select(
-        col("split_arr")(0).as("user_id"),
-        col("split_arr")(1).as("movie_id"),
-        col("split_arr")(2).cast("long").as("rating"),
-        col("split_arr")(3).cast("long").as("time_stamp"),
-        from_unixtime(col("split_arr")(3).cast("long"), DATE_FORMAT).as("day")
-      )
-    rawSample
-  }
+  private val RAW_SEP = "::"
+  private val SEP = "\t"
 
   def main(args: Array[String]): Unit = {
-    if (args.length != 2) {
-      println(s"Usage: ${this.getClass.getSimpleName.stripSuffix("$")} <data_path> <yesterday>")
-      System.exit(1)
-    }
-    val Array(path, yesterday) = args
-    green_println(s"path = $path, yesterday = $yesterday")
+    require(args.length >= 1, f"${this.getClass.getSimpleName.stripSuffix("$")} <data_path>")
+
+    val path = args(0)
+    val outputPath = s"$path/clean_sample"
+    green_println(s"path = $path, outputPath: ${outputPath}")
 
     setLogLevel()
 
     val spark = SparkSession.builder()
       .appName(this.getClass.getSimpleName.stripSuffix("$"))
-      .enableHiveSupport() // 关联本地 Hive 元数据
       .getOrCreate()
-    import spark.implicits._
     spark.sparkContext.setLogLevel("WARN") // org.apache.spark
 
     try {
-      val rawSampleDF = getRawSample(spark, path).cache()
-      green_println(s"rawSampleDF.count() = ${rawSampleDF.count()}")
+      // user_id::movie_id::rating::timestamp
+      spark.read.text(s"$path/ratings.dat").createOrReplaceTempView("ratings_raw")
 
-      // TODO样本清洗：
-      // 1. 去重. 按照user_id, movie_id, rating, time_stamp
-      // 2. 异常值过滤. rating: 1-5, id: 非负
-      // 3. 缺失值处理.
+      val sql =
+        s"""
+           | with clean as (
+           |   select
+           |     user_id,
+           |     item_id,
+           |     rating,
+           |     time_stamp,
+           |     day,
+           |     row_number() over (partition by user_id, item_id, rating, time_stamp order by time_stamp desc) as rn
+           |   from (
+           |     SELECT
+           |       trim(split(value, '${RAW_SEP}')[0]) AS user_id,
+           |       trim(split(value, '${RAW_SEP}')[1]) AS item_id,
+           |       CAST(trim(split(value, '${RAW_SEP}')[2]) AS INT) AS rating,
+           |       CAST(trim(split(value, '${RAW_SEP}')[3]) AS LONG) AS time_stamp,
+           |       from_unixtime(CAST(split(value, '${RAW_SEP}')[3] AS LONG), 'yyyy-MM-dd') AS day
+           |     FROM ratings_raw
+           |     WHERE size(split(value, '${RAW_SEP}')) = 4
+           |   ) t
+           |   where user_id is not null and user_id >= 0
+           |   and item_id is not null and item_id >= 0
+           |   and rating is not null
+           |   and time_stamp is not null
+           |   and rating >= 1 and rating <= 5
+           | )
+           |
+           | select
+           |   user_id,
+           |   item_id,
+           |   rating,
+           |   time_stamp,
+           |   day
+           | from clean
+           | where rn = 1
+           |""".stripMargin
+      val cleanSample = spark.sql(sql).cache()
+      green_println(s"cleanSample.count() = ${cleanSample.count()}")
 
-      val outputPath = new Path(s"$path/$OUTPUT_DIR")
-      val fs = FileSystem.get(spark.sparkContext.hadoopConfiguration)
-      if (fs.exists(outputPath)) {
-        fs.delete(outputPath, true)
-      }
-
-      rawSampleDF.write
+      // 4. 输出
+      cleanSample
+        .selectExpr("user_id", "item_id", "rating", "time_stamp", "day")
+        .write
         .mode("overwrite")
-        .option("sep", OUTPUT_SEP)
-        .option("header", "true")
-        .csv(outputPath.toString)
+        .option("sep", SEP)
+        .csv(outputPath)
+      cleanSample.unpersist()
     } finally {
       spark.stop()
     }
