@@ -7,7 +7,7 @@
 ///**
 // * @author shard zhang
 // * @date 2026/5/29 18:02
-// * @note
+// * @note ML-1M
 // */
 //class TrainSampleV1 extends Serializable {
 //  override def toString: String = {

@@ -6,7 +6,7 @@ import utils.LogUtils.{green_println, setLogLevel}
 /**
  * @author shard zhang
  * @date 2026/5/29 18:18
- * @note 用户电影评分序列构造
+ * @note ML-1M 用户电影评分序列构造
  *
  *       DataFrame 负责读原始文本并注册临时表，SQL 负责全部核心业务逻辑
  *

@@ -6,7 +6,7 @@ import utils.LogUtils.{green_println, setLogLevel}
 /**
  * @author shard zhang
  * @date 2026/5/28 17:45
- * @note 处理 ml-1m 原始评分数据, 清洗并输出 CSV
+ * @note ML-1M 处理 ml-1m 原始评分数据, 清洗并输出 CSV
  *
 *       DataFrame 负责读原始文本并注册临时表，SQL 负责全部核心业务逻辑
   *
