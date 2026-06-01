@@ -1,14 +1,29 @@
 package sample
 
-import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.spark.sql.types.{IntegerType, LongType, StringType, StructType}
-import sample.CleanSampleV1.SEP
+import org.apache.spark.sql.SparkSession
 import utils.LogUtils.{green_println, setLogLevel}
 
 /**
  * @author shard zhang
  * @date 2026/5/29 12:09
  * @note 读取原始样本, 拼接用户特征, 用户行为序列特征, 形成最终明文样本
+ *
+ *       DataFrame 负责读原始文本并注册临时表，SQL 负责全部核心业务逻辑
+ *
+ *       输入:
+ *       users.dat
+ *       movies.dat
+ *       clean_sample.csv
+ *       user_movie_rate.csv
+ *
+ *       输出:
+ *       user_id \t item_id \t time_stamp \t rating \t day \t user_profile \t item_feature \t user_behavior
+ *
+ *       逻辑:
+ *       1. 读取原始文本并拆分字段
+ *       2. 过滤非法数据
+ *       3. 拼接用户特征 + 物品特征 + 用户行为序列特征
+ *       4. 形成最终明文样本
  */
 object JoinSampleV1 {
   private val RAW_SEP = "::"
@@ -33,9 +48,9 @@ object JoinSampleV1 {
     println("Spark Version: " + spark.version)
 
     try {
-      // users.txt
+      // users.dat
       spark.read.text(s"$path/users.dat").createOrReplaceTempView("users")
-      // movies.txt
+      // movies.dat
       spark.read.text(s"$path/movies.dat").createOrReplaceTempView("movies")
       // clean_sample.csv
       spark.read

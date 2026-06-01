@@ -7,7 +7,20 @@ import utils.LogUtils.{green_println, setLogLevel}
  * @author shard zhang
  * @date 2026/5/28 17:45
  * @note 处理 ml-1m 原始评分数据, 清洗并输出 CSV
- */
+ *
+*       DataFrame 负责读原始文本并注册临时表，SQL 负责全部核心业务逻辑
+  *
+*       输入:
+  *       ratings.dat
+*       格式: UserID::MovieID::Rating::Timestamp
+*
+*       输出:
+  *       user_id \t item_id \t rating \t time_stamp \t day
+    *
+*       逻辑:
+  *       1. 读取原始文本并拆分字段
+  *       2. 过滤非法数据
+  */
 object CleanSampleV1 {
   private val RAW_SEP = "::"
   private val SEP = "\t"
