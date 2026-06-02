@@ -10,4 +10,6 @@ export SPARK_LOCAL_IP=127.0.0.1
 export PROJECT_HOME=/Users/dazhang/PycharmProject/gerbil-data
 export JAR_PATH=$PROJECT_HOME/target/gerbil-data-1.0-SNAPSHOT-jar-with-dependencies.jar
 
+# tools
+# curl -L -O "https://github.com/protocolbuffers/protobuf/releases/download/v3.6.0/protoc-3.6.0-osx-x86_64.zip"
 export protoc="/usr/local/bin/protoc-3.6.0-osx-x86_64/bin/protoc"

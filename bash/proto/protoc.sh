@@ -8,7 +8,7 @@ cd $(dirname $0)
 
 source ../env.sh
 
-cd ../../
+cd ${PROJECT_HOME}
 
 "$protoc" \
 --proto_path=./proto \
