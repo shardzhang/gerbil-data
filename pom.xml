@@ -12,7 +12,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <hadoop.version>3.5.0</hadoop.version>
+        <hadoop.version>3.3.4</hadoop.version>
 
         <jedis.version>2.9.0</jedis.version>
         <maven.compiler.target>1.8</maven.compiler.target>
@@ -107,15 +107,25 @@
             <version>20180813</version>
         </dependency>
 
-<!--        <dependency>-->
-<!--            <groupId>org.apache.hive</groupId>-->
-<!--            <artifactId>hive-exec</artifactId>-->
-<!--            <version>4.2.0</version>-->
-<!--        </dependency>-->
-
         <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-client</artifactId>
+            <version>${hadoop.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Hadoop Core -->
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <version>${hadoop.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Hadoop MapReduce -->
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-mapreduce-client-core</artifactId>
             <version>${hadoop.version}</version>
             <scope>provided</scope>
         </dependency>
