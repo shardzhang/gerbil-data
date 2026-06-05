@@ -24,10 +24,10 @@ import utils.ParquetRecord
  * @date 2026/6/1 20:28
  * @note
  */
-abstract class RawTarget[T] {
+abstract class Target[T] {
   var target: Float = 0.0F
 
-  def parse(input: T): RawTarget[T]
+  def parse(input: T): Target[T]
 
   def add(builder: Example.Builder): Unit = {
     builder.getFeaturesBuilder
@@ -52,7 +52,7 @@ abstract class RawTarget[T] {
       )
       return true
     }
-    return false
+    false
   }
 }
 
@@ -64,6 +64,7 @@ abstract class Feature(f_i: Int, f_n: String) {
   final val SEED: Int = 0x3c074a61
 
   /**
+   * get_pos
    *
    * @param dim
    * @return List[hash]
@@ -71,6 +72,7 @@ abstract class Feature(f_i: Int, f_n: String) {
   def get_pos(dim: Long): ListBuffer[Long]
 
   /**
+   * get_pos_info
    *
    * @param dim
    * @return List[(f_name, f_index, format, hash)]
@@ -96,7 +98,7 @@ abstract class Feature(f_i: Int, f_n: String) {
   def add(dim: Long, builder: Example.Builder, pos_map: immutable.HashMap[(Int, Long), Int]): Boolean
 
   /**
-   * TFRecord
+   * TSV
    *
    * @param dim
    * @param encoded_map
@@ -116,13 +118,12 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
 
   def parse(intput: T): Feature
 
-  // List[(val, amplitude)]
+  // 支持单值特征, 多值特征. 若支持带权重, 需要ListBuffer[Long]
   var feature_list: ListBuffer[Long] = new ListBuffer[Long]()
 
   val key_len: Int = 4 + 8
 
-  // ByteBuffer 默认 BIG_ENDIAN，
-  // 二进制存储TFRecord/Protobuf皆为 LITTLE_ENDIAN
+  // ByteBuffer默认BIG_ENDIAN, 二进制存储TFRecord/Protobuf皆为LITTLE_ENDIAN
   val bytebuf: ByteBuffer = ByteBuffer.allocate(key_len).order(ByteOrder.LITTLE_ENDIAN)
 
   def clear(): Unit = {
@@ -132,9 +133,6 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
   override def toString: String = {
     feature_list.mkString(",")
   }
-
-
-  // fixme: 这里是获取原始hash值, 不是最终pos值
 
   /**
    *
@@ -149,9 +147,8 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
         bytebuf.clear()
         bytebuf.putInt(0, f_index)
         bytebuf.putLong(4, value)
-        val byte_arr = bytebuf.array()
         val p: LongPair = new MurmurHash3.LongPair()
-        MurmurHash3.murmurhash3_x64_128(byte_arr, 0, key_len, SEED, p)
+        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
         var hash = p.val1 % dim
         if (hash < 0) {
           hash += dim
@@ -178,9 +175,8 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
         fmt += f_index.toString + ":"
         bytebuf.putLong(4, value)
         fmt += value.toString
-        val byte_arr = bytebuf.array()
         val p: LongPair = new MurmurHash3.LongPair()
-        MurmurHash3.murmurhash3_x64_128(byte_arr, 0, key_len, SEED, p)
+        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
         var hash: Long = p.val1 % dim
         if (hash < 0) {
           hash += dim
@@ -191,8 +187,6 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
     buf
   }
 
-  // fixme: 塞入的是hash
-
   /**
    * TFRecord
    *
@@ -200,25 +194,24 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
    * @param builder
    */
   override def add(dim: Long, builder: Example.Builder): Unit = {
-    val pos_buffer = new ListBuffer[Long]()
-    pos_buffer.append(0L)
+    val pos_buf = new ListBuffer[Long]()
+    pos_buf.append(0L)
     for (value <- feature_list) {
       if (value != 0) {
         bytebuf.clear()
         bytebuf.putInt(0, f_index)
         bytebuf.putLong(4, value)
-        val byte_arr = bytebuf.array()
         val p: LongPair = new MurmurHash3.LongPair()
-        MurmurHash3.murmurhash3_x64_128(byte_arr, 0, key_len, SEED, p)
+        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
         var hash: Long = p.val1 % dim
         if (hash < 0) {
           hash += dim
         }
-        pos_buffer.append(hash)
+        pos_buf.append(hash)
       }
     }
     builder.getFeaturesBuilder.putFeature(
-      f_name + "_pos", TFRecord.int64VectorFeature(pos_buffer.toArray)
+      f_name + "_pos", TFRecord.int64VectorFeature(pos_buf.toArray)
     )
   }
 
@@ -239,9 +232,8 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
         bytebuf.clear()
         bytebuf.putInt(0, f_index)
         bytebuf.putLong(4, value)
-        val byte_arr: Array[Byte] = bytebuf.array()
         val p: LongPair = new MurmurHash3.LongPair()
-        MurmurHash3.murmurhash3_x64_128(byte_arr, 0, key_len, SEED, p)
+        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
         var hash: Long = p.val1 % dim
         if (hash < 0) {
           hash += dim
@@ -272,9 +264,8 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
         bytebuf.clear()
         bytebuf.putInt(0, f_index)
         bytebuf.putLong(4, value)
-        val byte_arr: Array[Byte] = bytebuf.array()
         val p: LongPair = new MurmurHash3.LongPair()
-        MurmurHash3.murmurhash3_x64_128(byte_arr, 0, key_len, SEED, p)
+        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
         var hash: Long = p.val1 % dim
         if (hash < 0) {
           hash += dim
@@ -307,9 +298,8 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
         bytebuf.clear()
         bytebuf.putInt(0, f_index)
         bytebuf.putLong(4, value)
-        val byte_arr: Array[Byte] = bytebuf.array()
         val p: LongPair = new MurmurHash3.LongPair()
-        MurmurHash3.murmurhash3_x64_128(byte_arr, 0, key_len, SEED, p)
+        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
         var hash: Long = p.val1 % dim
         if (hash < 0) {
           hash += dim
@@ -327,533 +317,531 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
     }
     has_feature
   }
+}
 
-  abstract class CrossFeature[T](f_i: Int, f_n: String, rnfs: Seq[RawFeature[T]]) extends Feature(f_i, f_n) {
-    val indexes: Array[Int] = new Array[Int](rnfs.length)
+class CrossFeature[T](f_i: Int, f_n: String, rnfs: RawFeature[T]*) extends Feature(f_i, f_n) {
+  val indexes: Array[Int] = new Array[Int](rnfs.length)
 
-    val ken_len: Int = (4 + 8) * rnfs.length
+  val key_len: Int = (4 + 8) * rnfs.length
 
-    val byte_buf: ByteBuffer = ByteBuffer.allocate(key_len).order(ByteOrder.LITTLE_ENDIAN)
+  val bytebuf: ByteBuffer = ByteBuffer.allocate(key_len).order(ByteOrder.LITTLE_ENDIAN)
 
-    /**
-     *
-     * @param input
-     * @param dim
-     * @return List[(f_name, f_index, format, hash)]
-     */
-    override def get_pos_info(dim: Long): ListBuffer[(String, Int, String, Long)] = {
-      // https://zhuanlan.zhihu.com/p/661834313
-      val buf = ListBuffer[(String, Int, String, Long)]()
+  /**
+   *
+   * @param input
+   * @param dim
+   * @return List[(f_name, f_index, format, hash)]
+   */
+  override def get_pos_info(dim: Long): ListBuffer[(String, Int, String, Long)] = {
+    // https://zhuanlan.zhihu.com/p/661834313
+    val buf = ListBuffer[(String, Int, String, Long)]()
+    for (i <- 0 until rnfs.length) {
+      indexes(i) = 0
+    }
+    var done = false
+    while (!done) {
+      var skip = false
       for (i <- 0 until rnfs.length) {
-        indexes(i) = 0
+        if (rnfs(i).feature_list.isEmpty || rnfs(i).feature_list(indexes(i)) == 0) {
+          skip = true
+        }
       }
-      var done = false
-      while (!done) {
-        var skip = false
+      if (!skip) {
+        bytebuf.clear()
+        var shift = 0
+        // format: f_index:f_value__f_index:f_value
+        var fmt: String = ""
         for (i <- 0 until rnfs.length) {
-          if (rnfs(i).feature_list.isEmpty || rnfs(i).feature_list(indexes(i)) == 0) {
-            skip = true
-          }
+          bytebuf.putInt(shift, rnfs(i).f_index)
+          fmt += rnfs(i).f_index.toString + ":"
+          shift += 4
+          bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
+          fmt += rnfs(i).feature_list(indexes(i)).toString
+          shift += 8
+          fmt += "__"
         }
-        if (!skip) {
-          bytebuf.clear()
-          var shift = 0
-          // format: f_index:f_value__f_index:f_value
-          var fmt: String = ""
-          for (i <- 0 until rnfs.length) {
-            bytebuf.putInt(shift, rnfs(i).f_index)
-            fmt += rnfs(i).f_index.toString + ":"
-            shift += 4
-            bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
-            fmt += rnfs(i).feature_list(indexes(i)).toString
-            shift += 8
-            fmt += "__"
-          }
-          fmt = fmt.stripSuffix("__")
-          val byte_arr = bytebuf.array()
-          val p: LongPair = new MurmurHash3.LongPair()
-          MurmurHash3.murmurhash3_x64_128(byte_arr, 0, key_len, SEED, p)
-          var hash = p.val1 % dim
-          if (hash < 0) {
-            hash += dim
-          }
-          buf.append((f_name, f_index, fmt, hash))
+        fmt = fmt.stripSuffix("__")
+        val p: LongPair = new MurmurHash3.LongPair()
+        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
+        var hash = p.val1 % dim
+        if (hash < 0) {
+          hash += dim
         }
+        buf.append((f_name, f_index, fmt, hash))
+      }
 
-        var pos = rnfs.length - 1
-        var added = false
-        while (!added && pos >= 0) {
-          if (indexes(pos) == rnfs(pos).feature_list.length - 1) {
-            indexes(pos) = 0
-            pos -= 1
-          } else {
-            indexes(pos) += 1
-            added = true
-          }
-        }
-        if (!added) {
-          done = true
+      var pos = rnfs.length - 1
+      var added = false
+      while (!added && pos >= 0) {
+        if (indexes(pos) == rnfs(pos).feature_list.length - 1) {
+          indexes(pos) = 0
+          pos -= 1
+        } else {
+          indexes(pos) += 1
+          added = true
         }
       }
-      buf
+      if (!added) {
+        done = true
+      }
     }
+    buf
+  }
 
-    /**
-     *
-     * @param input
-     * @param dim
-     * @return List[(f_name, f_index, format, hash)]
-     */
-    def get_pos_info(input: T, dim: Long): ListBuffer[(String, Int, String, Long)] = {
-      for (c_f <- rnfs) {
-        c_f.clear()
-        c_f.parse(input)
-      }
-      get_pos_info(dim)
+  /**
+   *
+   * @param input
+   * @param dim
+   * @return List[(f_name, f_index, format, hash)]
+   */
+  def get_pos_info(input: T, dim: Long): ListBuffer[(String, Int, String, Long)] = {
+    for (c_f <- rnfs) {
+      c_f.clear()
+      c_f.parse(input)
     }
+    get_pos_info(dim)
+  }
 
-    /**
-     *
-     * @param dim
-     * @return ListBuffer[hash]
-     */
-    override def get_pos(dim: Long): ListBuffer[Long] = {
-      // https://zhuanlan.zhihu.com/p/661834313
-      val buf = new ListBuffer[Long]
-      for (i <- indexes.indices) {
-        indexes(i) = 0
-      }
-      var done = false
-      while (!done) {
-        var skip = false
-        for (i <- 0 until rnfs.length) {
-          if (rnfs(i).feature_list.isEmpty || rnfs(i).feature_list(indexes(i)) == 0) {
-            skip = true
-          }
-        }
-        if (!skip) {
-          bytebuf.clear()
-          var shift = 0
-          // format: f_index:f_value__f_index:f_value
-          var fmt: String = ""
-          for (i <- 0 until rnfs.length) {
-            bytebuf.putInt(shift, rnfs(i).f_index)
-            fmt += rnfs(i).f_index.toString + ":"
-            shift += 4
-
-            bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
-            fmt += rnfs(i).feature_list(indexes(i)).toString
-            shift += 8
-            fmt += "__"
-          }
-          fmt = fmt.stripSuffix("__")
-          val byte_arr: Array[Byte] = bytebuf.array()
-          val p: LongPair = new MurmurHash3.LongPair()
-          MurmurHash3.murmurhash3_x64_128(byte_arr, 0, key_len, SEED, p)
-          var hash: Long = p.val1 % dim
-          if (hash < 0) {
-            hash += dim
-          }
-          buf.append(hash)
-        }
-
-        var pos = rnfs.length - 1
-        var added = false
-        while (!added && pos >= 0) {
-          if (indexes(pos) == rnfs(pos).feature_list.length - 1) {
-            indexes(pos) = 0
-            pos -= 1
-          } else {
-            indexes(pos) += 1
-            added = true
-          }
-        }
-        if (!added) {
-          done = true
-        }
-      }
-      buf
+  /**
+   *
+   * @param dim
+   * @return ListBuffer[hash]
+   */
+  override def get_pos(dim: Long): ListBuffer[Long] = {
+    // https://zhuanlan.zhihu.com/p/661834313
+    val buf = new ListBuffer[Long]
+    for (i <- indexes.indices) {
+      indexes(i) = 0
     }
-
-    /**
-     * TFRecord
-     *
-     * @param dim hash space dimension
-     * @param builder
-     */
-    override def add(dim: Long, builder: Example.Builder): Unit = {
-      // https://zhuanlan.zhihu.com/p/661834313
-      val pos_buffer = new ListBuffer[Long]()
-      pos_buffer.append(0)
-
+    var done = false
+    while (!done) {
+      var skip = false
       for (i <- 0 until rnfs.length) {
-        indexes(i) = 0
+        if (rnfs(i).feature_list.isEmpty || rnfs(i).feature_list(indexes(i)) == 0) {
+          skip = true
+        }
+      }
+      if (!skip) {
+        bytebuf.clear()
+        var shift = 0
+        // format: f_index:f_value__f_index:f_value
+        var fmt: String = ""
+        for (i <- 0 until rnfs.length) {
+          bytebuf.putInt(shift, rnfs(i).f_index)
+          fmt += rnfs(i).f_index.toString + ":"
+          shift += 4
+
+          bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
+          fmt += rnfs(i).feature_list(indexes(i)).toString
+          shift += 8
+          fmt += "__"
+        }
+        fmt = fmt.stripSuffix("__")
+        val p: LongPair = new MurmurHash3.LongPair()
+        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
+        var hash: Long = p.val1 % dim
+        if (hash < 0) {
+          hash += dim
+        }
+        buf.append(hash)
       }
 
-      var has_feature = false
-      var done = false
-      while (!done) {
-        var skip = false
-        for (i <- 0 until rnfs.length) {
-          if (rnfs(i).feature_list.isEmpty || rnfs(i).feature_list(indexes(i)) == 0) {
-            skip = true
-          }
+      var pos = rnfs.length - 1
+      var added = false
+      while (!added && pos >= 0) {
+        if (indexes(pos) == rnfs(pos).feature_list.length - 1) {
+          indexes(pos) = 0
+          pos -= 1
+        } else {
+          indexes(pos) += 1
+          added = true
         }
-        if (!skip) {
-          bytebuf.clear()
-          var shift = 0
-          // format: f_index:f_value__f_index:f_value
-          var fmt: String = ""
-          for (i <- 0 until rnfs.length) {
-            bytebuf.putInt(shift, rnfs(i).f_index)
-            fmt += rnfs(i).f_index.toString + ":"
-            shift += 4
-            bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
-            fmt += rnfs(i).feature_list(indexes(i)).toString
-            shift += 8
-            fmt += "__"
-          }
-          fmt = fmt.stripSuffix("__")
-          val byte_arr = bytebuf.array()
-          val p: LongPair = new MurmurHash3.LongPair()
-          MurmurHash3.murmurhash3_x64_128(byte_arr, 0, key_len, SEED, p)
-          var hash = p.val1 % dim
-          if (hash < 0) {
-            hash += dim
-          }
-          pos_buffer.append(hash)
+      }
+      if (!added) {
+        done = true
+      }
+    }
+    buf
+  }
+
+  /**
+   * TFRecord
+   *
+   * @param dim hash space dimension
+   * @param builder
+   */
+  override def add(dim: Long, builder: Example.Builder): Unit = {
+    // https://zhuanlan.zhihu.com/p/661834313
+    val pos_buffer = new ListBuffer[Long]()
+    pos_buffer.append(0)
+
+    for (i <- 0 until rnfs.length) {
+      indexes(i) = 0
+    }
+
+    var has_feature = false
+    var done = false
+    while (!done) {
+      var skip = false
+      for (i <- 0 until rnfs.length) {
+        if (rnfs(i).feature_list.isEmpty || rnfs(i).feature_list(indexes(i)) == 0) {
+          skip = true
+        }
+      }
+      if (!skip) {
+        bytebuf.clear()
+        var shift = 0
+        // format: f_index:f_value__f_index:f_value
+        var fmt: String = ""
+        for (i <- 0 until rnfs.length) {
+          bytebuf.putInt(shift, rnfs(i).f_index)
+          fmt += rnfs(i).f_index.toString + ":"
+          shift += 4
+          bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
+          fmt += rnfs(i).feature_list(indexes(i)).toString
+          shift += 8
+          fmt += "__"
+        }
+        fmt = fmt.stripSuffix("__")
+        val p: LongPair = new MurmurHash3.LongPair()
+        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
+        var hash = p.val1 % dim
+        if (hash < 0) {
+          hash += dim
+        }
+        pos_buffer.append(hash)
+        has_feature = true
+      }
+
+      var pos = rnfs.length - 1
+      var added = false
+      while (!added && pos >= 0) {
+        if (indexes(pos) == rnfs(pos).feature_list.length - 1) {
+          indexes(pos) = 0
+          pos -= 1
+        } else {
+          indexes(pos) += 1
+          added = true
+        }
+      }
+      if (!added) {
+        done = true
+      }
+    }
+    builder.getFeaturesBuilder.putFeature(
+      f_name + "_pos", TFRecord.int64VectorFeature(pos_buffer.toArray)
+    )
+    has_feature
+  }
+
+  /**
+   * TFRecord
+   *
+   * @param input
+   * @param dim
+   * @param builder
+   */
+  def add(input: T, dim: Long, builder: Example.Builder): Unit = {
+    for (c_f <- rnfs) {
+      c_f.clear()
+      c_f.parse(input)
+    }
+    add(dim, builder)
+  }
+
+  /**
+   * TFRecord
+   *
+   * @param dim     hash space dimension
+   * @param builder
+   * @param pos_map ((f_index, hash), pos)
+   * @return
+   */
+  override def add(dim: Long, builder: Example.Builder, pos_map: immutable.HashMap[(Int, Long), Int]): Boolean = {
+    // https://zhuanlan.zhihu.com/p/661834313
+    val pos_buf = new ListBuffer[Long]
+    pos_buf.append(0)
+
+    for (i <- 0 until rnfs.length) {
+      indexes(i) = 0
+    }
+
+    var has_feature = false
+    var done = false
+    while (!done) {
+      var skip = false
+      for (i <- 0 until rnfs.length) {
+        if (rnfs(i).feature_list.isEmpty || rnfs(i).feature_list(indexes(i)) == 0) {
+          skip = true
+        }
+      }
+
+      if (!skip) {
+        bytebuf.clear()
+        var shift = 0
+        // format: f_index:f_value__f_index:f_value
+        var fmt: String = ""
+        for (i <- 0 until rnfs.length) {
+          bytebuf.putInt(shift, rnfs(i).f_index)
+          fmt += rnfs(i).f_index.toString + ":"
+          shift += 4
+          bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
+          fmt += rnfs(i).feature_list(indexes(i)).toString
+          shift += 8
+          fmt += "__"
+        }
+        fmt = fmt.stripSuffix("__")
+        val p: LongPair = new MurmurHash3.LongPair()
+        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
+        var hash = p.val1 % dim
+        if (hash < 0) {
+          hash += dim
+        }
+        if (pos_map.contains((f_index, hash))) {
+          pos_buf.append(pos_map((f_index, hash)))
           has_feature = true
         }
-
-        var pos = rnfs.length - 1
-        var added = false
-        while (!added && pos >= 0) {
-          if (indexes(pos) == rnfs(pos).feature_list.length - 1) {
-            indexes(pos) = 0
-            pos -= 1
-          } else {
-            indexes(pos) += 1
-            added = true
-          }
-        }
-        if (!added) {
-          done = true
-        }
-      }
-      builder.getFeaturesBuilder.putFeature(
-        f_name + "_pos", TFRecord.int64VectorFeature(pos_buffer.toArray)
-      )
-      has_feature
-    }
-
-    /**
-     * TFRecord
-     *
-     * @param input
-     * @param dim
-     * @param builder
-     */
-    def add(input: T, dim: Long, builder: Example.Builder): Unit = {
-      for (c_f <- rnfs) {
-        c_f.clear()
-        c_f.parse(input)
-      }
-      add(dim, builder)
-    }
-
-    /**
-     * TFRecord
-     *
-     * @param dim     hash space dimension
-     * @param builder
-     * @param pos_map ((f_index, hash), pos)
-     * @return
-     */
-    override def add(dim: Long, builder: Example.Builder, pos_map: immutable.HashMap[(Int, Long), Int]): Boolean = {
-      // https://zhuanlan.zhihu.com/p/661834313
-      val pos_buf = new ListBuffer[Long]
-      pos_buf.append(0)
-
-      for (i <- 0 until rnfs.length) {
-        indexes(i) = 0
       }
 
-      var has_feature = false
-      var done = false
-      while (!done) {
-        var skip = false
-        for (i <- 0 until rnfs.length) {
-          if (rnfs(i).feature_list.isEmpty || rnfs(i).feature_list(indexes(i)) == 0) {
-            skip = true
-          }
-        }
-
-        if (!skip) {
-          bytebuf.clear()
-          var shift = 0
-          // format: f_index:f_value__f_index:f_value
-          var fmt: String = ""
-          for (i <- 0 until rnfs.length) {
-            bytebuf.putInt(shift, rnfs(i).f_index)
-            fmt += rnfs(i).f_index.toString + ":"
-            shift += 4
-            bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
-            fmt += rnfs(i).feature_list(indexes(i)).toString
-            shift += 8
-            fmt += "__"
-          }
-          fmt = fmt.stripSuffix("__")
-          val byte_arr = bytebuf.array()
-          val p: LongPair = new MurmurHash3.LongPair()
-          MurmurHash3.murmurhash3_x64_128(byte_arr, 0, key_len, SEED, p)
-          var hash = p.val1 % dim
-          if (hash < 0) {
-            hash += dim
-          }
-          if (pos_map.contains((f_index, hash))) {
-            pos_buf.append(pos_map((f_index, hash)))
-            has_feature = true
-          }
-        }
-
-        var pos = rnfs.length - 1
-        var added = false
-        while (!added && pos >= 0) {
-          if (indexes(pos) == rnfs(pos).feature_list.length - 1) {
-            indexes(pos) = 0
-            pos -= 1
-          } else {
-            indexes(pos) += 1
-            added = true
-          }
-        }
-        if (!added) {
-          done = true
+      var pos = rnfs.length - 1
+      var added = false
+      while (!added && pos >= 0) {
+        if (indexes(pos) == rnfs(pos).feature_list.length - 1) {
+          indexes(pos) = 0
+          pos -= 1
+        } else {
+          indexes(pos) += 1
+          added = true
         }
       }
-      builder.getFeaturesBuilder.putFeature(
-        f_name + "_pos", TFRecord.int64VectorFeature(pos_buf.toArray)
-      )
-      has_feature
-    }
-
-    /**
-     * TFRecord
-     *
-     * @param input
-     * @param dim
-     * @param builder
-     * @param pos_map Map[(f_index, hash), pos]
-     * @return
-     */
-    def add(input: T, dim: Long, builder: Example.Builder, pos_map: immutable.HashMap[(Int, Long), Int]): Boolean = {
-      for (c_f <- rnfs) {
-        c_f.clear()
-        c_f.parse(input)
+      if (!added) {
+        done = true
       }
-      add(dim, builder, pos_map)
     }
+    builder.getFeaturesBuilder.putFeature(
+      f_name + "_pos", TFRecord.int64VectorFeature(pos_buf.toArray)
+    )
+    has_feature
+  }
 
-    /**
-     * TSV
-     *
-     * @param dim
-     * @param encoded_map
-     */
-    override def add(dim: Long, encoded_map: mutable.HashMap[String, ListBuffer[Long]]): Unit = {
+  /**
+   * TFRecord
+   *
+   * @param input
+   * @param dim
+   * @param builder
+   * @param pos_map Map[(f_index, hash), pos]
+   * @return
+   */
+  def add(input: T, dim: Long, builder: Example.Builder, pos_map: immutable.HashMap[(Int, Long), Int]): Boolean = {
+    for (c_f <- rnfs) {
+      c_f.clear()
+      c_f.parse(input)
     }
+    add(dim, builder, pos_map)
+  }
 
-    /**
-     * TSV
-     *
-     * @param dim     hash space dimension
-     * @param pos_map (f_name, List[pos])
-     */
-    override def add(dim: Long, encoded_map: mutable.HashMap[String, ListBuffer[Long]], pos_map: immutable.HashMap[(Int, Long), Int]): Boolean = {
-      true
+  /**
+   * TSV
+   *
+   * @param dim
+   * @param encoded_map
+   */
+  override def add(dim: Long, encoded_map: mutable.HashMap[String, ListBuffer[Long]]): Unit = {
+  }
+
+  /**
+   * TSV
+   *
+   * @param dim     hash space dimension
+   * @param pos_map (f_name, List[pos])
+   */
+  override def add(dim: Long, encoded_map: mutable.HashMap[String, ListBuffer[Long]], pos_map: immutable.HashMap[(Int, Long), Int]): Boolean = {
+    true
+  }
+}
+
+abstract class FeatureEncoder[T] {
+  val raw_features: ListBuffer[RawFeature[T]] = new ListBuffer[RawFeature[T]]()
+  val cross_features: ListBuffer[CrossFeature[T]] = new ListBuffer[CrossFeature[T]]()
+  var target: Target[T] = _
+
+  def setup(): FeatureEncoder[T]
+
+  /**
+   *
+   * @return List[(f_name, f_index)]
+   */
+  def get_field_name_and_index(): ListBuffer[(String, Int)] = {
+    val buff = new ListBuffer[(String, Int)]()
+    for (raw_f <- raw_features) {
+      buff.append((raw_f.f_name, raw_f.f_index))
+    }
+    for (cross_f <- cross_features) {
+      buff.append((cross_f.f_name, cross_f.f_index))
+    }
+    buff
+  }
+
+  /**
+   * ParquetRecord
+   *
+   * @return
+   */
+  def get_parquet_column_names(): ListBuffer[String] = {
+    val buff = new ListBuffer[String]()
+    buff.append("target")
+    for ((f_name, f_index) <- get_field_name_and_index()) {
+      buff.append(f_name)
+    }
+    buff
+  }
+
+  /**
+   *
+   * @param input
+   * @param dim
+   * @return List[pos]
+   */
+  def get_pos(input: T, dim: Long): ListBuffer[Long] = {
+    val buf = ListBuffer[Long]()
+    for (raw_f <- raw_features) {
+      raw_f.clear()
+      raw_f.parse(input)
+    }
+    for (raw_f <- raw_features) {
+      val pos = raw_f.get_pos(dim)
+      buf.appendAll(pos)
+    }
+    for (cross_f <- cross_features) {
+      val pos = cross_f.get_pos(dim)
+      buf.appendAll(pos)
+    }
+    buf
+  }
+
+  /**
+   *
+   * @param input
+   * @param dim
+   * @return List[(f_name, f_index, format, pos)]
+   */
+  def get_pos_info(input: T, dim: Long): ListBuffer[(String, Int, String, Long)] = {
+    val buf = new ListBuffer[(String, Int, String, Long)]
+    for (raw_f <- raw_features) {
+      raw_f.clear()
+      raw_f.parse(input)
+    }
+    for (raw_f <- raw_features) {
+      val pos_info = raw_f.get_pos_info(dim)
+      buf.appendAll(pos_info)
+    }
+    for (cross_f <- cross_features) {
+      val pos_info = cross_f.get_pos_info(dim)
+      buf.appendAll(pos_info)
+    }
+    buf
+  }
+
+  /**
+   * TFRecord
+   *
+   * @param input
+   * @param dim
+   * @param builder
+   */
+  def encode(input: T, dim: Long, builder: Example.Builder): Unit = {
+    for (raw_f <- raw_features) {
+      raw_f.clear()
+      raw_f.parse(input)
+    }
+    target.parse(input).add(builder)
+    for (raw_f <- raw_features) {
+      raw_f.add(dim, builder)
+    }
+    for (cross_f <- cross_features) {
+      cross_f.add(dim, builder)
     }
   }
 
-  abstract class FeatureEncoder[T] {
-    val raw_features: ListBuffer[RawFeature[T]] = new ListBuffer[RawFeature[T]]()
-    val cross_features: ListBuffer[CrossFeature[T]] = new ListBuffer[CrossFeature[T]]()
-    var raw_target: RawTarget[T] = _
-
-    def setup(): FeatureEncoder[T]
-
-    /**
-     *
-     * @return List[(f_name, f_index)]
-     */
-    def get_field_name_and_index(): ListBuffer[(String, Int)] = {
-      val buff = new ListBuffer[(String, Int)]()
-      for (raw_f <- raw_features) {
-        buff.append((raw_f.f_name, raw_f.f_index))
-      }
-      for (cross_f <- cross_features) {
-        buff.append((cross_f.f_name, cross_f.f_index))
-      }
-      buff
+  /**
+   * TFRecord
+   *
+   * @param input
+   * @param dim
+   * @param builder
+   * @param pos_map
+   * @param target_map
+   * @return
+   */
+  def encode(input: T, dim: Long, builder: Example.Builder, pos_map: immutable.HashMap[(Int, Long), Int], target_map: immutable.HashMap[Int, Int]): (Boolean, Boolean) = {
+    for (raw_f <- raw_features) {
+      raw_f.clear()
+      raw_f.parse(input)
     }
 
-    /**
-     * ParquetRecord
-     *
-     * @return
-     */
-    def get_parquet_column_names(): ListBuffer[String] = {
-      val buff = new ListBuffer[String]()
-      buff.append("target")
-      for ((f_name, f_index) <- get_field_name_and_index()) {
-        buff.append(f_name)
-      }
-      buff
-    }
+    val has_target = target
+      .parse(input)
+      .add(builder, target_map)
 
-    /**
-     *
-     * @param input
-     * @param dim
-     * @return List[pos]
-     */
-    def get_pos(input: T, dim: Long): ListBuffer[Long] = {
-      val buf = ListBuffer[Long]()
-      for (raw_f <- raw_features) {
-        raw_f.clear()
-        raw_f.parse(input)
-      }
-      for (raw_f <- raw_features) {
-        val pos = raw_f.get_pos(dim)
-        buf.appendAll(pos)
-      }
-      for (cross_f <- cross_features) {
-        val pos = cross_f.get_pos(dim)
-        buf.appendAll(pos)
-      }
-      buf
-    }
-
-    /**
-     *
-     * @param input
-     * @param dim
-     * @return List[(f_name, f_index, format, pos)]
-     */
-    def get_pos_info(input: T, dim: Long): ListBuffer[(String, Int, String, Long)] = {
-      val buf = new ListBuffer[(String, Int, String, Long)]
-      for (raw_f <- raw_features) {
-        raw_f.clear()
-        raw_f.parse(input)
-      }
-      for (raw_f <- raw_features) {
-        val pos_info = raw_f.get_pos_info(dim)
-        buf.appendAll(pos_info)
-      }
-      for (cross_f <- cross_features) {
-        val pos_info = cross_f.get_pos_info(dim)
-        buf.appendAll(pos_info)
-      }
-      buf
-    }
-
-    /**
-     * TFRecord
-     *
-     * @param input
-     * @param dim
-     * @param builder
-     */
-    def encode(input: T, dim: Long, builder: Example.Builder): Unit = {
-      for (raw_f <- raw_features) {
-        raw_f.clear()
-        raw_f.parse(input)
-      }
-      raw_target.parse(input).add(builder)
-      for (raw_f <- raw_features) {
-        raw_f.add(dim, builder)
-      }
-      for (cross_f <- cross_features) {
-        cross_f.add(dim, builder)
+    var has_feature = false
+    for (raw_f <- raw_features) {
+      if (raw_f.add(dim, builder, pos_map)) {
+        has_feature = true
       }
     }
+    for (cross_f <- cross_features) {
+      if (cross_f.add(dim, builder, pos_map)) {
+        has_feature = true
+      }
+    }
+    (has_feature, has_target)
+  }
 
-    /**
-     * TFRecord
-     *
-     * @param input
-     * @param dim
-     * @param builder
-     * @param pos_map
-     * @param target_map
-     * @return
-     */
-    def encode(input: T, dim: Long, builder: Example.Builder, pos_map: immutable.HashMap[(Int, Long), Int], target_map: immutable.HashMap[Int, Int]): (Boolean, Boolean) = {
-      for (raw_f <- raw_features) {
-        raw_f.clear()
-        raw_f.parse(input)
-      }
-      val has_target = raw_target
-        .parse(input)
-        .add(builder, target_map)
-      var has_feature = false
-      for (raw_f <- raw_features) {
-        if (raw_f.add(dim, builder, pos_map)) {
-          has_feature = true
-        }
-      }
-      for (cross_f <- cross_features) {
-        if (cross_f.add(dim, builder, pos_map)) {
-          has_feature = true
-        }
-      }
-      (has_feature, has_target)
+  /**
+   * TSV
+   *
+   * @param input
+   * @param dim
+   * @param Sep1
+   * @param Sep2
+   * @return
+   */
+  def encode(input: T, dim: Long, Sep1: String, Sep2: String): String = {
+    val encoded_map: mutable.HashMap[String, ListBuffer[Long]] = new mutable.HashMap[String, ListBuffer[Long]]()
+
+    for (raw_f: RawFeature[T] <- raw_features) {
+      raw_f.clear()
+      raw_f.parse(input)
+    }
+    for (raw_f: RawFeature[T] <- raw_features) {
+      raw_f.add(dim, encoded_map)
+    }
+    for (cross_f: CrossFeature[T] <- cross_features) {
+      cross_f.add(dim, encoded_map)
     }
 
-    /**
-     * TSV
-     *
-     * @param input
-     * @param dim
-     * @param Sep1
-     * @param Sep2
-     * @return
-     */
-    def encode(input: T, dim: Long, Sep1: String, Sep2: String): String = {
-      val encoded_map: mutable.HashMap[String, ListBuffer[Long]] = new mutable.HashMap[String, ListBuffer[Long]]()
-
-      for (raw_f: RawFeature[T] <- raw_features) {
-        raw_f.clear()
-        raw_f.parse(input)
+    val buff = new ListBuffer[(String, Long)]()
+    for ((k, vals) <- encoded_map) {
+      for (v <- vals) {
+        buff.append((k, v))
       }
-      for (raw_f: RawFeature[T] <- raw_features) {
-        raw_f.add(dim, encoded_map)
-      }
-      for (cross_f: CrossFeature[T] <- cross_features) {
-        cross_f.add(dim, encoded_map)
-      }
-
-      val buff = new ListBuffer[(String, Long)]()
-      for ((k, vals) <- encoded_map) {
-        for (v <- vals) {
-          buff.append((k, v))
-        }
-      }
-      buff.map(t => t._1 + Sep2 + t._2).mkString(Sep1)
     }
+    buff.map(t => t._1 + Sep2 + t._2).mkString(Sep1)
+  }
 
-    /**
-     * ParquetRecord
-     *
-     * @param input
-     * @param dim
-     * @param pos_map
-     * @param target_map
-     * @return
-     */
-    def encode(input: T, dim: Long, pos_map: immutable.HashMap[(Int, Long), Int], target_map: immutable.HashMap[Int, Int]): (ParquetRecord, Boolean, Boolean) = {
-      val builder = Example.newBuilder()
-      val (has_feature, has_target) = encode(input, dim, builder, pos_map, target_map)
-      (ParquetRecord.from_example(builder.build()), has_feature, has_target)
-    }
+  /**
+   * ParquetRecord
+   *
+   * @param input
+   * @param dim
+   * @param pos_map
+   * @param target_map
+   * @return
+   */
+  def encode(input: T, dim: Long, pos_map: immutable.HashMap[(Int, Long), Int], target_map: immutable.HashMap[Int, Int]): (ParquetRecord, Boolean, Boolean) = {
+    val builder = Example.newBuilder()
+    val (has_feature, has_target) = encode(input, dim, builder, pos_map, target_map)
+    (ParquetRecord.from_example(builder.build()), has_feature, has_target)
   }
 }

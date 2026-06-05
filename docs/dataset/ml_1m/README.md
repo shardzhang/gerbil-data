@@ -12,7 +12,7 @@ ml-1m
 
 `MovieID::Titile::Genres`
 
-- MovieID：电影ID，范围1-3952。
+- MovieID：电影ID，范围1-3952
 - Title：电影名称（含上映年份）
 - `Genres`：类型，通过`|`分隔。Action、Adventure、Animation、Children's、Comedy、Crime、Documentary、Drama、Fantasy、Film-Noir、Horror、Musical、Mystery、Romance、Sci-Fi、Thriller、War、Western
 
