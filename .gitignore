@@ -17,3 +17,6 @@ hs_err_pid*
 target/
 .mvn/
 .mvn-local-settings.xml
+.metals/
+.bloop/
+.metals

@@ -122,7 +122,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    */
   private class MovieRateCount(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature[T] = {
-      val  = sample.movie_rate_count match {
+      val buck = sample.movie_rate_count match {
         case 0 => 0
         case x if x <= 2 => 1
         case x if x <= 5 => 2
@@ -135,7 +135,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case x if x <= 1000 => 9
         case _ => 10
       }
-      feature_list.append()
+      feature_list.append(buck)
       this
     }
   }
@@ -145,7 +145,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    */
   private class MovieAvgRate(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature[T] = {
-      val  = sample.movie_avg_rate match {
+      val buck = sample.movie_avg_rate match {
         case x if x <= 0.0 => 0
         case x if x <= 1.0 => 1
         case x if x <= 2.0 => 2
@@ -156,7 +156,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case x if x <= 4.5 => 7
         case _ => 8
       }
-      feature_list.append()
+      feature_list.append(buck)
       this
     }
   }
@@ -169,8 +169,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     override def parse(sample: T): RawFeature[T] = {
       val cnt = sample.movie_genres.size
       // 1/2/3+
-      val  = if (cnt >= 3) 3 else cnt
-      feature_list.append()
+      val buck = if (cnt >= 3) 3 else cnt
+      feature_list.append(buck)
       this
     }
   }
@@ -186,13 +186,13 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       } catch {
         case _: Exception => 99999
       }
-      val  = rank match {
+      val buck = rank match {
         case x if x <= 100 => 3   // 爆款
         case x if x <= 500 => 2   // 热门
         case x if x <= 2000 => 1  // 中等
         case _ => 0               // 长尾冷门
       }
-      feature_list.append()
+      feature_list.append(buck)
       this
     }
   }
@@ -202,7 +202,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    */
   private class MoviePublishYear(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature[T] = {
-      val  = sample.movie_publish_year match {
+      val buck = sample.movie_publish_year match {
         case x if x == 0 => 0
         case x if x < 1970 => 1
         case x if x < 1980 => 2
@@ -211,7 +211,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case x if x < 2010 => 5
         case _ => 6
       }
-      feature_list.append()
+      feature_list.append(buck)
       this
     }
   }
@@ -307,13 +307,13 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case _: Exception => 0.0
       }
       // 分桶: 0=完全一致, 1=稳定, 2=一般, 3=挑剔
-      val  = std match {
+      val buck = std match {
         case x if x <= 0.0 => 0
         case x if x <= 1.0 => 1
         case x if x <= 2.0 => 2
         case _ => 3
       }
-      feature_list.append()
+      feature_list.append(buck)
       this
     }
   }
@@ -326,13 +326,13 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case _: Exception => 0.0
       }
       // 分桶: 0=完全一致, 1=稳定, 2=一般, 3=挑剔
-      val  = std match {
+      val buck = std match {
         case x if x <= 0.0 => 0
         case x if x <= 1.0 => 1
         case x if x <= 2.0 => 2
         case _ => 3
       }
-      feature_list.append()
+      feature_list.append(buck)
       this
     }
   }
@@ -345,13 +345,13 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case _: Exception => 0.0
       }
       // 分桶: 0=完全一致, 1=稳定, 2=一般, 3=挑剔
-      val  = std match {
+      val buck = std match {
         case x if x <= 0.0 => 0
         case x if x <= 1.0 => 1
         case x if x <= 2.0 => 2
         case _ => 3
       }
-      feature_list.append()
+      feature_list.append(buck)
       this
     }
   }
@@ -364,13 +364,13 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case _: Exception => 0.0
       }
       // 分桶: 0=完全一致, 1=稳定, 2=一般, 3=挑剔
-      val  = std match {
+      val buck = std match {
         case x if x <= 0.0 => 0
         case x if x <= 1.0 => 1
         case x if x <= 2.0 => 2
         case _ => 3
       }
-      feature_list.append()
+      feature_list.append(buck)
       this
     }
   }
@@ -386,13 +386,13 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       } catch {
         case _: Exception => 0
       }
-      val  = days match {
+      val buck = days match {
         case 0 => 0
         case x if x <= 7 => 1   // 1周内
         case x if x <= 30 => 2  // 1月内
         case _ => 3             // 老用户
       }
-      feature_list.append()
+      feature_list.append(buck)
       this
     }
   }
@@ -408,14 +408,14 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case _: Exception => 0
       }
       // 分桶: 用户打分数量区间
-      val  = cnt match {
+      val buck = cnt match {
         case x if x <= 10 => 1
         case x if x <= 30 => 2
         case x if x <= 50 => 3
         case x if x <= 100 => 4
         case _ => 5
       }
-      feature_list.append()
+      feature_list.append(buck)
       this
     }
   }
@@ -428,14 +428,14 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case _: Exception => 0
       }
       // 分桶: 用户打分数量区间
-      val  = cnt match {
+      val buck = cnt match {
         case x if x <= 10 => 1
         case x if x <= 30 => 2
         case x if x <= 50 => 3
         case x if x <= 100 => 4
         case _ => 5
       }
-      feature_list.append()
+      feature_list.append(buck)
       this
     }
   }
@@ -448,14 +448,14 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case _: Exception => 0
       }
       // 分桶: 用户打分数量区间
-      val  = cnt match {
+      val buck = cnt match {
         case x if x <= 10 => 1
         case x if x <= 30 => 2
         case x if x <= 50 => 3
         case x if x <= 100 => 4
         case _ => 5
       }
-      feature_list.append()
+      feature_list.append(buck)
       this
     }
   }
@@ -468,14 +468,14 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case _: Exception => 0
       }
       // 分桶: 用户打分数量区间
-      val  = cnt match {
+      val buck = cnt match {
         case x if x <= 10 => 1
         case x if x <= 30 => 2
         case x if x <= 50 => 3
         case x if x <= 100 => 4
         case _ => 5
       }
-      feature_list.append()
+      feature_list.append(buck)
       this
     }
   }
@@ -491,12 +491,12 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case _: Exception => 3.0
       }
       // 低分用户(＜3)、中庸3、高分偏好(≥4)
-      val  = avg match {
+      val buck = avg match {
         case x if x < 3.0 => 1 // 低分用户
         case x if x < 4.0 => 2 // 中庸
         case _ => 3 // 高分偏好
       }
-      feature_list.append()
+      feature_list.append(buck)
       this
     }
   }
@@ -509,12 +509,12 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case _: Exception => 3.0
       }
       // 低分用户(＜3)、中庸3、高分偏好(≥4)
-      val  = avg match {
+      val buck = avg match {
         case x if x < 3.0 => 1 // 低分用户
         case x if x < 4.0 => 2 // 中庸
         case _ => 3 // 高分偏好
       }
-      feature_list.append()
+      feature_list.append(buck)
       this
     }
   }
@@ -527,12 +527,12 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case _: Exception => 3.0
       }
       // 低分用户(＜3)、中庸3、高分偏好(≥4)
-      val  = avg match {
+      val buck = avg match {
         case x if x < 3.0 => 1 // 低分用户
         case x if x < 4.0 => 2 // 中庸
         case _ => 3 // 高分偏好
       }
-      feature_list.append()
+      feature_list.append(buck)
       this
     }
   }
@@ -545,12 +545,12 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case _: Exception => 3.0
       }
       // 低分用户(＜3)、中庸3、高分偏好(≥4)
-      val  = avg match {
+      val buck = avg match {
         case x if x < 3.0 => 1 // 低分用户
         case x if x < 4.0 => 2 // 中庸
         case _ => 3 // 高分偏好
       }
-      feature_list.append()
+      feature_list.append(buck)
       this
     }
   }
