@@ -15,7 +15,16 @@ import utils.LogUtils.green_println
 /**
  * @author shard zhang
  * @date 2026/5/29 18:02
- * @note ML-1M
+ * @note 
+ *  
+ *  ML-1M 训练样本, 包含用户特征, 物品特征, 用户行为序列特征, 标签
+ * 
+ *       标签: rating
+ *       物品特征: movie_title, movie_genres, movie_publish_year, movie_rate_count, movie_avg_rate
+ *       用户特征: gender, age, occupation, zip_code
+ *       用户统计特征： user_rate_count, user_avg_rate
+ *       上下文特征: time_hour, time_area, week_day
+ *       用户行为序列特征: user_movie_rate, user_movie_rate_1days, user_movie_rate_3days, user_movie_rate_7days, user_movie_rate_15days
  */
 class ML1MTrainSample extends Serializable {
   override def toString: String = {

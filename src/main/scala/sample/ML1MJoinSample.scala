@@ -6,13 +6,13 @@ import utils.LogUtils.{green_println, setLogLevel}
 /**
  * @author shard zhang
  * @date 2026/5/29 12:09
- * @note ML-1M 读取原始样本, 拼接用户特征, 用户行为序列特征, 形成最终明文样本
+ * @note ML-1M 读取原始样本, 拼接用户特征, 物品特征, 用户行为序列特征, 形成最终明文样本
  *
  *       DataFrame 负责读原始文本并注册临时表，SQL 负责全部核心业务逻辑
  *
  *       输入:
  *       users.dat
- *       movies.dat
+ *       movie_feature.csv
  *       clean_sample.csv
  *       user_movie_rate.csv
  *

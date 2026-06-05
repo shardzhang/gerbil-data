@@ -1,0 +1,523 @@
+package driver
+
+import com.google.common.io.{LittleEndianDataInputStream, LittleEndianDataOutputStream}
+import org.apache.spark.sql.types._
+import org.tensorflow.example.Example
+import sample.ML1MTrainSample
+import encoder.FeatureEncoder4ML1M
+import encoder.vectorizer.FeatureEncoder
+import org.apache.commons.cli.{DefaultParser, Options}
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{FileSystem, Path}
+import org.apache.hadoop.io.{BytesWritable, NullWritable}
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.{Row, SparkSession}
+import org.apache.spark.storage.StorageLevel
+import org.tensorflow.hadoop.io.TFRecordFileOutputFormat
+import utils.LogUtils.green_println
+import utils.ParquetRecord
+
+import java.io.{BufferedInputStream, BufferedOutputStream, BufferedReader, BufferedWriter, DataInputStream, DataOutputStream, InputStreamReader, OutputStreamWriter}
+import java.net.URI
+import java.util.Random
+import scala.collection.compat.MapFactoryExtensionMethods
+import scala.collection.immutable
+import scala.collection.mutable
+import scala.collection.mutable.{HashMap, HashSet, ListBuffer}
+
+/**
+ * @author shard zhang
+ * @date 2026/6/5 11:38
+ * @note
+ * 基于TFRecord的样本生成, 包括:
+ *
+ *      1. TFRecord文件
+ *         2. nn_pos.txt编码表
+ *
+ */
+
+// 定义统计结构，代替裸元组
+case class FeatureStats(
+                         sum: Double = 0.0,
+                         powerSum: Double = 0.0,
+                         count: Long = 0L,
+                         zero: Long = 0L,
+                         nonzero: Long = 0L,
+                         max: Double = -Double.MaxValue,
+                         min: Double = Double.MaxValue
+                       )
+
+abstract class ML1MDataDriver {
+  val max_dim: Long = 1L << 60
+
+  def feature_encoder: FeatureEncoder[ML1MTrainSample] = {
+    new FeatureEncoder4ML1M().setup()
+  }
+
+  /**
+   * List[(f_name, f_index, f_type, format, hash, value)]
+   */
+  def get_pos_info_from_a_sample(sample: ML1MTrainSample): ListBuffer[(String, Int, Byte, String, Long, Float)] = {
+    feature_encoder.get_pos_info(sample, max_dim)
+  }
+
+  /**
+   * 解析样本为TFRecord格式
+   */
+  def parse_a_sample_tfrecord(sample: ML1MTrainSample,
+                              pos_map: immutable.HashMap[(Int, Long), Int],
+                              target_map: immutable.HashMap[Int, Int]): (Example, Boolean, Boolean) = {
+    val builder = Example.newBuilder()
+    val (has_feature, has_target) = feature_encoder.encode(sample, max_dim, builder, pos_map, target_map)
+    (builder.build(), has_feature, has_target)
+  }
+
+  /**
+   * 解析样本为Parquet格式
+   */
+  def parse_a_sample_parquet(sample: ML1MTrainSample,
+                             pos_map: immutable.HashMap[(Int, Long), Int],
+                             target_map: immutable.HashMap[Int, Int]): (ParquetRecord, Boolean, Boolean) = {
+    val builder = ParquetRecord.newBuilder()
+    val (has_feature, has_target) = feature_encoder.encode(sample, max_dim, builder, pos_map, target_map)
+    (builder.build(), has_feature, has_target)
+  }
+
+  /**
+   * Parquet格式的Schema
+   */
+  def parquet_schema: StructType = {
+    val fields = new ListBuffer[StructField]()
+    fields.append(StructField("target", FloatType, nullable = true))
+    for ((f_name, _) <- feature_encoder.get_field_name_and_index()) {
+      fields.append(StructField(f_name + "_index", ArrayType(LongType, containsNull = false), nullable = true))
+      fields.append(StructField(f_name + "_value", ArrayType(FloatType, containsNull = false), nullable = true))
+    }
+    StructType(fields.toSeq)
+  }
+
+  def restore_pos_map(path: String): (
+    HashMap[(Int, Long), (Int, Double, Double)],
+      HashMap[Int, Int],
+      HashMap[(String, Int, Int), Int]
+    ) = {
+
+    /** Map((f_name, f_index, f_type), dim) */
+    val pos_dim_map = new mutable.HashMap[(String, Int, Int), Int]()
+    /** Map((f_index, pos), (index, mean, std)) */
+    val pos_map = new mutable.HashMap[(Int, Long), (Int, Double, Double)]()
+    /** Map(target, index) */
+    val target_map = new mutable.HashMap[Int, Int]()
+
+    // nn_pos_map.txt
+    try {
+      val fs = FileSystem.get(URI.create(path), new Configuration())
+      val reader = new BufferedReader(new InputStreamReader(fs.open(new Path(path)), "utf-8"))
+      var line = reader.readLine()
+      green_println(f"line: ${line}")
+      line = reader.readLine()
+      while (line != null) {
+        val items = line.split(",")
+        pos_dim_map.put((items(0), items(1).toInt, items(2).toInt), items(3).toInt)
+        line = reader.readLine()
+      }
+    } catch {
+      case e: Throwable => green_println(e.toString)
+    }
+
+    // nn_pos_map.bin
+    try {
+      val fs = FileSystem.get(URI.create(path), new Configuration())
+      val reader = new LittleEndianDataInputStream(new DataInputStream(new BufferedInputStream(fs.open(new Path(path)))))
+      val timestamp = reader.readLong()
+      var size = reader.readInt()
+      green_println(s"timestamp: ${timestamp}")
+      green_println(s"pos_map size: ${size}")
+      // index不保序. 即不是从0开始一致增大,可能是乱序的, 但是pos和index一定是正确对应的
+      while (size > 0) {
+        pos_map.put(
+          (reader.readInt(), reader.readLong()), (reader.readInt(), reader.readDouble(), reader.readDouble())
+        )
+        size = size - 1
+      }
+      size = reader.readInt()
+      green_println(s"target_map size = ${size}")
+      while (size > 0) {
+        target_map.put(reader.readInt(), reader.readInt())
+        size = size - 1
+      }
+    } catch {
+      case e: Throwable => println(e.toString)
+    }
+    green_println(s"read pos_map size = ${pos_map.size}")
+    green_println(s"read target_map size = ${target_map.size}")
+    green_println(s"read pos_dim_map size = ${pos_dim_map.size}")
+    (pos_map, target_map, pos_dim_map)
+  }
+
+  def save_pos_map(path: String,
+                   pos_map: immutable.HashMap[(Int, Long), (Int, Double, Double)],
+                   target_map: immutable.HashMap[Int, Int],
+                   pos_dim: immutable.HashMap[(String, Int, Int), Int]): Unit = {
+    // nn_pos_map.txt
+    do {
+      val fs = FileSystem.get(URI.create(path), new Configuration())
+      val writer = new BufferedWriter(new OutputStreamWriter(fs.create(new Path(path)), "utf-8"))
+      writer.write("target" + "," + target_map.size + "\n")
+
+      /** Map(f_index, (f_name, f_type, dim)) */
+      val pos_dim_map = new HashMap[Int, (String, Int, Int)]()
+      val iter = pos_dim.iterator
+      while (iter.hasNext) {
+        val e = iter.next()
+        pos_dim_map.put(e._1._2, (e._1._1, e._1._3, e._2))
+      }
+
+      /** ListBuffer[(f_index, index, mean, std)] */
+      val pos_map_array = new ListBuffer[(Int, Int, Double, Double)]()
+      /** Map((f_index, pos), (index, mean, std)) */
+      val it = pos_map.iterator
+      while (it.hasNext) {
+        val e = it.next()
+        // (f_index, index, mean, std)
+        pos_map_array.append((e._1._1, e._2._1, e._2._2, e._2._3))
+      }
+      // Map (f_index -> ListBuffer((f_index, index, mean, std),...))
+      val iterator = pos_map_array.groupBy(s => s._1).iterator
+      while (iterator.hasNext) {
+        // f_index -> ListBuffer((f_index, index, mean, std),...)
+        val e = iterator.next()
+        val f_index = e._1
+        // Sort with index in same f_index.
+        val pos_info = e._2.sortWith((a, b) => a._2 < b._2)
+        // (f_name, f_type, dim)
+        val (f_name, f_type, dim) = pos_dim_map(f_index)
+        // f_name, f_index, f_type, dim, size
+        writer.write(f_name + "," + f_index + "," + f_type + "," + dim + "," + pos_info.size)
+        for ((_, index, mean, std) <- pos_info) {
+          writer.write("," + index + ":" + mean + ":" + std)
+        }
+        writer.write("\n")
+      }
+      writer.close()
+    } while (false)
+
+    // nn_pos_map.bin
+    do {
+      green_println(s"Transformed write pos_map path = ${path}")
+      val fs = FileSystem.get(URI.create(path), new Configuration())
+      val writer = new LittleEndianDataOutputStream(new DataOutputStream(new BufferedOutputStream(fs.create(new Path(path)))))
+      val day = "20260601"
+      writer.writeLong(day.toLong)
+      writer.writeInt(pos_map.size)
+      /** Map((f_index, pos), (index, mean, std)) */
+      val iterator = pos_map.iterator
+      while (iterator.hasNext) {
+        // (f_index, pos), (index, mean, std)
+        val kv = iterator.next()
+        // f_index
+        writer.writeInt(kv._1._1)
+        // pos
+        writer.writeLong(kv._1._2)
+        // index
+        writer.writeInt(kv._2._1)
+        // mean
+        writer.writeDouble(kv._2._2)
+        // std
+        writer.writeDouble(kv._2._3)
+      }
+      writer.writeInt(target_map.size)
+      val it = target_map.iterator
+      while (it.hasNext) {
+        val kv = it.next()
+        writer.writeInt(kv._1)
+        writer.writeInt(kv._2)
+      }
+      writer.close()
+    } while (false)
+    green_println(s"Transformed write pos_map size = ${pos_map.size}")
+    green_println(s"Transformed write target_map size = ${target_map.size}")
+    green_println(s"Transformed write pos_dim size = ${pos_dim.size}")
+  }
+
+
+  def getMovieInfo(spark: SparkSession): Map[Int, (String, Array[String])] = {
+    val sql =
+      s"""
+         | select case when app_id is null then 0 else app_id end as app_id,
+         |        case when app_package is null then '-' else app_package end as app_package,
+         |        case when first_type is null then 0 else first_type end as first_type,
+         |        case when second_type is null then 0 else second_type end as second_type
+         | from cpd_reco.dm_cpd_recommend_app_info
+         | """.stripMargin
+    green_println(s"sql:${sql}")
+
+    val app_mapping = spark.sql(sql).rdd
+      .map(r => (r.getLong(0).toString, (r.getString(1), r.getInt(2), r.getInt(3))))
+      .groupByKey()
+      .map(r => {
+        val item_id = r._1.toInt
+        val s = r._2.toArray
+        val title = s.head._2.toString
+        val second_type = s.map(s => s._3.toString)
+        (item_id, (title, second_type))
+      }).collectAsMap
+      .toMap
+    app_mapping
+  }
+
+  /**
+   *
+   * @param spark
+   * @param feature_threshold
+   * @param target_threshold
+   * @param sample_ratio
+   * @param pos_map
+   * @param target_map
+   * @param pos_dim
+   * @param base_dir
+   * @return
+   * pos_dim: HashMap[(f_name, f_index, f_type), dim)]
+   * pos_map: HashMap[(f_index, pos), (index, mean, std)]
+   * target_map: HashMap[(target_id, pos)]
+   */
+  def run(spark: SparkSession,
+          feature_threshold: Int,
+          target_threshold: Int,
+          sample_ratio: Double,
+          pos_map: HashMap[(Int, Long), (Int, Double, Double)],
+          target_map: HashMap[Int, Int],
+          pos_dim: HashMap[(String, Int, Int), Int],
+          base_dir: String
+         ): (HashMap[(Int, Long), (Int, Double, Double)], HashMap[Int, Int], HashMap[(String, Int, Int), Int]) = {
+
+    val movie_info = getMovieInfo(spark)
+    green_println(s"movie_info: ${movie_info.size}")
+    val sql =
+      s"""
+         | select * from hive_training_data_table
+         |""".stripMargin
+    green_println(s"Transformed sql=${sql}")
+    import spark.implicits._
+
+    val rand = new Random(System.currentTimeMillis())
+    val trainingSample: RDD[(ML1MTrainSample, Boolean)] = spark.sql(sql).rdd.repartition(10).map(r => {
+        val (sample, ret) = ML1MTrainSample.parseSample(r, movie_info)
+        (sample, ret)
+      })
+      .filter(sample => sample._1.target != 0 || rand.nextDouble() <= sample_ratio)
+      .persist(StorageLevel.DISK_ONLY)
+
+    val ret_counts = trainingSample
+      .map(s => (s._2, 1))
+      .reduceByKey(_ + _)
+      .collect()
+
+    for (ret <- ret_counts) {
+      green_println(s"Transformed ret_counts ${ret._1} ${ret._2}")
+    }
+
+    val sample_num: Array[(Int, Int)] = trainingSample
+      .map(s => s._1)
+      .map(sample => (sample.target, 1))
+      .reduceByKey(_ + _)
+      .collect()
+      .sortWith((a, b) => a._2 > b._2)
+
+    var index = if (target_map.isEmpty) {
+      0
+    } else {
+      target_map.size
+    }
+
+    var total_number = 0
+    for ((item_id, occurrence) <- sample_num) {
+      if (occurrence >= target_threshold && !target_map.contains(item_id)) {
+        target_map.put(item_id, index)
+        green_println(s"new target: ${item_id}, index: ${index}, occurrence: ${occurrence}")
+        index = index + 1
+      } else if (target_map.contains(item_id)) {
+        green_println(s"old target: ${item_id}, index: ${target_map.get(item_id)}, occurrence: ${occurrence}")
+      } else {
+        green_println(s"new target with cnt less then threshold. target: ${item_id}, occurrence: ${occurrence}")
+      }
+      total_number += occurrence
+    }
+    green_println(s"total valid target number ${total_number}")
+
+    /**
+     * ListBuffer[(f_name, f_index, f_type, pos, fea), (value_sum, value_power_sum, value_count, value_zero, value_nonzero, value_max, value_min)]
+     */
+    val train_sample_pos_arr = trainingSample
+      .map(s => s._1)
+      .mapPartitions(samples => {
+        // Map[(f_name, f_index, f_type, pos, index), (sum, power_sum, count, zero, nonzero, max, min)]
+        val pos_hash = new mutable.HashMap[(String, Int, Byte, Long), FeatureStats]()
+        val pos_list = new ListBuffer[((String, Int, Byte, Long), FeatureStats)]()
+        for (sample <- samples) {
+          val one_sample_pos_array = get_pos_info_from_a_sample(sample)
+          for ((f_name, f_index, f_type, f_raw, pos, value) <- one_sample_pos_array) {
+            val key = (f_name, f_index, f_type, pos)
+            val sum = value
+            val power_sum = value * value
+            val count = 1L
+            val zero = if (value == 0.0) 1L else 0L
+            val nonzero = if (value != 0.0) 1L else 0L
+            val max = value
+            val min = value
+            val currentStats = pos_hash.getOrElse(key, FeatureStats())
+            val newStats = FeatureStats(
+              sum = currentStats.sum + sum,
+              powerSum = currentStats.powerSum + power_sum,
+              count = currentStats.count + count,
+              zero = currentStats.zero + zero,
+              nonzero = currentStats.nonzero + nonzero,
+              max = math.max(currentStats.max, max),
+              min = math.min(currentStats.min, min)
+            )
+            pos_hash.put(key, newStats)
+          }
+        }
+        pos_list ++= pos_hash
+        pos_list.iterator
+      })
+      .reduceByKey(
+        (a, b) => FeatureStats(
+          a.sum + b.sum,
+          a.powerSum + b.powerSum,
+          a.count + b.count,
+          a.zero + b.zero,
+          a.nonzero + b.nonzero,
+          math.max(a.max, b.max),
+          math.min(a.min, a.min)
+        )
+      )
+      .collect()
+    green_println(s"pos_arr.size = ${train_sample_pos_arr.length}")
+
+    val ignore_pos_set = new HashSet[(Int, Long)]()
+    val pos_map_local = new HashMap[(Int, Long), Int]
+    for (pos_info <- train_sample_pos_arr) {
+      val (f_name, f_index, f_type, pos) = pos_info._1
+      val stat = pos_info._2
+      // variance. D(x) = E(x^2) - E^2(x), E表示期望
+      // power_sum / count - power(sum / cnt, 2)
+      val variance = stat.powerSum / total_number - Math.pow(stat.sum / total_number, 2)
+      var mean = stat.sum / total_number
+      var std = math.sqrt(variance + 0.000001)
+      if (f_type == 1) {
+        mean = 0D
+        std = 1D
+      }
+      green_println("Compare1: " + pos_info._1 + " " + stat + " " + mean + " " + std)
+      if (stat.count < feature_threshold) {
+        ignore_pos_set.add((f_index, pos))
+      } else {
+        if (!pos_dim.contains((f_name, f_index, f_type))) {
+          pos_dim.put((f_name, f_index, f_type), 1)
+          pos_map.put((f_index, 0L), (0, 0D, 1.0D))
+        }
+        if (!pos_map.contains((f_index, pos))) {
+          val index = pos_dim((f_name, f_index, f_type))
+          pos_map.put((f_index, pos), (index, mean, std))
+          pos_map_local.put((f_index, pos), index)
+          pos_dim.put((f_name, f_index, f_type), index + 1)
+        } else {
+          val (index, history_mean, history_std) = pos_map((f_index, pos))
+          pos_map.put((f_index, pos), (index, (mean + history_mean) / 2.0, (std + history_std) / 2.0))
+          pos_map_local.put((f_index, pos), index)
+        }
+      }
+    }
+    green_println(s"Transformed ignore_pos_set = ${ignore_pos_set.size} (本次run()中, 所有特征域内, 被过滤特征值个数)")
+    green_println(s"Transformed pos_map_local = ${pos_map_local.size} (本次run()中, 所有特征域内, 满足阈值条件的特征值个数)")
+    green_println(s"Transformed after pos_map = ${pos_map.size} (累加后的特征值个数)")
+    green_println(s"Transformed after target_map = ${target_map.size} (累加后的target个数)")
+    green_println(s"Transformed after pos_dim = ${pos_dim.size} (累加后的特征域个数)")
+
+    val day = "20260601"
+    val tfRecordPath = base_dir + s"/${day}/data/"
+    val parquetPath = base_dir + s"/${day}/data_parquet/"
+    val parquetSchema = parquet_schema
+    val parquetRows = trainingSample.map(s => s._1)
+      .map(parse_a_sample_parquet(_, immutable.HashMap.from(pos_map_local), immutable.HashMap.from(target_map)))
+      .filter(s => s._3)
+      .map(s => s._1)
+      .map(record => Row.fromSeq(record.to_seq(parquetSchema.fieldNames.toSeq)))
+
+    spark.createDataFrame(parquetRows, parquetSchema)
+      .repartition(100)
+      .write
+      .mode("overwrite") // 覆盖写入
+      .parquet(parquetPath) // 写入路径
+
+    trainingSample.map(s => s._1)
+      .map(parse_a_sample_tfrecord(_, immutable.HashMap.from(pos_map_local), immutable.HashMap.from(target_map)))
+      .filter { case (example, has_feature, has_target) => has_feature }
+      .map(s => s._1)
+      .map(example => (example, rand.nextInt()))
+      .sortBy(s => s._2)
+      .map(s => s._1)
+      .repartition(200)
+      .map(example => {
+        val key = new BytesWritable(example.toByteArray)
+        val value = NullWritable.get()
+        (key, value)
+      })
+      .saveAsNewAPIHadoopFile[TFRecordFileOutputFormat](tfRecordPath)
+    (pos_map, target_map, pos_dim)
+  }
+
+  def main(args: Array[String]): Unit = {
+    val opts = new Options()
+    opts.addOption("yesterday", true, "The date of yesterday.")
+    opts.addOption("window", true, "The window of data we used.")
+    opts.addOption("parts", true, "The number of partitions we generate.")
+    opts.addOption("feature_threshold", true, "The statistical significance threshold")
+    opts.addOption("target_threshold", true, "The statistical significance threshold")
+    opts.addOption("debug_level", true, "The debug level")
+    opts.addOption("sample_ratio", true, "The second sample ratio")
+    opts.addOption("base_dir", true, "The base dir of path")
+
+    val parser = new DefaultParser()
+    val cl = parser.parse(opts, args)
+
+    val yesterday = cl.getOptionValue("yesterday")
+    val window = cl.getOptionValue("window").toInt
+    val parts = cl.getOptionValue("parts").toInt
+    val feature_threshold = cl.getOptionValue("feature_threshold").toInt
+    val target_threshold = cl.getOptionValue("target_threshold").toInt
+    val debug_level = cl.getOptionValue("debug_level").toInt
+    val sample_ratio = cl.getOptionValue("sample_ratio").toDouble
+    val base_dir = cl.getOptionValue("base_dir")
+
+    val spark = SparkSession.builder()
+      .appName(this.getClass.getSimpleName.stripSuffix("$"))
+      .config("spark.serializer", "org.apache.spark.serializer.JavaSerializer")
+      .config("spark.driver.maxResultSize", "0")
+      .getOrCreate()
+
+    val sc = spark.sparkContext
+    green_println("Hadoop config mapred.output.compress = " + sc.hadoopConfiguration.get("mapred.output.compress"))
+    sc.hadoopConfiguration.setBoolean("mapred.output.compress", false)
+    green_println("Hadoop config mapred.output.compress = " + sc.hadoopConfiguration.get("mapred.output.compress"))
+    for (p <- sc.getConf.getAll) {
+      green_println(s"Spark Conf ${p._1} = ${p._2}")
+    }
+
+    val dir = base_dir + "/" + yesterday.replace("-", "")
+    val path = new Path(dir)
+    val fs = FileSystem.get(path.toUri, new Configuration())
+    if (fs.exists(path)) {
+      green_println(path.toString + " exists and delete.")
+      fs.delete(path, true)
+    }
+    val (pos_map_before, target_map_before, pos_dim_before) = restore_pos_map(base_dir)
+    val (pos_map_after, target_map_after, pos_dim_after) = run(
+      spark, feature_threshold, target_threshold, sample_ratio,
+      pos_map_before, target_map_before, pos_dim_before, base_dir
+    )
+    save_pos_map(base_dir, immutable.HashMap.from(pos_map_after), immutable.HashMap.from(target_map_after), immutable.HashMap.from(pos_dim_after))
+    fs.create(new Path(base_dir + "/" + yesterday.replace("-", "") + "/_SUCCESS"))
+  }
+}

@@ -2,26 +2,30 @@ package encoder.vectorizer
 
 import java.nio.{ByteBuffer, ByteOrder}
 import io.netty.buffer.ByteBuf
+
 import scala.collection.mutable
 import scala.collection.immutable
 import scala.collection.mutable.{HashMap, ListBuffer}
-
 import com.google.protobuf.ByteString
 import org.tensorflow.example.Example
 import org.tensorflow.example.Features
 import org.tensorflow.example.Int64List
 import org.tensorflow.example.BytesList
 import org.tensorflow.example.FloatList
-
 import utils.MurmurHash3.LongPair
 import utils.MurmurHash3
 import utils.TFRecord
 import utils.ParquetRecord
+import utils.ParquetRecord.ParquetRecordBuilder
 
 /**
  * @author shard zhang
  * @date 2026/6/1 20:28
  * @note
+ *
+ *  get: 计算hash值
+ *  重新编码: 为每一个hash值从0开始分配一个连续的唯一位置, 构成pos_map: HashMap[(f_n, f_i, hash), pos]
+ *  add: 再次用与get同样逻辑计算hash值, 然后根据pos_map直接查询pos值
  */
 abstract class Target[T] {
   var target: Float = 0.0F
@@ -55,10 +59,13 @@ abstract class Target[T] {
   }
 }
 
-abstract class Feature(f_i: Int, f_n: String) {
+abstract class Feature(f_i: Int, f_n: String, f_t: Byte = 1) {
   val f_index: Int = f_i
 
   val f_name: String = f_n
+
+  // 1: discrete, 0: continuous
+  val f_type: Byte = f_t
 
   final val SEED: Int = 0x3c074a61
 
@@ -74,9 +81,9 @@ abstract class Feature(f_i: Int, f_n: String) {
    * get_pos_info
    *
    * @param dim
-   * @return List[(f_name, f_index, format, hash)]
+   * @return List[(f_name, f_index, format, hash, value)]
    */
-  def get_pos_info(dim: Long): ListBuffer[(String, Int, String, Long)]
+  def get_pos_info(dim: Long): ListBuffer[(String, Int, Byte, String, Long, Float)]
 
   /**
    * TFRecord
@@ -117,8 +124,19 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
 
   def parse(intput: T): Feature
 
-  // 支持单值特征, 多值特征. 若支持带权重, 需要ListBuffer[Long]
+  /**
+   * 特征容器: 支持单值特征, 多值特征
+   */
+  // 原始特征值 (明文字符串)
+  var raw_list: ListBuffer[String] = new ListBuffer[String]()
+
+  // 原始特征值 + 简单分桶或变换 (整型)
   var feature_list: ListBuffer[Long] = new ListBuffer[Long]()
+
+  // 原始特征值对应factor (浮点型)
+  // 离散特征: 频次/权重
+  // 连续特征: 自身值
+  var value_list: ListBuffer[Float] = new ListBuffer[Float]()
 
   val key_len: Int = 4 + 8
 
@@ -126,11 +144,15 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
   val bytebuf: ByteBuffer = ByteBuffer.allocate(key_len).order(ByteOrder.LITTLE_ENDIAN)
 
   def clear(): Unit = {
+    raw_list.clear()
     feature_list.clear()
+    value_list.clear()
   }
 
   override def toString: String = {
+    raw_list.mkString(",")
     feature_list.mkString(",")
+    value_list.mkString(",")
   }
 
   /**
@@ -139,51 +161,56 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
    * @return List[hash]
    */
   override def get_pos(dim: Long): ListBuffer[Long] = {
-    // hash
-    val buf = new ListBuffer[Long]()
-    for (value <- feature_list) {
-      if (value != 0) {
+    val pos_list = new ListBuffer[Long]()
+    for (i <- feature_list.indices) {
+      val fea = feature_list(i)
+      val value = value_list(i)
+      val raw_fea = raw_list(i)
+      if (fea != 0) {
         bytebuf.clear()
         bytebuf.putInt(0, f_index)
-        bytebuf.putLong(4, value)
+        bytebuf.putLong(4, fea)
         val p: LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
-        var hash = p.val1 % dim
-        if (hash < 0) {
-          hash += dim
+        var pos = p.val1 % dim
+        if (pos < 0) {
+          pos += dim
         }
-        buf.append(hash)
+        pos_list.append(pos)
       }
     }
-    buf
+    pos_list
   }
 
   /**
    *
    * @param dim
-   * @return List[(f_name, f_index, format, hash)]
+   * @return List[(f_name, f_index, f_type, format, hash)]
    */
-  override def get_pos_info(dim: Long): ListBuffer[(String, Int, String, Long)] = {
-    val buf = new ListBuffer[(String, Int, String, Long)]()
-    // format: f_index:f_value
+  override def get_pos_info(dim: Long): ListBuffer[(String, Int, Byte, String, Long, Float)] = {
+    val pos_info_list = new ListBuffer[(String, Int, Byte, String, Long, Float)]()
+    // format: f_index:raw_fea
     var fmt: String = ""
-    for (value <- feature_list) {
-      if (value != 0) {
+    for (i <- feature_list.indices) {
+      val fea = feature_list(i)
+      val value = value_list(i)
+      val raw_fea = raw_list(i)
+      if (fea != 0) {
         bytebuf.clear()
         bytebuf.putInt(0, f_index)
         fmt += f_index.toString + ":"
-        bytebuf.putLong(4, value)
-        fmt += value.toString
+        bytebuf.putLong(4, fea)
+        fmt += raw_fea.toString
         val p: LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
-        var hash: Long = p.val1 % dim
-        if (hash < 0) {
-          hash += dim
+        var pos: Long = p.val1 % dim
+        if (pos < 0) {
+          pos += dim
         }
-        buf.append((f_name, f_index, fmt, hash))
+        pos_info_list.append((f_name, f_index, f_type, fmt, pos, value))
       }
     }
-    buf
+    pos_info_list
   }
 
   /**
@@ -193,13 +220,20 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
    * @param builder
    */
   override def add(dim: Long, builder: Example.Builder): Unit = {
-    val pos_buf = new ListBuffer[Long]()
+    val raw_buf = new ListBuffer[String]()      // 原始特征值, for human debug
+    val pos_buf = new ListBuffer[Long]()        // 编码后位置, for model
+    val value_buf = new ListBuffer[Float]()     // 频次/权重, for model
+    raw_buf.append("R:")
     pos_buf.append(0L)
-    for (value <- feature_list) {
-      if (value != 0) {
+    value_buf.append(1.0F)
+    for (i <- feature_list.indices) {
+      val fea = feature_list(i)
+      val value = value_list(i)
+      val raw_fea = raw_list(i)
+      if (fea != 0) {
         bytebuf.clear()
         bytebuf.putInt(0, f_index)
-        bytebuf.putLong(4, value)
+        bytebuf.putLong(4, fea)
         val p: LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
         var hash: Long = p.val1 % dim
@@ -209,9 +243,10 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
         pos_buf.append(hash)
       }
     }
-    builder.getFeaturesBuilder.putFeature(
-      f_name + "_pos", TFRecord.int64VectorFeature(pos_buf.toArray)
-    )
+    builder.getFeaturesBuilder
+      .putFeature(f_name + "_raw", TFRecord.bytesVectorFeature(raw_buf.toArray))
+      .putFeature(f_name + "_index", TFRecord.int64VectorFeature(pos_buf.toArray))
+      .putFeature(f_name + "_value", TFRecord.floatVectorFeature(value_buf.toArray))
   }
 
   /**
@@ -223,14 +258,22 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
    * @return has_feature
    */
   override def add(dim: Long, builder: Example.Builder, pos_map: immutable.HashMap[(Int, Long), Int]): Boolean = {
-    val pos_buffer = new ListBuffer[Long]()
-    pos_buffer.append(0L)
+    val raw_buf = new ListBuffer[String]()      // 原始特征值, for human debug
+    val pos_buf = new ListBuffer[Long]()        // 编码后位置, for model
+    val value_buf = new ListBuffer[Float]()     // 频次/权重, for model
+    raw_buf.append("R:")
+    pos_buf.append(0L)
+    value_buf.append(1.0F)
+
     var has_feature = false
-    for (value <- feature_list) {
-      if (value != 0) {
+    for (i <- feature_list.indices) {
+      val fea = feature_list(i)
+      val value = value_list(i)
+      val raw_fea = raw_list(i)
+      if (fea != 0) {
         bytebuf.clear()
         bytebuf.putInt(0, f_index)
-        bytebuf.putLong(4, value)
+        bytebuf.putLong(4, fea)
         val p: LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
         var hash: Long = p.val1 % dim
@@ -239,14 +282,15 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
         }
         if (pos_map.contains((f_index, hash))) {
           val pos = pos_map((f_index, hash))
-          pos_buffer.append(pos)
+          pos_buf.append(pos)
           has_feature = true
         }
       }
     }
-    builder.getFeaturesBuilder.putFeature(
-      f_name + "_pos", TFRecord.int64VectorFeature(pos_buffer.toArray)
-    )
+    builder.getFeaturesBuilder
+      .putFeature(f_name + "_raw", TFRecord.bytesVectorFeature(raw_buf.toArray))
+      .putFeature(f_name + "_index", TFRecord.int64VectorFeature(pos_buf.toArray))
+      .putFeature(f_name + "_value", TFRecord.floatVectorFeature(value_buf.toArray))
     has_feature
   }
 
@@ -258,21 +302,21 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
    */
   override def add(dim: Long, encoded_map: mutable.HashMap[String, ListBuffer[Long]]): Unit = {
     encoded_map.clear()
-    for (value <- feature_list) {
-      if (value != 0) {
+    for (fea <- feature_list) {
+      if (fea != 0) {
         bytebuf.clear()
         bytebuf.putInt(0, f_index)
-        bytebuf.putLong(4, value)
+        bytebuf.putLong(4, fea)
         val p: LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
-        var hash: Long = p.val1 % dim
-        if (hash < 0) {
-          hash += dim
+        var pos: Long = p.val1 % dim
+        if (pos < 0) {
+          pos += dim
         }
         if (encoded_map.contains(f_name)) {
-          encoded_map(f_name).append(hash)
+          encoded_map(f_name).append(pos)
         } else {
-          encoded_map(f_name) = ListBuffer(hash)
+          encoded_map(f_name) = ListBuffer(pos)
         }
       }
     }
@@ -292,11 +336,11 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
     val pos_buf = new ListBuffer[Long]()
     pos_buf.append(0L)
     var has_feature = false
-    for (value <- feature_list) {
-      if (value != 0) {
+    for (fea <- feature_list) {
+      if (fea != 0) {
         bytebuf.clear()
         bytebuf.putInt(0, f_index)
-        bytebuf.putLong(4, value)
+        bytebuf.putLong(4, fea)
         val p: LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
         var hash: Long = p.val1 % dim
@@ -331,9 +375,9 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: RawFeature[T]*) extends Featu
    * @param dim
    * @return List[(f_name, f_index, format, hash)]
    */
-  override def get_pos_info(dim: Long): ListBuffer[(String, Int, String, Long)] = {
+  override def get_pos_info(dim: Long): ListBuffer[(String, Int, Byte, String, Long, Float)] = {
     // https://zhuanlan.zhihu.com/p/661834313
-    val buf = ListBuffer[(String, Int, String, Long)]()
+    val buf = ListBuffer[(String, Int, Byte, String, Long, Float)]()
     for (i <- 0 until rnfs.length) {
       indexes(i) = 0
     }
@@ -366,7 +410,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: RawFeature[T]*) extends Featu
         if (hash < 0) {
           hash += dim
         }
-        buf.append((f_name, f_index, fmt, hash))
+        buf.append((f_name, f_index, f_type, fmt, hash, 1.0F))
       }
 
       var pos = rnfs.length - 1
@@ -393,7 +437,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: RawFeature[T]*) extends Featu
    * @param dim
    * @return List[(f_name, f_index, format, hash)]
    */
-  def get_pos_info(input: T, dim: Long): ListBuffer[(String, Int, String, Long)] = {
+  def get_pos_info(input: T, dim: Long): ListBuffer[(String, Int, Byte, String, Long, Float)] = {
     for (c_f <- rnfs) {
       c_f.clear()
       c_f.parse(input)
@@ -471,8 +515,12 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: RawFeature[T]*) extends Featu
    */
   override def add(dim: Long, builder: Example.Builder): Unit = {
     // https://zhuanlan.zhihu.com/p/661834313
-    val pos_buffer = new ListBuffer[Long]()
-    pos_buffer.append(0)
+    val raw_buf = new ListBuffer[String]()      // 原始特征值, for human debug
+    val pos_buf = new ListBuffer[Long]()        // 编码后位置, for model
+    val value_buf = new ListBuffer[Float]()     // 频次/权重, for model
+    raw_buf.append("R:")
+    pos_buf.append(0L)
+    value_buf.append(1.0F)
 
     for (i <- 0 until rnfs.length) {
       indexes(i) = 0
@@ -490,25 +538,27 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: RawFeature[T]*) extends Featu
       if (!skip) {
         bytebuf.clear()
         var shift = 0
-        // format: f_index:f_value__f_index:f_value
+        // format: f_index:f_value__xx__f_index:f_value
         var fmt: String = ""
         for (i <- 0 until rnfs.length) {
           bytebuf.putInt(shift, rnfs(i).f_index)
           fmt += rnfs(i).f_index.toString + ":"
           shift += 4
           bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
-          fmt += rnfs(i).feature_list(indexes(i)).toString
+          fmt += rnfs(i).raw_list(indexes(i)).toString
           shift += 8
-          fmt += "__"
+          fmt += "__xx__"
         }
         fmt = fmt.stripSuffix("__")
         val p: LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
-        var hash = p.val1 % dim
-        if (hash < 0) {
-          hash += dim
+        var pos = p.val1 % dim
+        if (pos < 0) {
+          pos += dim
         }
-        pos_buffer.append(hash)
+        pos_buf.append(pos)
+        raw_buf.append(fmt)
+        value_buf.append(1.0F)
         has_feature = true
       }
 
@@ -527,9 +577,10 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: RawFeature[T]*) extends Featu
         done = true
       }
     }
-    builder.getFeaturesBuilder.putFeature(
-      f_name + "_pos", TFRecord.int64VectorFeature(pos_buffer.toArray)
-    )
+    builder.getFeaturesBuilder
+      .putFeature(f_name + "_raw", TFRecord.bytesVectorFeature(raw_buf.toArray))
+      .putFeature(f_name + "_index", TFRecord.int64VectorFeature(pos_buf.toArray))
+      .putFeature(f_name + "_value", TFRecord.floatVectorFeature(value_buf.toArray))
     has_feature
   }
 
@@ -558,8 +609,12 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: RawFeature[T]*) extends Featu
    */
   override def add(dim: Long, builder: Example.Builder, pos_map: immutable.HashMap[(Int, Long), Int]): Boolean = {
     // https://zhuanlan.zhihu.com/p/661834313
-    val pos_buf = new ListBuffer[Long]
-    pos_buf.append(0)
+    val raw_buf = new ListBuffer[String]()      // 原始特征值, for human debug
+    val pos_buf = new ListBuffer[Long]()        // 编码后位置, for model
+    val value_buf = new ListBuffer[Float]()     // 频次/权重, for model
+    raw_buf.append("R:")
+    pos_buf.append(0L)
+    value_buf.append(1.0F)
 
     for (i <- 0 until rnfs.length) {
       indexes(i) = 0
@@ -587,7 +642,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: RawFeature[T]*) extends Featu
           bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
           fmt += rnfs(i).feature_list(indexes(i)).toString
           shift += 8
-          fmt += "__"
+          fmt += "__xx__"
         }
         fmt = fmt.stripSuffix("__")
         val p: LongPair = new MurmurHash3.LongPair()
@@ -598,6 +653,8 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: RawFeature[T]*) extends Featu
         }
         if (pos_map.contains((f_index, hash))) {
           pos_buf.append(pos_map((f_index, hash)))
+          raw_buf.append(fmt)
+          value_buf.append(1.0F)
           has_feature = true
         }
       }
@@ -617,9 +674,10 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: RawFeature[T]*) extends Featu
         done = true
       }
     }
-    builder.getFeaturesBuilder.putFeature(
-      f_name + "_pos", TFRecord.int64VectorFeature(pos_buf.toArray)
-    )
+    builder.getFeaturesBuilder
+      .putFeature(f_name + "_raw", TFRecord.bytesVectorFeature(raw_buf.toArray))
+      .putFeature(f_name + "_index", TFRecord.int64VectorFeature(pos_buf.toArray))
+      .putFeature(f_name + "_value", TFRecord.floatVectorFeature(value_buf.toArray))
     has_feature
   }
 
@@ -723,10 +781,10 @@ abstract class FeatureEncoder[T] {
    *
    * @param input
    * @param dim
-   * @return List[(f_name, f_index, format, pos)]
+   * @return List[(f_name, f_index, f_type, format, pos)]
    */
-  def get_pos_info(input: T, dim: Long): ListBuffer[(String, Int, String, Long)] = {
-    val buf = new ListBuffer[(String, Int, String, Long)]
+  def get_pos_info(input: T, dim: Long): ListBuffer[(String, Int, Byte, String, Long, Float)] = {
+    val buf = new ListBuffer[(String, Int, Byte, String, Long, Float)]
     for (raw_f <- raw_features) {
       raw_f.clear()
       raw_f.parse(input)
@@ -838,9 +896,11 @@ abstract class FeatureEncoder[T] {
    * @param target_map
    * @return
    */
-  def encode(input: T, dim: Long, pos_map: immutable.HashMap[(Int, Long), Int], target_map: immutable.HashMap[Int, Int]): (ParquetRecord, Boolean, Boolean) = {
-    val builder = Example.newBuilder()
-    val (has_feature, has_target) = encode(input, dim, builder, pos_map, target_map)
-    (ParquetRecord.from_example(builder.build()), has_feature, has_target)
+  def encode(input: T, dim: Long, parquet_builder: ParquetRecordBuilder, pos_map: immutable.HashMap[(Int, Long), Int], target_map: immutable.HashMap[Int, Int]): (Boolean, Boolean) = {
+    val example_builder = Example.newBuilder()
+    val (has_feature, has_target) = encode(input, dim, example_builder, pos_map, target_map)
+    parquet_builder.clear()
+    parquet_builder.putAll(ParquetRecord.from_example(example_builder.build()).columns)
+    (has_feature, has_target)
   }
 }
