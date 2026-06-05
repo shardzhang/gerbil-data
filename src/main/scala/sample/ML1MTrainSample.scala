@@ -5,7 +5,6 @@ import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, ZoneId}
 import scala.collection.mutable
 import scala.collection.immutable
-import scala.jdk.CollectionConverters._
 import scala.collection.mutable.ListBuffer
 
 import org.apache.spark.sql.Row
@@ -270,7 +269,7 @@ object ML1MTrainSample {
     }
 
     // parse item_feature
-    var json = row.getAs[String]("item_feature")
+    var json = row.getAs[String]("movie_feature")
     if (json != null && json != "{}") {
       val item_feature = JSON.parseObject(json)
       train_sample.movie_title = item_feature.getString("movie_title")
@@ -280,10 +279,9 @@ object ML1MTrainSample {
       } catch {
         case _: Exception => 0
       }
-      val genresArray = item_feature.getJSONArray("movie_genres")
-      if (genresArray != null) {
-        train_sample.movie_genres ++= genresArray.toJavaList(classOf[String]).asScala
-        train_sample.movie_genres.map(r => r.trim.toLowerCase())
+      val genres = item_feature.getString("movie_genres")
+      if (genres != null) {
+        train_sample.movie_genres.appendAll(genres.split("\\|").map(r => r.trim.toLowerCase()))
         train_sample.movie_genre_cnt = train_sample.movie_genres.size
       }
       train_sample.movie_rate_count = item_feature.getLong("movie_rate_count")

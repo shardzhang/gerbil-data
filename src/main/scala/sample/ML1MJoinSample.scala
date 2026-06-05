@@ -61,7 +61,13 @@ object ML1MJoinSample {
         .csv(s"$path/user_movie_rate")
         .toDF("user_id", "feature")
         .createOrReplaceTempView("user_movie_rate")
-
+      // item_feature.csv
+      spark.read
+        .option("sep", SEP)
+        .csv(s"$path/item_feature")
+        .toDF("movie_id", "movie_title", "movie_genres", "movie_genre_cnt", "movie_rate_count", "movie_avg_rate", "movie_hot_rank")
+        .createOrReplaceTempView("movie_feature")
+      
       val sql =
         s"""
            |WITH user_profile AS (
@@ -87,25 +93,11 @@ object ML1MJoinSample {
            |  where rn = 1
            |)
            |
-           |, item_feature AS (
-           |  select item_id, feature
-           |  from
-           |  (
-           |    SELECT
-           |        item_id,
-           |        to_json(struct(item_id, title, genres)) AS feature,
-           |        row_number() OVER (PARTITION BY item_id, title, genres ORDER BY item_id DESC) AS rn
-           |    FROM (
-           |        SELECT
-           |            split(value, '$RAW_SEP')[0] AS item_id,
-           |            split(value, '$RAW_SEP')[1] AS title,
-           |            split(split(value, '$RAW_SEP')[2], '\\\\|') AS genres
-           |        FROM movies
-           |        WHERE size(split(value, '$RAW_SEP')) = 3
-           |    ) t
-           |    WHERE item_id IS NOT NULL AND item_id != ''
-           |  ) clean
-           |  where rn = 1
+           |, item_feature as (
+           | select 
+           |  movie_id, 
+           |  to_json(struct(movie_title, movie_genres, movie_genre_cnt, movie_rate_count, movie_avg_rate, movie_hot_rank)) as feature
+           | from movie_feature
            |)
            |
            | SELECT
@@ -115,7 +107,7 @@ object ML1MJoinSample {
            |     s.rating,
            |     s.day,
            |     COALESCE(u.feature, '{}') AS user_profile,
-           |     COALESCE(i.feature, '{}') AS item_feature,
+           |     COALESCE(f.feature, '{}') AS movie_feature,
            |     to_json(
            |        named_struct(
            |          'user_movie_rate', COALESCE(r.feature, '')
@@ -124,10 +116,10 @@ object ML1MJoinSample {
            | FROM clean_sample s
            | LEFT JOIN user_profile u
            | ON s.user_id = u.user_id
-           | LEFT JOIN item_feature i
-           | ON s.item_id = i.item_id
            | LEFT JOIN user_movie_rate r
            | ON s.user_id = r.user_id
+           | LEFT JOIN item_feature f
+           | ON s.item_id = f.movie_id
            |""".stripMargin
       val joinSample = spark.sql(sql).cache()
       green_println(f"joinSample.count(): ${joinSample.count()}")
@@ -135,7 +127,7 @@ object ML1MJoinSample {
       joinSample.printSchema()
 
       joinSample
-        .selectExpr("user_id", "item_id", "time_stamp", "rating", "day", "user_profile", "item_feature", "user_behavior")
+        .selectExpr("user_id", "item_id", "time_stamp", "rating", "day", "user_profile", "movie_feature", "user_behavior")
         .write
         .mode("overwrite")
         .option("sep", SEP)
