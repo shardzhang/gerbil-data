@@ -32,11 +32,9 @@ import scala.collection.mutable.{HashMap, HashSet, ListBuffer}
  * 基于TFRecord的样本生成, 包括:
  *
  *      1. TFRecord文件
- *         2. nn_pos.txt编码表
- *
+ *      2. nn_pos.txt编码表(用于离线模型训练)
+ *      3. nn_pos.bin编码表(用于在线模型推理)
  */
-
-// 定义统计结构，代替裸元组
 case class FeatureStats(
                          sum: Double = 0.0,
                          powerSum: Double = 0.0,
@@ -47,7 +45,8 @@ case class FeatureStats(
                          min: Double = Double.MaxValue
                        )
 
-abstract class ML1MDataDriver {
+
+object ML1MDataDriver extends Serializable {
   val max_dim: Long = 1L << 60
 
   def feature_encoder: FeatureEncoder[ML1MTrainSample] = {
@@ -436,8 +435,8 @@ abstract class ML1MDataDriver {
     green_println(s"Transformed after pos_dim = ${pos_dim.size} (累加后的特征域个数)")
 
     val day = "20260601"
-    val tfRecordPath = base_dir + s"/${day}/data/"
-    val parquetPath = base_dir + s"/${day}/data_parquet/"
+    val tfRecordPath = base_dir + s"/${day}/tfrecord/"
+    val parquetPath = base_dir + s"/${day}/parquet/"
     val parquetSchema = parquet_schema
     val parquetRows = trainingSample.map(s => s._1)
       .map(parse_a_sample_parquet(_, immutable.HashMap.from(pos_map_local), immutable.HashMap.from(target_map)))
@@ -470,31 +469,20 @@ abstract class ML1MDataDriver {
 
   def main(args: Array[String]): Unit = {
     val opts = new Options()
-    opts.addOption("yesterday", true, "The date of yesterday.")
-    opts.addOption("window", true, "The window of data we used.")
-    opts.addOption("parts", true, "The number of partitions we generate.")
     opts.addOption("feature_threshold", true, "The statistical significance threshold")
     opts.addOption("target_threshold", true, "The statistical significance threshold")
-    opts.addOption("debug_level", true, "The debug level")
     opts.addOption("sample_ratio", true, "The second sample ratio")
     opts.addOption("base_dir", true, "The base dir of path")
 
     val parser = new DefaultParser()
     val cl = parser.parse(opts, args)
-
-    val yesterday = cl.getOptionValue("yesterday")
-    val window = cl.getOptionValue("window").toInt
-    val parts = cl.getOptionValue("parts").toInt
     val feature_threshold = cl.getOptionValue("feature_threshold").toInt
     val target_threshold = cl.getOptionValue("target_threshold").toInt
-    val debug_level = cl.getOptionValue("debug_level").toInt
     val sample_ratio = cl.getOptionValue("sample_ratio").toDouble
     val base_dir = cl.getOptionValue("base_dir")
 
     val spark = SparkSession.builder()
       .appName(this.getClass.getSimpleName.stripSuffix("$"))
-      .config("spark.serializer", "org.apache.spark.serializer.JavaSerializer")
-      .config("spark.driver.maxResultSize", "0")
       .getOrCreate()
 
     val sc = spark.sparkContext
@@ -505,8 +493,7 @@ abstract class ML1MDataDriver {
       green_println(s"Spark Conf ${p._1} = ${p._2}")
     }
 
-    val dir = base_dir + "/" + yesterday.replace("-", "")
-    val path = new Path(dir)
+    val path = new Path(base_dir)
     val fs = FileSystem.get(path.toUri, new Configuration())
     if (fs.exists(path)) {
       green_println(path.toString + " exists and delete.")
@@ -518,6 +505,6 @@ abstract class ML1MDataDriver {
       pos_map_before, target_map_before, pos_dim_before, base_dir
     )
     save_pos_map(base_dir, immutable.HashMap.from(pos_map_after), immutable.HashMap.from(target_map_after), immutable.HashMap.from(pos_dim_after))
-    fs.create(new Path(base_dir + "/" + yesterday.replace("-", "") + "/_SUCCESS"))
+    fs.create(new Path(base_dir + "/_SUCCESS"))
   }
 }

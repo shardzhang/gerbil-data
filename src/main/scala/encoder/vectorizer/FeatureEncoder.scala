@@ -1,20 +1,14 @@
 package encoder.vectorizer
-
 import java.nio.{ByteBuffer, ByteOrder}
-import io.netty.buffer.ByteBuf
-
+import java.nio.charset.StandardCharsets.UTF_8
 import scala.collection.mutable
 import scala.collection.immutable
 import scala.collection.mutable.{HashMap, ListBuffer}
-import com.google.protobuf.ByteString
 import org.tensorflow.example.Example
-import org.tensorflow.example.Features
-import org.tensorflow.example.Int64List
-import org.tensorflow.example.BytesList
-import org.tensorflow.example.FloatList
+import tfrecords.serde.BytesListFeatureEncoder
+import tfrecords.serde.{FloatListFeatureEncoder, Int64ListFeatureEncoder}
 import utils.MurmurHash3.LongPair
 import utils.MurmurHash3
-import utils.TFRecord
 import utils.ParquetRecord
 import utils.ParquetRecord.ParquetRecordBuilder
 
@@ -27,6 +21,11 @@ import utils.ParquetRecord.ParquetRecordBuilder
  *  重新编码: 为每一个hash值从0开始分配一个连续的唯一位置, 构成pos_map: HashMap[(f_n, f_i, hash), pos]
  *  add: 再次用与get同样逻辑计算hash值, 然后根据pos_map直接查询pos值
  */
+object FeatureType {
+  val Categorical: Byte = 0
+  val Continuous: Byte = 1
+}
+
 abstract class Target[T] {
   var target: Float = 0.0F
 
@@ -34,7 +33,7 @@ abstract class Target[T] {
 
   def add(builder: Example.Builder): Unit = {
     builder.getFeaturesBuilder
-      .putFeature("target", TFRecord.floatFeature(target))
+      .putFeature("target", FloatListFeatureEncoder.encode(Seq(target)))
   }
 
   /**
@@ -46,12 +45,12 @@ abstract class Target[T] {
   def add(builder: Example.Builder, target_map: immutable.HashMap[Int, Int]): Boolean = {
     if (target_map == null) {
       builder.getFeaturesBuilder
-        .putFeature("target", TFRecord.floatFeature(target))
+        .putFeature("target", FloatListFeatureEncoder.encode(Seq(target)))
       return true
     }
     if (target_map.contains(target.toInt)) {
       builder.getFeaturesBuilder.putFeature(
-        "target", TFRecord.floatFeature(target_map(target.toInt))
+        "target", FloatListFeatureEncoder.encode(Seq(target_map(target.toInt)))
       )
       return true
     }
@@ -59,13 +58,13 @@ abstract class Target[T] {
   }
 }
 
-abstract class Feature(f_i: Int, f_n: String, f_t: Byte = 1) {
+abstract class Feature(f_i: Int, f_n: String, f_t: Byte = FeatureType.Categorical) {
   val f_index: Int = f_i
 
   val f_name: String = f_n
 
   // 1: discrete, 0: continuous
-  val f_type: Byte = f_t
+  var f_type: Byte = f_t
 
   final val SEED: Int = 0x3c074a61
 
@@ -244,9 +243,9 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
       }
     }
     builder.getFeaturesBuilder
-      .putFeature(f_name + "_raw", TFRecord.bytesVectorFeature(raw_buf.toArray))
-      .putFeature(f_name + "_index", TFRecord.int64VectorFeature(pos_buf.toArray))
-      .putFeature(f_name + "_value", TFRecord.floatVectorFeature(value_buf.toArray))
+      .putFeature(f_name + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
+      .putFeature(f_name + "_index", Int64ListFeatureEncoder.encode(pos_buf))
+      .putFeature(f_name + "_value", FloatListFeatureEncoder.encode(value_buf))
   }
 
   /**
@@ -288,9 +287,9 @@ abstract class RawFeature[T](f_i: Int, f_n: String) extends Feature(f_i, f_n) {
       }
     }
     builder.getFeaturesBuilder
-      .putFeature(f_name + "_raw", TFRecord.bytesVectorFeature(raw_buf.toArray))
-      .putFeature(f_name + "_index", TFRecord.int64VectorFeature(pos_buf.toArray))
-      .putFeature(f_name + "_value", TFRecord.floatVectorFeature(value_buf.toArray))
+      .putFeature(f_name + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
+      .putFeature(f_name + "_index", Int64ListFeatureEncoder.encode(pos_buf))
+      .putFeature(f_name + "_value", FloatListFeatureEncoder.encode(value_buf))
     has_feature
   }
 
@@ -578,9 +577,9 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: RawFeature[T]*) extends Featu
       }
     }
     builder.getFeaturesBuilder
-      .putFeature(f_name + "_raw", TFRecord.bytesVectorFeature(raw_buf.toArray))
-      .putFeature(f_name + "_index", TFRecord.int64VectorFeature(pos_buf.toArray))
-      .putFeature(f_name + "_value", TFRecord.floatVectorFeature(value_buf.toArray))
+      .putFeature(f_name + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
+      .putFeature(f_name + "_index", Int64ListFeatureEncoder.encode(pos_buf))
+      .putFeature(f_name + "_value", FloatListFeatureEncoder.encode(value_buf))
     has_feature
   }
 
@@ -675,9 +674,9 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: RawFeature[T]*) extends Featu
       }
     }
     builder.getFeaturesBuilder
-      .putFeature(f_name + "_raw", TFRecord.bytesVectorFeature(raw_buf.toArray))
-      .putFeature(f_name + "_index", TFRecord.int64VectorFeature(pos_buf.toArray))
-      .putFeature(f_name + "_value", TFRecord.floatVectorFeature(value_buf.toArray))
+      .putFeature(f_name + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
+      .putFeature(f_name + "_index", Int64ListFeatureEncoder.encode(pos_buf))
+      .putFeature(f_name + "_value", FloatListFeatureEncoder.encode(value_buf))
     has_feature
   }
 

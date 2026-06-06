@@ -1,7 +1,6 @@
 package encoder
 
-import vectorizer.{CrossFeature, RawFeature, Target}
-import vectorizer.FeatureEncoder
+import vectorizer.{CrossFeature, FeatureEncoder, FeatureType, RawFeature, Target}
 import sample.ML1MTrainSample
 import utils.MurmurHash3
 
