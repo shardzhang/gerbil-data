@@ -2,6 +2,7 @@
 
 # dataset
 export ML_1M_PATH="/Users/dazhang/PycharmProject/data/ml-1m"
+export ML_1M_OUTPUT_PATH="/Users/dazhang/PycharmProject/data/ml-1m-output"
 
 # Spark
 export SPARK_HOME=/Users/dazhang/Library/Caches/spark-3.4.0-bin-hadoop3

@@ -1,6 +1,5 @@
 package driver
 
-import com.google.common.io.{LittleEndianDataInputStream, LittleEndianDataOutputStream}
 import org.apache.spark.sql.types._
 import org.tensorflow.example.Example
 import sample.ML1MTrainSample
@@ -49,9 +48,25 @@ case class FeatureStats(
 object ML1MDataDriver extends Serializable {
   val max_dim: Long = 1L << 60
 
-  private def posMapTextPath(baseDir: String): String = s"${baseDir.stripSuffix("/")}/nn_pos_map.txt"
+  private val OutputDay = "20260601"
 
-  private def posMapBinPath(baseDir: String): String = s"${baseDir.stripSuffix("/")}/nn_pos_map.bin"
+  private def normalizeDir(path: String): String = path.stripSuffix("/")
+
+  private def posMapTextPath(baseDir: String): String = s"${normalizeDir(baseDir)}/nn_pos_map.txt"
+
+  private def posMapBinPath(baseDir: String): String = s"${normalizeDir(baseDir)}/nn_pos_map.bin"
+
+  private def readIntLE(reader: DataInputStream): Int = Integer.reverseBytes(reader.readInt())
+
+  private def readLongLE(reader: DataInputStream): Long = java.lang.Long.reverseBytes(reader.readLong())
+
+  private def readDoubleLE(reader: DataInputStream): Double = java.lang.Double.longBitsToDouble(readLongLE(reader))
+
+  private def writeIntLE(writer: DataOutputStream, value: Int): Unit = writer.writeInt(Integer.reverseBytes(value))
+
+  private def writeLongLE(writer: DataOutputStream, value: Long): Unit = writer.writeLong(java.lang.Long.reverseBytes(value))
+
+  private def writeDoubleLE(writer: DataOutputStream, value: Double): Unit = writeLongLE(writer, java.lang.Double.doubleToLongBits(value))
 
   def feature_encoder: FeatureEncoder[ML1MTrainSample] = {
     new FeatureEncoder4ML1M().setup()
@@ -125,6 +140,7 @@ object ML1MDataDriver extends Serializable {
         pos_dim_map.put((items(0), items(1).toInt, items(2).toInt), items(3).toInt)
         line = reader.readLine()
       }
+      reader.close()
     } catch {
       case e: Throwable => green_println(e.toString)
     }
@@ -133,24 +149,25 @@ object ML1MDataDriver extends Serializable {
     try {
       val binPath = posMapBinPath(path)
       val fs = FileSystem.get(URI.create(binPath), new Configuration())
-      val reader = new LittleEndianDataInputStream(new DataInputStream(new BufferedInputStream(fs.open(new Path(binPath)))))
-      val timestamp = reader.readLong()
-      var size = reader.readInt()
+      val reader = new DataInputStream(new BufferedInputStream(fs.open(new Path(binPath))))
+      val timestamp = readLongLE(reader)
+      var size = readIntLE(reader)
       green_println(s"timestamp: ${timestamp}")
       green_println(s"pos_map size: ${size}")
       // index不保序. 即不是从0开始一致增大,可能是乱序的, 但是pos和index一定是正确对应的
       while (size > 0) {
         pos_map.put(
-          (reader.readInt(), reader.readLong()), (reader.readInt(), reader.readDouble(), reader.readDouble())
+          (readIntLE(reader), readLongLE(reader)), (readIntLE(reader), readDoubleLE(reader), readDoubleLE(reader))
         )
         size = size - 1
       }
-      size = reader.readInt()
+      size = readIntLE(reader)
       green_println(s"target_map size = ${size}")
       while (size > 0) {
-        target_map.put(reader.readInt(), reader.readInt())
+        target_map.put(readIntLE(reader), readIntLE(reader))
         size = size - 1
       }
+      reader.close()
     } catch {
       case e: Throwable => println(e.toString)
     }
@@ -213,32 +230,31 @@ object ML1MDataDriver extends Serializable {
       val binPath = posMapBinPath(path)
       green_println(s"Transformed write pos_map path = ${binPath}")
       val fs = FileSystem.get(URI.create(binPath), new Configuration())
-      val writer = new LittleEndianDataOutputStream(new DataOutputStream(new BufferedOutputStream(fs.create(new Path(binPath), true))))
-      val day = "20260601"
-      writer.writeLong(day.toLong)
-      writer.writeInt(pos_map.size)
+      val writer = new DataOutputStream(new BufferedOutputStream(fs.create(new Path(binPath), true)))
+      writeLongLE(writer, OutputDay.toLong)
+      writeIntLE(writer, pos_map.size)
       /** Map((f_index, pos), (index, mean, std)) */
       val iterator = pos_map.iterator
       while (iterator.hasNext) {
         // (f_index, pos), (index, mean, std)
         val kv = iterator.next()
         // f_index
-        writer.writeInt(kv._1._1)
+        writeIntLE(writer, kv._1._1)
         // pos
-        writer.writeLong(kv._1._2)
+        writeLongLE(writer, kv._1._2)
         // index
-        writer.writeInt(kv._2._1)
+        writeIntLE(writer, kv._2._1)
         // mean
-        writer.writeDouble(kv._2._2)
+        writeDoubleLE(writer, kv._2._2)
         // std
-        writer.writeDouble(kv._2._3)
+        writeDoubleLE(writer, kv._2._3)
       }
-      writer.writeInt(target_map.size)
+      writeIntLE(writer, target_map.size)
       val it = target_map.iterator
       while (it.hasNext) {
         val kv = it.next()
-        writer.writeInt(kv._1)
-        writer.writeInt(kv._2)
+        writeIntLE(writer, kv._1)
+        writeIntLE(writer, kv._2)
       }
       writer.close()
     } while (false)
@@ -248,29 +264,34 @@ object ML1MDataDriver extends Serializable {
   }
 
 
-  def getMovieInfo(spark: SparkSession): Map[Int, (String, Array[String])] = {
+  def getMovieInfo(spark: SparkSession, path: String): immutable.Map[Int, (String, Array[String])] =  {
+    // item_feature.csv
+    spark.read
+      .option("sep", "\t")
+      .csv(s"$path/item_feature")
+      .toDF("movie_id", "movie_title", "movie_genres", "movie_genre_cnt", "movie_rate_count", "movie_avg_rate", "movie_hot_rank")
+      .createOrReplaceTempView("movie_feature")
+
     val sql =
       s"""
-         | select case when app_id is null then 0 else app_id end as app_id,
-         |        case when app_package is null then '-' else app_package end as app_package,
-         |        case when first_type is null then 0 else first_type end as first_type,
-         |        case when second_type is null then 0 else second_type end as second_type
-         | from cpd_reco.dm_cpd_recommend_app_info
+         | select
+         |    movie_id,
+         |    movie_title,
+         |    movie_genres
+         | from movie_feature
          | """.stripMargin
     green_println(s"sql:${sql}")
 
     val app_mapping = spark.sql(sql).rdd
-      .map(r => (r.getLong(0).toString, (r.getString(1), r.getInt(2), r.getInt(3))))
-      .groupByKey()
-      .map(r => {
-        val item_id = r._1.toInt
-        val s = r._2.toArray
-        val title = s.head._2.toString
-        val second_type = s.map(s => s._3.toString)
-        (item_id, (title, second_type))
-      }).collectAsMap
-      .toMap
-    app_mapping
+      .flatMap(r => {
+        try {
+          Some(r.getString(0).toInt -> (r.getString(1), r.getString(2).split("\\|").map(_.trim)))
+        } catch {
+          case _: Exception => None
+        }
+      })
+      .collectAsMap()
+    immutable.HashMap.from(app_mapping)
   }
 
   /**
@@ -295,16 +316,18 @@ object ML1MDataDriver extends Serializable {
           pos_map: HashMap[(Int, Long), (Int, Double, Double)],
           target_map: HashMap[Int, Int],
           pos_dim: HashMap[(String, Int, Int), Int],
+          inputDir: String,
           base_dir: String
          ): (HashMap[(Int, Long), (Int, Double, Double)], HashMap[Int, Int], HashMap[(String, Int, Int), Int]) = {
 
-    val movie_info = getMovieInfo(spark)
+    val movie_info = getMovieInfo(spark, inputDir)
     green_println(s"movie_info: ${movie_info.size}")
 
     spark.read
       .option("sep", "\t")
-      .csv(s"$base_dir/join_sample")
+      .csv(s"${normalizeDir(inputDir)}/join_sample")
       .toDF("user_id", "item_id", "time_stamp", "rating", "day", "user_profile", "movie_feature", "user_behavior")
+      .selectExpr("*", "'{}' as user_stat_feature")
       .createOrReplaceTempView("join_sample")
 
     val sql =
@@ -449,8 +472,8 @@ object ML1MDataDriver extends Serializable {
     green_println(s"Transformed after target_map = ${target_map.size} (累加后的target个数)")
     green_println(s"Transformed after pos_dim = ${pos_dim.size} (累加后的特征域个数)")
 
-    val tfRecordPath = base_dir + "/join_sample/tfrecord"
-    val parquetPath = base_dir + "/join_sample/parquet"
+    val tfRecordPath = s"${normalizeDir(base_dir)}/${OutputDay}/tfrecord"
+    val parquetPath = s"${normalizeDir(base_dir)}/${OutputDay}/parquet"
     val parquetSchema = parquet_schema
     val parquetRows = trainingSample.map(s => s._1)
       .map(parse_a_sample_parquet(_, immutable.HashMap.from(pos_map_local), immutable.HashMap.from(target_map)))
@@ -486,6 +509,7 @@ object ML1MDataDriver extends Serializable {
     opts.addOption(null, "feature_threshold", true, "The statistical significance threshold")
     opts.addOption(null, "target_threshold", true, "The statistical significance threshold")
     opts.addOption(null, "sample_ratio", true, "The second sample ratio")
+    opts.addOption(null, "input_dir", true, "The base dir of input data")
     opts.addOption(null, "base_dir", true, "The base dir of path")
 
     val parser = new DefaultParser()
@@ -493,11 +517,11 @@ object ML1MDataDriver extends Serializable {
     val feature_threshold = cl.getOptionValue("feature_threshold").toInt
     val target_threshold = cl.getOptionValue("target_threshold").toInt
     val sample_ratio = cl.getOptionValue("sample_ratio").toDouble
+    val input_dir = cl.getOptionValue("input_dir")
     val base_dir = cl.getOptionValue("base_dir")
 
     val spark = SparkSession.builder()
       .appName(this.getClass.getSimpleName.stripSuffix("$"))
-      .enableHiveSupport()
       .getOrCreate()
 
     val sc = spark.sparkContext
@@ -508,18 +532,26 @@ object ML1MDataDriver extends Serializable {
       green_println(s"Spark Conf ${p._1} = ${p._2}")
     }
 
-    val path = new Path(base_dir + "/train_sample")
+    val path = new Path(base_dir)
     val fs = FileSystem.get(path.toUri, new Configuration())
-//    if (fs.exists(path)) {
-//      green_println(path.toString + " exists and delete.")
-//      fs.delete(path, true)
-//    }
+    if (!fs.exists(path)) {
+      fs.mkdirs(path)
+    }
+    val outputPath = new Path(s"${normalizeDir(base_dir)}/${OutputDay}")
+    if (fs.exists(outputPath)) {
+      green_println(outputPath.toString + " exists and delete.")
+      fs.delete(outputPath, true)
+    }
     val (pos_map_before, target_map_before, pos_dim_before) = restore_pos_map(base_dir)
     val (pos_map_after, target_map_after, pos_dim_after) = run(
       spark, feature_threshold, target_threshold, sample_ratio,
-      pos_map_before, target_map_before, pos_dim_before, base_dir
+      pos_map_before, target_map_before, pos_dim_before, input_dir, base_dir
     )
     save_pos_map(base_dir, immutable.HashMap.from(pos_map_after), immutable.HashMap.from(target_map_after), immutable.HashMap.from(pos_dim_after))
-    fs.create(new Path(base_dir + "/train_sample" + "/_SUCCESS"))
+    val successPath = new Path(s"${normalizeDir(base_dir)}/_SUCCESS")
+    if (fs.exists(successPath)) {
+      fs.delete(successPath, true)
+    }
+    fs.create(successPath).close()
   }
 }

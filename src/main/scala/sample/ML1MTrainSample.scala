@@ -205,6 +205,16 @@ object ML1MTrainSample {
 
   private val formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
 
+  private def parseTimestampMillis(raw: String): Long = {
+    val trimmed = raw.trim
+    if (trimmed.forall(_.isDigit)) {
+      val value = trimmed.toLong
+      if (trimmed.length <= 10) value * 1000L else value
+    } else {
+      LocalDateTime.parse(trimmed, formatter).atZone(ZoneId.systemDefault()).toInstant.toEpochMilli
+    }
+  }
+
   /**
    * Parse join_sample
    *
@@ -265,11 +275,12 @@ object ML1MTrainSample {
     var sample_timestamp = 0L
     try {
       val timeStr = row.getAs[String]("time_stamp")
-      val dt = LocalDateTime.parse(timeStr, formatter)
+      val ts = parseTimestampMillis(timeStr)
+      val dt = LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(ts), ZoneId.systemDefault())
       train_sample.time_hour = dt.getHour
       train_sample.time_area = dt.getHour / 4
       train_sample.week_day = dt.getDayOfWeek.getValue
-      sample_timestamp = dt.atZone(ZoneId.systemDefault()).toInstant.toEpochMilli
+      sample_timestamp = ts
     } catch {
       case e: Exception => {
         green_println("train_sample.time_hour: " + e.toString + " " + row.toSeq.toString())
@@ -309,7 +320,11 @@ object ML1MTrainSample {
     }
 
     // 解析用户统计特征
-    json = row.getAs[String]("user_stat_feature")
+    json = try {
+      row.getAs[String]("user_stat_feature")
+    } catch {
+      case _: Exception => null
+    }
     if (json != null && json != "{}") {
       val user_stat_feature = JSON.parseObject(json)
       train_sample.user_active_day = user_stat_feature.getIntValue("active_days")
@@ -346,8 +361,7 @@ object ML1MTrainSample {
                 ("", Array.empty[String])
             }
             val dur = try {
-              val dt = LocalDateTime.parse(timestamp, formatter)
-              val ts = dt.atZone(ZoneId.systemDefault()).toInstant.toEpochMilli
+              val ts = parseTimestampMillis(timestamp)
               (sample_timestamp - ts) / 1000.0 / 3600.0 / 24.0
             } catch {
               case e: Exception =>

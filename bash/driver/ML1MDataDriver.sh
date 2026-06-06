@@ -9,6 +9,7 @@ cd "$(dirname "$0")"
 source ../env.sh
 
 input_path=${ML_1M_PATH}
+output_path=${ML_1M_OUTPUT_PATH}
 
 "${SPARK_HOME}/bin/spark-submit" \
 --master 'local[*]' \
@@ -29,4 +30,5 @@ ${JAR_PATH} \
 --feature_threshold 10 \
 --target_threshold 1 \
 --sample_ratio 1.0 \
---base_dir ${input_path}
+--input_dir ${input_path} \
+--base_dir ${output_path}
