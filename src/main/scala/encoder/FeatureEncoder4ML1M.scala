@@ -70,7 +70,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       } catch {
         case _: Exception => 0
       }
+      raw_list.append(sample.item_id)
       feature_list.append(movie_id)
+      value_list.append(1.0F)
       this
     }
   }
@@ -89,7 +91,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
           if (word.nonEmpty) {
             val p = new MurmurHash3.LongPair()
             MurmurHash3.murmurhash3_x64_128(word.getBytes, 0, word.length, SEED, p)
+            raw_list.append(word)
             feature_list.append(p.val1)
+            value_list.append(1.0F)
           }
         }
       } catch {
@@ -108,8 +112,10 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       for (gen <- sample.movie_genres) {
         if (gen != null && gen.nonEmpty) {
           val p: MurmurHash3.LongPair = new MurmurHash3.LongPair()
-          MurmurHash3.murmurhash3_x64_128(gen.getBytes(), 0, gen.length, SEED, p)
+          MurmurHash3.murmurhash3_x64_128(gen.getBytes, 0, gen.length, SEED, p)
+          raw_list.append(gen)
           feature_list.append(p.val1)
+          value_list.append(1.0F)
         }
       }
       this
@@ -135,7 +141,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case x if x <= 1000 => 9
         case _ => 10
       }
+      raw_list.append(sample.movie_rate_count.toString)
       feature_list.append(buck)
+      value_list.append(1.0F)
       this
     }
   }
@@ -156,7 +164,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case x if x <= 4.5 => 7
         case _ => 8
       }
+      raw_list.append(sample.movie_avg_rate.toString)
       feature_list.append(buck)
+      value_list.append(1.0F)
       this
     }
   }
@@ -170,7 +180,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val cnt = sample.movie_genres.size
       // 1/2/3+
       val buck = if (cnt >= 3) 3 else cnt
+      raw_list.append(sample.movie_genres.size.toString)
       feature_list.append(buck)
+      value_list.append(1.0F)
       this
     }
   }
@@ -192,7 +204,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case x if x <= 2000 => 1  // 中等
         case _ => 0               // 长尾冷门
       }
+      raw_list.append(rank.toString)
       feature_list.append(buck)
+      value_list.append(1.0F)
       this
     }
   }
@@ -211,7 +225,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case x if x < 2010 => 5
         case _ => 6
       }
+      raw_list.append(sample.movie_publish_year.toString)
       feature_list.append(buck)
+      value_list.append(1.0F)
       this
     }
   }
@@ -227,7 +243,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       } catch {
         case _: Exception => 0
       }
+      raw_list.append(sample.user_id.toString)
       feature_list.append(user_id)
+      value_list.append(1.0F)
       this
     }
   }
@@ -243,7 +261,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       } catch {
         case _: Exception => 0
       }
+      raw_list.append(sample.age.toString)
       feature_list.append(age)
+      value_list.append(1.0F)
       this
     }
   }
@@ -253,12 +273,14 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    */
   private class UserGender(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature[T] = {
-      val hash = sample.gender match {
+      val buck = sample.gender match {
         case "M" => 1
         case "F" => 2
         case _ => 0
       }
-      feature_list.append(hash)
+      raw_list.append(sample.gender.toString)
+      feature_list.append(buck)
+      value_list.append(1.0F)
       this
     }
   }
@@ -273,7 +295,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       } catch {
         case _: Exception => 0
       }
+      raw_list.append(sample.occupation.toString)
       feature_list.append(occupation)
+      value_list.append(1.0F)
       this
     }
   }
@@ -290,7 +314,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       } catch {
         case _: Exception => 0L
       }
+      raw_list.append(sample.zip_code.toString)
       feature_list.append(hash)
+      value_list.append(1.0F)
       this
     }
   }
@@ -313,7 +339,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case x if x <= 2.0 => 2
         case _ => 3
       }
+      raw_list.append(sample.user_rate_std.toString)
       feature_list.append(buck)
+      value_list.append(1.0F)
       this
     }
   }
@@ -332,7 +360,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case x if x <= 2.0 => 2
         case _ => 3
       }
+      raw_list.append(sample.user_rate_std_7day.toString)
       feature_list.append(buck)
+      value_list.append(1.0F)
       this
     }
   }
@@ -351,7 +381,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case x if x <= 2.0 => 2
         case _ => 3
       }
+      raw_list.append(sample.user_rate_std_15day.toString)
       feature_list.append(buck)
+      value_list.append(1.0F)
       this
     }
   }
@@ -370,7 +402,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case x if x <= 2.0 => 2
         case _ => 3
       }
+      raw_list.append(sample.user_rate_std_30day.toString)
       feature_list.append(buck)
+      value_list.append(1.0F)
       this
     }
   }
@@ -392,7 +426,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case x if x <= 30 => 2  // 1月内
         case _ => 3             // 老用户
       }
+      raw_list.append(sample.user_active_day.toString)
       feature_list.append(buck)
+      value_list.append(1.0F)
       this
     }
   }
@@ -415,7 +451,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case x if x <= 100 => 4
         case _ => 5
       }
+      raw_list.append(sample.user_rate_cnt.toString)
       feature_list.append(buck)
+      value_list.append(1.0F)
       this
     }
   }
@@ -435,7 +473,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case x if x <= 100 => 4
         case _ => 5
       }
+      raw_list.append(sample.user_rate_7day_cnt.toString)
       feature_list.append(buck)
+      value_list.append(1.0F)
       this
     }
   }
@@ -455,7 +495,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case x if x <= 100 => 4
         case _ => 5
       }
+      raw_list.append(sample.user_rate_15day_cnt.toString)
       feature_list.append(buck)
+      value_list.append(1.0F)
       this
     }
   }
@@ -475,7 +517,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case x if x <= 100 => 4
         case _ => 5
       }
+      raw_list.append(sample.user_rate_30day_cnt.toString)
       feature_list.append(buck)
+      value_list.append(1.0F)
       this
     }
   }
@@ -496,7 +540,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case x if x < 4.0 => 2 // 中庸
         case _ => 3 // 高分偏好
       }
+      raw_list.append(sample.user_avg_rate.toString)
       feature_list.append(buck)
+      value_list.append(1.0F)
       this
     }
   }
@@ -514,7 +560,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case x if x < 4.0 => 2 // 中庸
         case _ => 3 // 高分偏好
       }
+      raw_list.append(sample.user_avg_rate_7day.toString)
       feature_list.append(buck)
+      value_list.append(1.0F)
       this
     }
   }
@@ -532,7 +580,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case x if x < 4.0 => 2 // 中庸
         case _ => 3 // 高分偏好
       }
+      raw_list.append(sample.user_avg_rate_15day.toString)
       feature_list.append(buck)
+      value_list.append(1.0F)
       this
     }
   }
@@ -550,7 +600,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case x if x < 4.0 => 2 // 中庸
         case _ => 3 // 高分偏好
       }
+      raw_list.append(sample.user_avg_rate_30day.toString)
       feature_list.append(buck)
+      value_list.append(1.0F)
       this
     }
   }
@@ -566,7 +618,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
           if (g != null && g.nonEmpty) {
             val p = new MurmurHash3.LongPair()
             MurmurHash3.murmurhash3_x64_128(g.getBytes, 0, g.length, SEED, p)
+            raw_list.append(g)
             feature_list.append(p.val1)
+            value_list.append(cnt.toFloat)
           }
         }
       } catch {
@@ -596,7 +650,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       } catch {
         case _: Exception => 0
       }
+      raw_list.append(hit.toString)
       feature_list.append(hit)
+      value_list.append(1.0F)
       this
     }
   }
@@ -615,7 +671,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       } catch {
         case _: Exception => 0
       }
+      raw_list.append(hit.toString)
       feature_list.append(hit)
+      value_list.append(1.0F)
       this
     }
   }
@@ -634,7 +692,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       } catch {
         case _: Exception => 0
       }
+      raw_list.append(hit.toString)
       feature_list.append(hit)
+      value_list.append(1.0F)
       this
     }
   }
@@ -653,7 +713,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       } catch {
         case _: Exception => 0
       }
+      raw_list.append(hit.toString)
       feature_list.append(hit)
+      value_list.append(1.0F)
       this
     }
   }
@@ -672,7 +734,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       } catch {
         case _: Exception => 0
       }
+      raw_list.append(hit.toString)
       feature_list.append(hit)
+      value_list.append(1.0F)
       this
     }
   }
@@ -682,13 +746,14 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    */
   private class UserSameGenreAvgRate(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature[T] = {
+      var finalRate = 3.0
       val buk = try {
         val user_genre_avg_rate: Map[String, Float] = sample.user_genres_rates.toMap
         val genres: Seq[String] = sample.movie_genres
         val rates: Seq[Float] = genres.flatMap { g =>
           user_genre_avg_rate.get(g)
         }
-        val finalRate = if (rates.isEmpty) {
+        finalRate = if (rates.isEmpty) {
           3.0 // 无历史, 中性默认分
         } else {
           rates.sum / rates.size // 多个类型取平均
@@ -703,7 +768,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       } catch {
         case _: Exception => 3
       }
+      raw_list.append(finalRate.toString)
       feature_list.append(buk)
+      value_list.append(1.0F)
       this
     }
   }
@@ -715,7 +782,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    */
   private class ContextTimeHour(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature[T] = {
+      raw_list.append(sample.time_hour.toString)
       feature_list.append(sample.time_hour + 1)
+      value_list.append(1.0F)
       this
     }
   }
@@ -726,7 +795,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    */
   private class ContextTimeArea(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature[T] = {
+      raw_list.append(sample.time_area.toString)
       feature_list.append(sample.time_area + 1)
+      value_list.append(1.0F)
       this
     }
   }
@@ -737,7 +808,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    */
   private class ContextTimeWeek(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature[T] = {
+      raw_list.append(sample.week_day.toString)
       feature_list.append(sample.week_day)
+      value_list.append(1.0F)
       this
     }
   }
@@ -749,7 +822,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     override def parse(sample: T): RawFeature[T] = {
       val w = sample.week_day
       val flag = if (w == 6 || w == 7) 2 else 1
+      raw_list.append(flag.toString)
       feature_list.append(flag)
+      value_list.append(1.0F)
       this
     }
   }
@@ -762,7 +837,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   private class UserMovieRate(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature[T] = {
       for (i <- 0 until Math.min(200, sample.user_movie_rates.size)) {
+        raw_list.append(sample.user_movie_rates(i)._1.toString)
         feature_list.append(sample.user_movie_rates(i)._1)
+        value_list.append(sample.user_movie_rates(i)._2.toFloat)
       }
       this
     }
@@ -771,7 +848,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   private class UserMovieRate1Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature[T] = {
       for (i <- 0 until Math.min(200, sample.user_movie_rate_1days.size)) {
+        raw_list.append(sample.user_movie_rate_1days(i)._1.toString)
         feature_list.append(sample.user_movie_rate_1days(i)._1)
+        value_list.append(sample.user_movie_rate_1days(i)._2.toFloat)
       }
       this
     }
@@ -780,7 +859,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   private class UserMovieRate3Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature[T] = {
       for (i <- 0 until Math.min(200, sample.user_movie_rate_3days.size)) {
+        raw_list.append(sample.user_movie_rate_3days(i)._1.toString)
         feature_list.append(sample.user_movie_rate_3days(i)._1)
+        value_list.append(sample.user_movie_rate_3days(i)._2.toFloat)
       }
       this
     }
@@ -789,7 +870,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   private class UserMovieRate7Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature[T] = {
       for (i <- 0 until Math.min(200, sample.user_movie_rate_7days.size)) {
+        raw_list.append(sample.user_movie_rate_7days(i)._1.toString)
         feature_list.append(sample.user_movie_rate_7days(i)._1)
+        value_list.append(sample.user_movie_rate_7days(i)._2.toFloat)
       }
       this
     }
@@ -798,7 +881,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   private class UserMovieRate15Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature[T] = {
       for (i <- 0 until Math.min(200, sample.user_movie_rate_15days.size)) {
+        raw_list.append(sample.user_movie_rate_15days(i)._1.toString)
         feature_list.append(sample.user_movie_rate_15days(i)._1)
+        value_list.append(sample.user_movie_rate_15days(i)._2.toFloat)
       }
       this
     }
@@ -814,7 +899,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         val gen = sample.user_genres_rates(i)._1
         val p: MurmurHash3.LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(gen.getBytes(), 0, gen.length, SEED, p)
+        raw_list.append(gen.toString)
         feature_list.append(p.val1)
+        value_list.append(sample.user_genres_rates(i)._2.toFloat)
       }
       this
     }
@@ -826,7 +913,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         val gen = sample.user_genres_rate_1days(i)._1
         val p: MurmurHash3.LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(gen.getBytes(), 0, gen.length, SEED, p)
+        raw_list.append(gen.toString)
         feature_list.append(p.val1)
+        value_list.append(sample.user_genres_rates(i)._2.toFloat)
       }
       this
     }
@@ -838,7 +927,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         val gen = sample.user_genres_rate_3days(i)._1
         val p: MurmurHash3.LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(gen.getBytes(), 0, gen.length, SEED, p)
+        raw_list.append(gen.toString)
         feature_list.append(p.val1)
+        value_list.append(sample.user_genres_rate_3days(i)._2.toFloat)
       }
       this
     }
@@ -850,7 +941,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         val gen = sample.user_genres_rate_7days(i)._1
         val p: MurmurHash3.LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(gen.getBytes(), 0, gen.length, SEED, p)
+        raw_list.append(gen.toString)
         feature_list.append(p.val1)
+        value_list.append(sample.user_genres_rate_7days(i)._2.toFloat)
       }
       this
     }
@@ -862,7 +955,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         val gen = sample.user_genres_rate_15days(i)._1
         val p: MurmurHash3.LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(gen.getBytes(), 0, gen.length, SEED, p)
+        raw_list.append(gen.toString)
         feature_list.append(p.val1)
+        value_list.append(sample.user_genres_rate_15days(i)._2.toFloat)
       }
       this
     }
@@ -879,9 +974,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         val total_cnt = sample.user_genres_rate_cnts(i)._2
         val p: MurmurHash3.LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(gen.getBytes(), 0, gen.length, SEED, p)
-        for (k <- 0 until total_cnt) {
-          feature_list.append(p.val1)
-        }
+        raw_list.append(gen.toString)
+        feature_list.append(p.val1)
+        value_list.append(total_cnt.toFloat)
       }
       this
     }
@@ -894,9 +989,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         val total_cnt = sample.user_genres_rate_cnt_1days(i)._2
         val p: MurmurHash3.LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(gen.getBytes(), 0, gen.length, SEED, p)
-        for (k <- 0 until total_cnt) {
-          feature_list.append(p.val1)
-        }
+        raw_list.append(gen.toString)
+        feature_list.append(p.val1)
+        value_list.append(total_cnt.toFloat)  
       }
       this
     }
@@ -909,9 +1004,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         val total_cnt = sample.user_genres_rate_cnt_3days(i)._2
         val p: MurmurHash3.LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(gen.getBytes(), 0, gen.length, SEED, p)
-        for (k <- 0 until total_cnt) {
-          feature_list.append(p.val1)
-        }
+        raw_list.append(gen.toString)
+        feature_list.append(p.val1)
+        value_list.append(total_cnt.toFloat)  
       }
       this
     }
@@ -924,9 +1019,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         val total_cnt = sample.user_genres_rate_cnt_7days(i)._2
         val p: MurmurHash3.LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(gen.getBytes(), 0, gen.length, SEED, p)
-        for (k <- 0 until total_cnt) {
-          feature_list.append(p.val1)
-        }
+        raw_list.append(gen.toString)
+        feature_list.append(p.val1)
+        value_list.append(total_cnt.toFloat)  
       }
       this
     }
@@ -939,9 +1034,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         val total_cnt = sample.user_genres_rate_cnt_15days(i)._2
         val p: MurmurHash3.LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(gen.getBytes(), 0, gen.length, SEED, p)
-        for (k <- 0 until total_cnt) {
-          feature_list.append(p.val1)
-        }
+        raw_list.append(gen.toString)
+        feature_list.append(p.val1)
+        value_list.append(total_cnt.toFloat)  
       }
       this
     }
@@ -1175,34 +1270,28 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     // ============================== cross feature: Third-order ==============================
     // 年龄 x 性别 x 影片类型 -> 人群圈层最核心强特征
     val movie_genres_xx_user_age_xx_user_gender = new CrossFeature(460, "movie_genres_xx_user_age_xx_user_gender", movie_genres, user_age, user_gender)
-    cross_features.append(movie_genres_xx_user_age_xx_user_gender)
-
-    // 性别 x 职业 x 影片类型 -> 人群细分强特征
-    val movie_genres_xx_user_gender_xx_user_occupation = new CrossFeature(461, "movie_genres_xx_user_gender_xx_user_occupation", movie_genres, user_gender, user_occupation)
-    cross_features.append(movie_genres_xx_user_gender_xx_user_occupation)
-
     // 年龄 x 职业 x 电影年份 -> 年代偏好分层
     val movie_publish_year_xx_user_age_xx_user_occupation = new CrossFeature(462, "movie_publish_year_xx_user_age_xx_user_occupation", movie_publish_year, user_age, user_occupation)
-    cross_features.append(movie_publish_year_xx_user_age_xx_user_occupation)
-
+    // 性别 x 职业 x 影片类型 -> 人群细分强特征
+    val movie_genres_xx_user_gender_xx_user_occupation = new CrossFeature(461, "movie_genres_xx_user_gender_xx_user_occupation", movie_genres, user_gender, user_occupation)
     // 影片均分 x 热度 x 用户均分 -> 品味匹配核心特征
     val movie_avg_rate_xx_movie_hot_rank_xx_user_avg_rate = new CrossFeature(463, "movie_avg_rate_xx_movie_hot_rank_xx_user_avg_rate", movie_avg_rate, movie_hot_rank, user_avg_rate)
-    cross_features.append(movie_avg_rate_xx_movie_hot_rank_xx_user_avg_rate)
-
     // 影片热度 x 用户活跃度 x 用户均分 -> 冷启动核心
     val movie_hot_rank_xx_user_active_days_xx_user_avg_rate = new CrossFeature(464, "movie_hot_rank_xx_user_active_days_xx_user_avg_rate", movie_hot_rank, user_active_days, user_avg_rate)
-    cross_features.append(movie_hot_rank_xx_user_active_days_xx_user_avg_rate)
-
     // 影片类型数 x 用户总打分次数 x 用户均分 -> 行为深度+品味
     val movie_genre_cnt_xx_user_total_rate_cnt_xx_user_avg_rate = new CrossFeature(465, "movie_genre_cnt_xx_user_total_rate_cnt_xx_user_avg_rate", movie_genre_cnt, user_movie_rate_cnt, user_avg_rate)
-    cross_features.append(movie_genre_cnt_xx_user_total_rate_cnt_xx_user_avg_rate)
-
     // 影片类型数 x 热度 x 用户类型均分 -> 类型偏好+热度匹配
     val movie_genre_cnt_xx_movie_hot_rank_xx_user_genre_avg_rate = new CrossFeature(466, "movie_genre_cnt_xx_movie_hot_rank_xx_user_genre_avg_rate", movie_genre_cnt, movie_hot_rank, user_same_genre_avg_rate)
-    cross_features.append(movie_genre_cnt_xx_movie_hot_rank_xx_user_genre_avg_rate)
-
     // 影片年份 x 均分 x 用户均分 -> 年代+质量+用户品味
     val movie_publish_year_xx_movie_avg_rate_xx_user_avg_rate = new CrossFeature(467, "movie_publish_year_xx_movie_avg_rate_xx_user_avg_rate", movie_publish_year, movie_avg_rate, user_avg_rate)
+
+    cross_features.append(movie_genres_xx_user_age_xx_user_gender)
+    cross_features.append(movie_publish_year_xx_user_age_xx_user_occupation)
+    cross_features.append(movie_genres_xx_user_gender_xx_user_occupation)
+    cross_features.append(movie_avg_rate_xx_movie_hot_rank_xx_user_avg_rate)
+    cross_features.append(movie_hot_rank_xx_user_active_days_xx_user_avg_rate)
+    cross_features.append(movie_genre_cnt_xx_user_total_rate_cnt_xx_user_avg_rate)
+    cross_features.append(movie_genre_cnt_xx_movie_hot_rank_xx_user_genre_avg_rate)
     cross_features.append(movie_publish_year_xx_movie_avg_rate_xx_user_avg_rate)
 
     return this
