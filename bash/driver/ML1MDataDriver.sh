@@ -4,12 +4,11 @@
 # date: 2026/6/6 14:42
 # note:
 
-cd $(dirname $0)
+cd "$(dirname "$0")"
 
 source ../env.sh
 
-path=${ML_1M_PATH}
-
+input_path=${ML_1M_PATH}
 
 "${SPARK_HOME}/bin/spark-submit" \
 --master 'local[*]' \
@@ -30,4 +29,4 @@ ${JAR_PATH} \
 --feature_threshold 10 \
 --target_threshold 1 \
 --sample_ratio 1.0 \
---base_dir ${path}
+--base_dir ${input_path}
