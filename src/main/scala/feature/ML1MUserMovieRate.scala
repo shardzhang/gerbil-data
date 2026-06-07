@@ -1,5 +1,6 @@
 package feature
 
+import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.SparkSession
 import utils.LogUtils.{green_println, setLogLevel}
 
@@ -123,12 +124,6 @@ object ML1MUserMovieRate {
       println(s"result.count() = ${result.count()}")
       result.show()
       result.printSchema()
-
-      // 如果outputPath不存在，创建它
-      spark.sparkContext
-      .hadoopConfiguration()
-      .getFileSystem(new Path(outputPath))
-      .mkdirs(new Path(outputPath), true)
       
       result
         .selectExpr("user_id", "feature")

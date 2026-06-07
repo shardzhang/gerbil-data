@@ -5,7 +5,7 @@ import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, ZoneId}
 import scala.collection.mutable
 import scala.collection.immutable
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.ArrayBuffer
 
 import org.apache.spark.sql.Row
 import com.alibaba.fastjson.JSON
@@ -110,7 +110,7 @@ class ML1MTrainSample extends Serializable {
   // 电影发布年份
   var movie_publish_year: Int = 0
   // 电影类型. Action、Adventure、Animation、Children's、Comedy、Crime、Documentary、Drama、Fantasy、Film-Noir、Horror、Musical、Mystery、Romance、Sci-Fi、Thriller、War、Western
-  var movie_genres: ListBuffer[String] = ListBuffer[String]()
+  var movie_genres: ArrayBuffer[String] = ArrayBuffer.empty[String]
 
   // item Statistical
   // 电影评分人数
@@ -124,11 +124,11 @@ class ML1MTrainSample extends Serializable {
 
   /** ***************************** user behavior *********************************** */
   // 用户对电影评分序列 (电影ID, 评分)
-  var user_movie_rates: ListBuffer[(Int, Int)] = new ListBuffer[(Int, Int)]
-  var user_movie_rate_1days: ListBuffer[(Int, Int)] = new ListBuffer[(Int, Int)]
-  var user_movie_rate_3days: ListBuffer[(Int, Int)] = new ListBuffer[(Int, Int)]
-  var user_movie_rate_7days: ListBuffer[(Int, Int)] = new ListBuffer[(Int, Int)]
-  var user_movie_rate_15days: ListBuffer[(Int, Int)] = new ListBuffer[(Int, Int)]
+  var user_movie_rates: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
+  var user_movie_rate_1days: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
+  var user_movie_rate_3days: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
+  var user_movie_rate_7days: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
+  var user_movie_rate_15days: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
 
   // 用户评分次数总次数
   var user_rate_cnt: Int = 0
@@ -155,21 +155,21 @@ class ML1MTrainSample extends Serializable {
   var user_avg_rate_30day: Float = 3.0F
 
   // 用户对电影类型评分序列 (电影类型, 给类型下所有电影的平均评分)
-  var user_genres_rates = new ListBuffer[(String, Float)]
-  var user_genres_rate_1days = new ListBuffer[(String, Float)]
-  var user_genres_rate_3days = new ListBuffer[(String, Float)]
-  var user_genres_rate_7days = new ListBuffer[(String, Float)]
-  var user_genres_rate_15days = new ListBuffer[(String, Float)]
+  var user_genres_rates: ArrayBuffer[(String, Float)] = ArrayBuffer.empty[(String, Float)]
+  var user_genres_rate_1days: ArrayBuffer[(String, Float)] = ArrayBuffer.empty[(String, Float)]
+  var user_genres_rate_3days: ArrayBuffer[(String, Float)] = ArrayBuffer.empty[(String, Float)]
+  var user_genres_rate_7days: ArrayBuffer[(String, Float)] = ArrayBuffer.empty[(String, Float)]
+  var user_genres_rate_15days: ArrayBuffer[(String, Float)] = ArrayBuffer.empty[(String, Float)]
 
   // 用户对电影类型评分次数序列 (电影类型, 给类型下所有电影评分总次数)
-  var user_genres_rate_cnts = new ListBuffer[(String, Int)]
-  var user_genres_rate_cnt_1days = new ListBuffer[(String, Int)]
-  var user_genres_rate_cnt_3days = new ListBuffer[(String, Int)]
-  var user_genres_rate_cnt_7days = new ListBuffer[(String, Int)]
-  var user_genres_rate_cnt_15days = new ListBuffer[(String, Int)]
+  var user_genres_rate_cnts: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
+  var user_genres_rate_cnt_1days: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
+  var user_genres_rate_cnt_3days: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
+  var user_genres_rate_cnt_7days: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
+  var user_genres_rate_cnt_15days: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
 
   // 用户历史最爱top3电影类型和对应评分次数
-  var user_top3_genres: ListBuffer[(String, Int)] = new ListBuffer[(String, Int)]
+  var user_top3_genres: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
 
   // liftcycle生命周期
   // 用户活跃天数 (累计有评分的去重天数)
