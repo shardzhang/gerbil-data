@@ -369,8 +369,6 @@ object ML1MTrainSample {
                 ret = false
                 Double.MaxValue
             }
-            green_println(s"user_movie_rate. item_id: ${item_id}, rate: ${rate}, timestamp: ${timestamp}, dur: ${dur}")
-
             if (dur >= 0) {
               train_sample.user_movie_rates.append((item_id, rate))
               train_sample.user_rate_cnt += 1

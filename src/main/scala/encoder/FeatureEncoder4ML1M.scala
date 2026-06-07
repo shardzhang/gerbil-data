@@ -914,7 +914,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         MurmurHash3.murmurhash3_x64_128(gen.getBytes(), 0, gen.length, SEED, p)
         raw_list.append(gen.toString)
         feature_list.append(p.val1)
-        value_list.append(sample.user_genres_rates(i)._2.toFloat)
+        value_list.append(sample.user_genres_rate_1days(i)._2.toFloat)
       }
       this
     }

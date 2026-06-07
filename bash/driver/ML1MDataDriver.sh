@@ -18,14 +18,16 @@ output_path=${ML_1M_OUTPUT_PATH}
 --queue root.dataming.prd \
 --conf spark.driver.maxResultSize=10g \
 --conf spark.dynamicAllocation.enabled=false \
---conf spark.driver.extraJavaOptions='-verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log' \
---conf spark.executor.extraJavaOptions='-verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps' \
 --conf spark.driver.cores=5 \
 --conf spark.network.timeout=600s \
---conf spark.default.parallelism=2 \
---conf spark.sql.shuffle.partitions=2 \
+--conf spark.default.parallelism=64 \
+--conf spark.sql.shuffle.partitions=64 \
 --conf spark.kryoserializer.buffer.max=2000m \
 --conf spark.serializer="org.apache.spark.serializer.KryoSerializer" \
+--driver-memory 8g \
+--executor-memory 8g \
+--conf spark.driver.extraJavaOptions='-XX:ReservedCodeCacheSize=512m -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log' \
+--conf spark.executor.extraJavaOptions='-XX:ReservedCodeCacheSize=512m -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps' \
 ${JAR_PATH} \
 --feature_threshold 10 \
 --target_threshold 1 \

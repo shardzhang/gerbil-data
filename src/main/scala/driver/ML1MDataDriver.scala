@@ -14,11 +14,12 @@ import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.storage.StorageLevel
 import org.tensorflow.hadoop.io.TFRecordFileOutputFormat
 import utils.LogUtils.green_println
+import utils.LogUtils.setLogLevel
 import utils.ParquetRecord
 
 import java.io.{BufferedInputStream, BufferedOutputStream, BufferedReader, BufferedWriter, DataInputStream, DataOutputStream, InputStreamReader, OutputStreamWriter}
 import java.net.URI
-import java.util.Random
+import java.util.concurrent.ThreadLocalRandom
 import scala.collection.compat.MapFactoryExtensionMethods
 import scala.collection.immutable
 import scala.collection.mutable
@@ -47,6 +48,8 @@ case class FeatureStats(
 
 object ML1MDataDriver extends Serializable {
   val max_dim: Long = 1L << 60
+  private val TrainingNumPartitions = 64
+  private val StatsNumPartitions = 64
 
   private val OutputDay = "20260601"
 
@@ -75,18 +78,20 @@ object ML1MDataDriver extends Serializable {
   /**
    * List[(f_name, f_index, f_type, format, hash, value)]
    */
-  def get_pos_info_from_a_sample(sample: ML1MTrainSample): ListBuffer[(String, Int, Byte, String, Long, Float)] = {
-    feature_encoder.get_pos_info(sample, max_dim)
+  def get_pos_info_from_a_sample(sample: ML1MTrainSample,
+                                 encoder: FeatureEncoder[ML1MTrainSample]): ListBuffer[(String, Int, Byte, String, Long, Float)] = {
+    encoder.get_pos_info(sample, max_dim)
   }
 
   /**
    * 解析样本为TFRecord格式
    */
   def parse_a_sample_tfrecord(sample: ML1MTrainSample,
+                              encoder: FeatureEncoder[ML1MTrainSample],
                               pos_map: immutable.HashMap[(Int, Long), Int],
                               target_map: immutable.HashMap[Int, Int]): (Example, Boolean, Boolean) = {
     val builder = Example.newBuilder()
-    val (has_feature, has_target) = feature_encoder.encode(sample, max_dim, builder, pos_map, target_map)
+    val (has_feature, has_target) = encoder.encode(sample, max_dim, builder, pos_map, target_map)
     (builder.build(), has_feature, has_target)
   }
 
@@ -94,10 +99,11 @@ object ML1MDataDriver extends Serializable {
    * 解析样本为Parquet格式
    */
   def parse_a_sample_parquet(sample: ML1MTrainSample,
+                             encoder: FeatureEncoder[ML1MTrainSample],
                              pos_map: immutable.HashMap[(Int, Long), Int],
                              target_map: immutable.HashMap[Int, Int]): (ParquetRecord, Boolean, Boolean) = {
     val builder = ParquetRecord.newBuilder()
-    val (has_feature, has_target) = feature_encoder.encode(sample, max_dim, builder, pos_map, target_map)
+    val (has_feature, has_target) = encoder.encode(sample, max_dim, builder, pos_map, target_map)
     (builder.build(), has_feature, has_target)
   }
 
@@ -337,13 +343,12 @@ object ML1MDataDriver extends Serializable {
     green_println(s"Transformed sql=${sql}")
     import spark.implicits._
 
-    val rand = new Random(System.currentTimeMillis())
-    val trainingSample: RDD[(ML1MTrainSample, Boolean)] = spark.sql(sql).rdd.repartition(10).map(r => {
+    val trainingSample: RDD[(ML1MTrainSample, Boolean)] = spark.sql(sql).rdd.repartition(TrainingNumPartitions).map(r => {
         val (sample, ret) = ML1MTrainSample.parseSample(r, movie_info)
         (sample, ret)
       })
-      .filter(sample => sample._1.target != 0 || rand.nextDouble() <= sample_ratio)
-      .persist(StorageLevel.DISK_ONLY)
+      .filter(sample => sample._1.target != 0 || ThreadLocalRandom.current().nextDouble() <= sample_ratio)
+      .persist(StorageLevel.MEMORY_AND_DISK_SER)
 
     val ret_counts = trainingSample
       .map(s => (s._2, 1))
@@ -368,19 +373,25 @@ object ML1MDataDriver extends Serializable {
     }
 
     var total_number = 0
+    var newTargetCount = 0
+    var existingTargetCount = 0
+    var ignoredTargetCount = 0
     for ((item_id, occurrence) <- sample_num) {
       if (occurrence >= target_threshold && !target_map.contains(item_id)) {
         target_map.put(item_id, index)
-        green_println(s"new target: ${item_id}, index: ${index}, occurrence: ${occurrence}")
         index = index + 1
+        newTargetCount += 1
       } else if (target_map.contains(item_id)) {
-        green_println(s"old target: ${item_id}, index: ${target_map.get(item_id)}, occurrence: ${occurrence}")
+        existingTargetCount += 1
       } else {
-        green_println(s"new target with cnt less then threshold. target: ${item_id}, occurrence: ${occurrence}")
+        ignoredTargetCount += 1
       }
       total_number += occurrence
     }
     green_println(s"total valid target number ${total_number}")
+    green_println(s"new targets added = ${newTargetCount}")
+    green_println(s"existing targets reused = ${existingTargetCount}")
+    green_println(s"targets below threshold = ${ignoredTargetCount}")
 
     /**
      * ListBuffer[(f_name, f_index, f_type, pos, fea), (value_sum, value_power_sum, value_count, value_zero, value_nonzero, value_max, value_min)]
@@ -388,11 +399,12 @@ object ML1MDataDriver extends Serializable {
     val train_sample_pos_arr = trainingSample
       .map(s => s._1)
       .mapPartitions(samples => {
+        val encoder = feature_encoder
         // Map[(f_name, f_index, f_type, pos, index), (sum, power_sum, count, zero, nonzero, max, min)]
         val pos_hash = new mutable.HashMap[(String, Int, Byte, Long), FeatureStats]()
         val pos_list = new ListBuffer[((String, Int, Byte, Long), FeatureStats)]()
         for (sample <- samples) {
-          val one_sample_pos_array = get_pos_info_from_a_sample(sample)
+          val one_sample_pos_array = get_pos_info_from_a_sample(sample, encoder)
           for ((f_name, f_index, f_type, f_raw, pos, value) <- one_sample_pos_array) {
             val key = (f_name, f_index, f_type, pos)
             val sum = value
@@ -426,8 +438,9 @@ object ML1MDataDriver extends Serializable {
           a.zero + b.zero,
           a.nonzero + b.nonzero,
           math.max(a.max, b.max),
-          math.min(a.min, a.min)
-        )
+          math.min(a.min, b.min)
+        ),
+        StatsNumPartitions
       )
       .collect()
     green_println(s"pos_arr.size = ${train_sample_pos_arr.length}")
@@ -446,7 +459,6 @@ object ML1MDataDriver extends Serializable {
         mean = 0D
         std = 1D
       }
-      green_println("Compare1: " + pos_info._1 + " " + stat + " " + mean + " " + std)
       if (stat.count < feature_threshold) {
         ignore_pos_set.add((f_index, pos))
       } else {
@@ -475,26 +487,39 @@ object ML1MDataDriver extends Serializable {
     val tfRecordPath = s"${normalizeDir(base_dir)}/${OutputDay}/tfrecord"
     val parquetPath = s"${normalizeDir(base_dir)}/${OutputDay}/parquet"
     val parquetSchema = parquet_schema
+    val parquetFieldNames = parquetSchema.fieldNames.toSeq
+    val posMapLocalImmutable = immutable.HashMap.from(pos_map_local)
+    val targetMapImmutable = immutable.HashMap.from(target_map)
     val parquetRows = trainingSample.map(s => s._1)
-      .map(parse_a_sample_parquet(_, immutable.HashMap.from(pos_map_local), immutable.HashMap.from(target_map)))
-      .filter(s => s._3)
-      .map(s => s._1)
-      .map(record => Row.fromSeq(record.to_seq(parquetSchema.fieldNames.toSeq)))
+      .mapPartitions(samples => {
+        val encoder = feature_encoder
+        samples.flatMap(sample => {
+          val (record, _, has_target) = parse_a_sample_parquet(sample, encoder, posMapLocalImmutable, targetMapImmutable)
+          if (has_target) {
+            Some(Row.fromSeq(record.to_seq(parquetFieldNames)))
+          } else {
+            None
+          }
+        })
+      })
 
     spark.createDataFrame(parquetRows, parquetSchema)
-      .repartition(100)
       .write
       .mode("overwrite") // 覆盖写入
       .parquet(parquetPath) // 写入路径
 
     trainingSample.map(s => s._1)
-      .map(parse_a_sample_tfrecord(_, immutable.HashMap.from(pos_map_local), immutable.HashMap.from(target_map)))
-      .filter { case (example, has_feature, has_target) => has_feature }
-      .map(s => s._1)
-      .map(example => (example, rand.nextInt()))
-      .sortBy(s => s._2)
-      .map(s => s._1)
-      .repartition(200)
+      .mapPartitions(samples => {
+        val encoder = feature_encoder
+        samples.flatMap(sample => {
+          val (example, has_feature, _) = parse_a_sample_tfrecord(sample, encoder, posMapLocalImmutable, targetMapImmutable)
+          if (has_feature) {
+            Some(example)
+          } else {
+            None
+          }
+        })
+      })
       .map(example => {
         val key = new BytesWritable(example.toByteArray)
         val value = NullWritable.get()
@@ -524,7 +549,9 @@ object ML1MDataDriver extends Serializable {
       .appName(this.getClass.getSimpleName.stripSuffix("$"))
       .getOrCreate()
 
+    setLogLevel()
     val sc = spark.sparkContext
+    sc.setLogLevel("WARN")
     green_println("Hadoop config mapred.output.compress = " + sc.hadoopConfiguration.get("mapred.output.compress"))
     sc.hadoopConfiguration.setBoolean("mapred.output.compress", false)
     green_println("Hadoop config mapred.output.compress = " + sc.hadoopConfiguration.get("mapred.output.compress"))
