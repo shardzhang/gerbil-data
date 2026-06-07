@@ -76,6 +76,12 @@ object ML1MMovieStatFeature {
       result.show()
       result.printSchema()
 
+      // 如果outputPath不存在，创建它
+      spark.sparkContext
+      .hadoopConfiguration()
+      .getFileSystem(new Path(outputPath))
+      .mkdirs(new Path(outputPath), true)
+
       result
       .select("movie_id", "movie_title", "movie_genres", "movie_genre_cnt", "movie_rate_count", "movie_avg_rate", "movie_hot_rank")
       .write
