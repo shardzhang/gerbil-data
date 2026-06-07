@@ -19,3 +19,4 @@ target/
 .mvn-local-settings.xml
 .metals/
 .bloop/
+bash/driver/tmp/

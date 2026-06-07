@@ -23,7 +23,7 @@ import java.util.concurrent.ThreadLocalRandom
 import scala.collection.compat.MapFactoryExtensionMethods
 import scala.collection.immutable
 import scala.collection.mutable
-import scala.collection.mutable.{HashMap, HashSet, ListBuffer}
+import scala.collection.mutable.{HashMap, ListBuffer}
 
 /**
  * @author shard zhang
@@ -35,15 +35,26 @@ import scala.collection.mutable.{HashMap, HashSet, ListBuffer}
  *      2. nn_pos.txt编码表(用于离线模型训练)
  *      3. nn_pos.bin编码表(用于在线模型推理)
  */
-case class FeatureStats(
-                         sum: Double = 0.0,
-                         powerSum: Double = 0.0,
-                         count: Long = 0L,
-                         zero: Long = 0L,
-                         nonzero: Long = 0L,
-                         max: Double = -Double.MaxValue,
-                         min: Double = Double.MaxValue
-                       )
+final class FeatureStats(
+                          var sum: Double = 0.0,
+                          var powerSum: Double = 0.0,
+                          var count: Long = 0L
+                        ) extends Serializable {
+  def add(value: Float): FeatureStats = {
+    val valueDouble = value.toDouble
+    sum += valueDouble
+    powerSum += valueDouble * valueDouble
+    count += 1L
+    this
+  }
+
+  def merge(other: FeatureStats): FeatureStats = {
+    sum += other.sum
+    powerSum += other.powerSum
+    count += other.count
+    this
+  }
+}
 
 
 object ML1MDataDriver extends Serializable {
@@ -402,50 +413,23 @@ object ML1MDataDriver extends Serializable {
         val encoder = feature_encoder
         // Map[(f_name, f_index, f_type, pos, index), (sum, power_sum, count, zero, nonzero, max, min)]
         val pos_hash = new mutable.HashMap[(String, Int, Byte, Long), FeatureStats]()
-        val pos_list = new ListBuffer[((String, Int, Byte, Long), FeatureStats)]()
         for (sample <- samples) {
           val one_sample_pos_array = get_pos_info_from_a_sample(sample, encoder)
           for ((f_name, f_index, f_type, f_raw, pos, value) <- one_sample_pos_array) {
             val key = (f_name, f_index, f_type, pos)
-            val sum = value
-            val power_sum = value * value
-            val count = 1L
-            val zero = if (value == 0.0) 1L else 0L
-            val nonzero = if (value != 0.0) 1L else 0L
-            val max = value
-            val min = value
-            val currentStats = pos_hash.getOrElse(key, FeatureStats())
-            val newStats = FeatureStats(
-              sum = currentStats.sum + sum,
-              powerSum = currentStats.powerSum + power_sum,
-              count = currentStats.count + count,
-              zero = currentStats.zero + zero,
-              nonzero = currentStats.nonzero + nonzero,
-              max = math.max(currentStats.max, max),
-              min = math.min(currentStats.min, min)
-            )
-            pos_hash.put(key, newStats)
+            pos_hash.getOrElseUpdate(key, new FeatureStats()).add(value)
           }
         }
-        pos_list ++= pos_hash
-        pos_list.iterator
+        pos_hash.iterator
       })
       .reduceByKey(
-        (a, b) => FeatureStats(
-          a.sum + b.sum,
-          a.powerSum + b.powerSum,
-          a.count + b.count,
-          a.zero + b.zero,
-          a.nonzero + b.nonzero,
-          math.max(a.max, b.max),
-          math.min(a.min, b.min)
-        ),
+        (a, b) => a.merge(b),
         StatsNumPartitions
       )
       .collect()
     green_println(s"pos_arr.size = ${train_sample_pos_arr.length}")
 
-    val ignore_pos_set = new HashSet[(Int, Long)]()
+    var ignoredPosCount = 0
     val pos_map_local = new HashMap[(Int, Long), Int]
     for (pos_info <- train_sample_pos_arr) {
       val (f_name, f_index, f_type, pos) = pos_info._1
@@ -460,7 +444,7 @@ object ML1MDataDriver extends Serializable {
         std = 1D
       }
       if (stat.count < feature_threshold) {
-        ignore_pos_set.add((f_index, pos))
+        ignoredPosCount += 1
       } else {
         if (!pos_dim.contains((f_name, f_index, f_type))) {
           pos_dim.put((f_name, f_index, f_type), 1)
@@ -478,7 +462,7 @@ object ML1MDataDriver extends Serializable {
         }
       }
     }
-    green_println(s"Transformed ignore_pos_set = ${ignore_pos_set.size} (本次run()中, 所有特征域内, 被过滤特征值个数)")
+    green_println(s"Transformed ignored_pos_count = ${ignoredPosCount} (本次run()中, 所有特征域内, 被过滤特征值个数)")
     green_println(s"Transformed pos_map_local = ${pos_map_local.size} (本次run()中, 所有特征域内, 满足阈值条件的特征值个数)")
     green_println(s"Transformed after pos_map = ${pos_map.size} (累加后的特征值个数)")
     green_println(s"Transformed after target_map = ${target_map.size} (累加后的target个数)")

@@ -1173,125 +1173,129 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     raw_features.append(user_watch_same_genre_15day)
     raw_features.append(user_same_genre_avg_rate)
 
-    // ============================== cross feature: Second-order ==============================
-    // {{类型 x 时间窗口兴趣}}
-    // 电影类型 x 用户全历史偏好类型 (长期兴趣匹配，核心强特征)
-    val movie_genres_xx_user_genres_rate = new CrossFeature(401, "movie_genres_xx_user_genres_rate", movie_genres, user_genres_rate)
-    // 电影类型 x 用户近1天偏好类型 (超短期实时兴趣，时效性强)
-    val movie_genres_xx_user_genres_rate_1day = new CrossFeature(402, "movie_genres_xx_user_genres_rate_1day", movie_genres, user_genres_rate_1day)
-    // 电影类型 x 用户近3天偏好类型 (短期实时兴趣)
-    val movie_genres_xx_user_genres_rate_3day = new CrossFeature(403, "movie_genres_xx_user_genres_rate_3day", movie_genres, user_genres_rate_3day)
-    // 电影类型 x 用户近7天偏好类型 (中期兴趣偏好)
-    val movie_genres_xx_user_genres_rate_7day = new CrossFeature(404, "movie_genres_xx_user_genres_rate_7day", movie_genres, user_genres_rate_7day)
-    // 电影类型 x 用户近15天偏好类型 (中长期兴趣偏好)
-    val movie_genres_xx_user_genres_rate_15day = new CrossFeature(405, "movie_genres_xx_user_genres_rate_15day", movie_genres, user_genres_rate_15day)
-    cross_features.append(movie_genres_xx_user_genres_rate)
-    cross_features.append(movie_genres_xx_user_genres_rate_1day)
-    cross_features.append(movie_genres_xx_user_genres_rate_3day)
-    cross_features.append(movie_genres_xx_user_genres_rate_7day)
-    cross_features.append(movie_genres_xx_user_genres_rate_15day)
+    // Temporarily disable cross features for local end-to-end validation.
+    val enableCrossFeatures = false
+    if (enableCrossFeatures) {
+      // ============================== cross feature: Second-order ==============================
+      // {{类型 x 时间窗口兴趣}}
+      // 电影类型 x 用户全历史偏好类型 (长期兴趣匹配，核心强特征)
+      val movie_genres_xx_user_genres_rate = new CrossFeature(401, "movie_genres_xx_user_genres_rate", movie_genres, user_genres_rate)
+      // 电影类型 x 用户近1天偏好类型 (超短期实时兴趣，时效性强)
+      val movie_genres_xx_user_genres_rate_1day = new CrossFeature(402, "movie_genres_xx_user_genres_rate_1day", movie_genres, user_genres_rate_1day)
+      // 电影类型 x 用户近3天偏好类型 (短期实时兴趣)
+      val movie_genres_xx_user_genres_rate_3day = new CrossFeature(403, "movie_genres_xx_user_genres_rate_3day", movie_genres, user_genres_rate_3day)
+      // 电影类型 x 用户近7天偏好类型 (中期兴趣偏好)
+      val movie_genres_xx_user_genres_rate_7day = new CrossFeature(404, "movie_genres_xx_user_genres_rate_7day", movie_genres, user_genres_rate_7day)
+      // 电影类型 x 用户近15天偏好类型 (中长期兴趣偏好)
+      val movie_genres_xx_user_genres_rate_15day = new CrossFeature(405, "movie_genres_xx_user_genres_rate_15day", movie_genres, user_genres_rate_15day)
+      cross_features.append(movie_genres_xx_user_genres_rate)
+      cross_features.append(movie_genres_xx_user_genres_rate_1day)
+      cross_features.append(movie_genres_xx_user_genres_rate_3day)
+      cross_features.append(movie_genres_xx_user_genres_rate_7day)
+      cross_features.append(movie_genres_xx_user_genres_rate_15day)
 
-    // {{物品基础 x 用户基础}}
-    // 电影上映年份 x 用户年龄 (年代偏好 + 年龄圈层匹配)
-    val movie_publish_year_xx_user_age = new CrossFeature(406, "movie_publish_year_xx_user_age", movie_publish_year, user_age)
-    cross_features.append(movie_publish_year_xx_user_age)
+      // {{物品基础 x 用户基础}}
+      // 电影上映年份 x 用户年龄 (年代偏好 + 年龄圈层匹配)
+      val movie_publish_year_xx_user_age = new CrossFeature(406, "movie_publish_year_xx_user_age", movie_publish_year, user_age)
+      cross_features.append(movie_publish_year_xx_user_age)
 
-    // {{物品统计 x 用户统计}}
-    // 电影热度排名 x 用户活跃天数 (冷启动核心: 新用户爱热门，老用户爱小众)
-    val movie_hot_rank_xx_user_active_days = new CrossFeature(407, "movie_hot_rank_xx_user_active_days", movie_hot_rank, user_active_days)
-    // 电影均分 x 用户历史平均分 (用户品味 x 影片质量匹配)
-    val movie_avg_rate_xx_user_avg_rate = new CrossFeature(408, "movie_avg_rate_xx_user_avg_rate", movie_avg_rate, user_avg_rate)
-    // 电影类型数量 x 用户总打分次数 (行为深度 x 影片受众广度)
-    val movie_genre_cnt_xx_user_total_rate_cnt = new CrossFeature(409, "movie_genre_cnt_xx_user_total_rate_cnt", movie_genre_cnt, user_movie_rate_cnt)
-    cross_features.append(movie_hot_rank_xx_user_active_days)
-    cross_features.append(movie_avg_rate_xx_user_avg_rate)
-    cross_features.append(movie_genre_cnt_xx_user_total_rate_cnt)
+      // {{物品统计 x 用户统计}}
+      // 电影热度排名 x 用户活跃天数 (冷启动核心: 新用户爱热门，老用户爱小众)
+      val movie_hot_rank_xx_user_active_days = new CrossFeature(407, "movie_hot_rank_xx_user_active_days", movie_hot_rank, user_active_days)
+      // 电影均分 x 用户历史平均分 (用户品味 x 影片质量匹配)
+      val movie_avg_rate_xx_user_avg_rate = new CrossFeature(408, "movie_avg_rate_xx_user_avg_rate", movie_avg_rate, user_avg_rate)
+      // 电影类型数量 x 用户总打分次数 (行为深度 x 影片受众广度)
+      val movie_genre_cnt_xx_user_total_rate_cnt = new CrossFeature(409, "movie_genre_cnt_xx_user_total_rate_cnt", movie_genre_cnt, user_movie_rate_cnt)
+      cross_features.append(movie_hot_rank_xx_user_active_days)
+      cross_features.append(movie_avg_rate_xx_user_avg_rate)
+      cross_features.append(movie_genre_cnt_xx_user_total_rate_cnt)
 
-    // {{物品统计 x 用户偏好}}
-    // 电影评分人数 x 用户打分标准差 (影片流行度 x 用户打分偏好稳定性)
-    val movie_rate_count_xx_user_rate_std = new CrossFeature(410, "movie_rate_count_xx_user_rate_std", movie_rate_count, user_rate_std)
-    // 电影热度 x 用户历史平均分 (热门度 x 用户评分偏好)
-    val movie_hot_rank_xx_user_avg_rate = new CrossFeature(411, "movie_hot_rank_xx_user_avg_rate", movie_hot_rank, user_avg_rate)
-    // 电影上映年份 x 用户历史平均分 (年代偏好 x 用户评分风格)
-    val movie_publish_year_xx_user_avg_rate = new CrossFeature(412, "movie_publish_year_xx_user_avg_rate", movie_publish_year, user_avg_rate)
-    // 电影类型数量 x 用户历史平均分 (类型复杂度 x 用户评分偏好)
-    val movie_genre_cnt_xx_user_avg_rate = new CrossFeature(413, "movie_genre_cnt_xx_user_avg_rate", movie_genre_cnt, user_avg_rate)
-    // 电影热度 x 用户类型偏好均分 (热度 x 细分类型喜爱度)
-    val movie_hot_rank_xx_user_genre_avg_rate = new CrossFeature(414, "movie_hot_rank_xx_user_genre_avg_rate", movie_hot_rank, user_same_genre_avg_rate)
-    cross_features.append(movie_rate_count_xx_user_rate_std)
-    cross_features.append(movie_hot_rank_xx_user_avg_rate)
-    cross_features.append(movie_publish_year_xx_user_avg_rate)
-    cross_features.append(movie_genre_cnt_xx_user_avg_rate)
-    cross_features.append(movie_hot_rank_xx_user_genre_avg_rate)
+      // {{物品统计 x 用户偏好}}
+      // 电影评分人数 x 用户打分标准差 (影片流行度 x 用户打分偏好稳定性)
+      val movie_rate_count_xx_user_rate_std = new CrossFeature(410, "movie_rate_count_xx_user_rate_std", movie_rate_count, user_rate_std)
+      // 电影热度 x 用户历史平均分 (热门度 x 用户评分偏好)
+      val movie_hot_rank_xx_user_avg_rate = new CrossFeature(411, "movie_hot_rank_xx_user_avg_rate", movie_hot_rank, user_avg_rate)
+      // 电影上映年份 x 用户历史平均分 (年代偏好 x 用户评分风格)
+      val movie_publish_year_xx_user_avg_rate = new CrossFeature(412, "movie_publish_year_xx_user_avg_rate", movie_publish_year, user_avg_rate)
+      // 电影类型数量 x 用户历史平均分 (类型复杂度 x 用户评分偏好)
+      val movie_genre_cnt_xx_user_avg_rate = new CrossFeature(413, "movie_genre_cnt_xx_user_avg_rate", movie_genre_cnt, user_avg_rate)
+      // 电影热度 x 用户类型偏好均分 (热度 x 细分类型喜爱度)
+      val movie_hot_rank_xx_user_genre_avg_rate = new CrossFeature(414, "movie_hot_rank_xx_user_genre_avg_rate", movie_hot_rank, user_same_genre_avg_rate)
+      cross_features.append(movie_rate_count_xx_user_rate_std)
+      cross_features.append(movie_hot_rank_xx_user_avg_rate)
+      cross_features.append(movie_publish_year_xx_user_avg_rate)
+      cross_features.append(movie_genre_cnt_xx_user_avg_rate)
+      cross_features.append(movie_hot_rank_xx_user_genre_avg_rate)
 
-    // {{类型 x 用户属性}}
-    // 用户性别 x 电影类型 (男女偏好差异巨大)
-    val movie_genres_xx_user_gender = new CrossFeature(417, "movie_genres_xx_user_gender", movie_genres, user_gender)
-    // 用户职业 x 电影类型 (职业圈层偏好明显)
-    val movie_genres_xx_user_occupation = new CrossFeature(418, "movie_genres_xx_user_occupation", movie_genres, user_occupation)
-    // 电影类型 x 用户年龄 (不同年龄偏好类型差异大)
-    val movie_genres_xx_user_age = new CrossFeature(419, "movie_genres_xx_user_age", movie_genres, user_age)
-    cross_features.append(movie_genres_xx_user_gender)
-    cross_features.append(movie_genres_xx_user_occupation)
-    cross_features.append(movie_genres_xx_user_age)
+      // {{类型 x 用户属性}}
+      // 用户性别 x 电影类型 (男女偏好差异巨大)
+      val movie_genres_xx_user_gender = new CrossFeature(417, "movie_genres_xx_user_gender", movie_genres, user_gender)
+      // 用户职业 x 电影类型 (职业圈层偏好明显)
+      val movie_genres_xx_user_occupation = new CrossFeature(418, "movie_genres_xx_user_occupation", movie_genres, user_occupation)
+      // 电影类型 x 用户年龄 (不同年龄偏好类型差异大)
+      val movie_genres_xx_user_age = new CrossFeature(419, "movie_genres_xx_user_age", movie_genres, user_age)
+      cross_features.append(movie_genres_xx_user_gender)
+      cross_features.append(movie_genres_xx_user_occupation)
+      cross_features.append(movie_genres_xx_user_age)
 
-    // {{物品 x 用户高阶统计}}
-    // 电影均分 x 用户打分标准差 (影片质量 x 用户挑剔程度)
-    val movie_avg_rate_xx_user_rate_std = new CrossFeature(420, "movie_avg_rate_xx_user_rate_std", movie_avg_rate, user_rate_std)
-    // 电影热度 x 用户打分标准差 (强特征: 热度 x 用户挑剔程度)
-    val movie_hot_rank_xx_user_rate_std = new CrossFeature(421, "movie_hot_rank_xx_user_rate_std", movie_hot_rank, user_rate_std)
-    // 电影上映年份 x 用户活跃度 (年代偏好 x 用户活跃程度)
-    val movie_publish_year_xx_user_active_days = new CrossFeature(422, "movie_publish_year_xx_user_active_days", movie_publish_year, user_active_days)
-    // 电影类型数 x 用户活跃度 (类型广度 x 用户行为深度)
-    val movie_genre_cnt_xx_user_active_days = new CrossFeature(423, "movie_genre_cnt_xx_user_active_days", movie_genre_cnt, user_active_days)
-    // 电影热度 x 用户总打分次数 (热度 x 用户行为丰富度)
-    val movie_hot_rank_xx_user_total_rate_cnt = new CrossFeature(424, "movie_hot_rank_xx_user_total_rate_cnt", movie_hot_rank, user_movie_rate_cnt)
-    cross_features.append(movie_avg_rate_xx_user_rate_std)
-    cross_features.append(movie_hot_rank_xx_user_rate_std)
-    cross_features.append(movie_publish_year_xx_user_active_days)
-    cross_features.append(movie_genre_cnt_xx_user_active_days)
-    cross_features.append(movie_hot_rank_xx_user_total_rate_cnt)
+      // {{物品 x 用户高阶统计}}
+      // 电影均分 x 用户打分标准差 (影片质量 x 用户挑剔程度)
+      val movie_avg_rate_xx_user_rate_std = new CrossFeature(420, "movie_avg_rate_xx_user_rate_std", movie_avg_rate, user_rate_std)
+      // 电影热度 x 用户打分标准差 (强特征: 热度 x 用户挑剔程度)
+      val movie_hot_rank_xx_user_rate_std = new CrossFeature(421, "movie_hot_rank_xx_user_rate_std", movie_hot_rank, user_rate_std)
+      // 电影上映年份 x 用户活跃度 (年代偏好 x 用户活跃程度)
+      val movie_publish_year_xx_user_active_days = new CrossFeature(422, "movie_publish_year_xx_user_active_days", movie_publish_year, user_active_days)
+      // 电影类型数 x 用户活跃度 (类型广度 x 用户行为深度)
+      val movie_genre_cnt_xx_user_active_days = new CrossFeature(423, "movie_genre_cnt_xx_user_active_days", movie_genre_cnt, user_active_days)
+      // 电影热度 x 用户总打分次数 (热度 x 用户行为丰富度)
+      val movie_hot_rank_xx_user_total_rate_cnt = new CrossFeature(424, "movie_hot_rank_xx_user_total_rate_cnt", movie_hot_rank, user_movie_rate_cnt)
+      cross_features.append(movie_avg_rate_xx_user_rate_std)
+      cross_features.append(movie_hot_rank_xx_user_rate_std)
+      cross_features.append(movie_publish_year_xx_user_active_days)
+      cross_features.append(movie_genre_cnt_xx_user_active_days)
+      cross_features.append(movie_hot_rank_xx_user_total_rate_cnt)
 
-    // {{节假日}}
-    // 电影类型 x 是否周末 (周末/工作日观影类型差异极大)
-    val movie_genres_xx_is_weekend = new CrossFeature(450, "movie_genres_xx_is_weekend", movie_genres, context_is_weekend)
-    // 电影热度 x 是否周末 (周末更爱看热门, 工作日更爱看小众)
-    val movie_hot_rank_xx_is_weekend = new CrossFeature(451, "movie_hot_rank_xx_is_weekend", movie_hot_rank, context_is_weekend)
-    // 用户年龄 x 是否周末 (不同年龄周末观影偏好分层)
-    val user_age_xx_is_weekend = new CrossFeature(452, "user_age_xx_is_weekend", user_age, context_is_weekend)
-    // 用户性别 x 时段 (男女在不同时段观影偏好差异)
-    val user_gender_xx_context_time_hour = new CrossFeature(453, "user_gender_xx_context_time_hour", user_gender, context_time_hour)
-    cross_features.append(movie_genres_xx_is_weekend)
-    cross_features.append(movie_hot_rank_xx_is_weekend)
-    cross_features.append(user_age_xx_is_weekend)
-    cross_features.append(user_gender_xx_context_time_hour)
+      // {{节假日}}
+      // 电影类型 x 是否周末 (周末/工作日观影类型差异极大)
+      val movie_genres_xx_is_weekend = new CrossFeature(450, "movie_genres_xx_is_weekend", movie_genres, context_is_weekend)
+      // 电影热度 x 是否周末 (周末更爱看热门, 工作日更爱看小众)
+      val movie_hot_rank_xx_is_weekend = new CrossFeature(451, "movie_hot_rank_xx_is_weekend", movie_hot_rank, context_is_weekend)
+      // 用户年龄 x 是否周末 (不同年龄周末观影偏好分层)
+      val user_age_xx_is_weekend = new CrossFeature(452, "user_age_xx_is_weekend", user_age, context_is_weekend)
+      // 用户性别 x 时段 (男女在不同时段观影偏好差异)
+      val user_gender_xx_context_time_hour = new CrossFeature(453, "user_gender_xx_context_time_hour", user_gender, context_time_hour)
+      cross_features.append(movie_genres_xx_is_weekend)
+      cross_features.append(movie_hot_rank_xx_is_weekend)
+      cross_features.append(user_age_xx_is_weekend)
+      cross_features.append(user_gender_xx_context_time_hour)
 
-    // ============================== cross feature: Third-order ==============================
-    // 年龄 x 性别 x 影片类型 -> 人群圈层最核心强特征
-    val movie_genres_xx_user_age_xx_user_gender = new CrossFeature(460, "movie_genres_xx_user_age_xx_user_gender", movie_genres, user_age, user_gender)
-    // 年龄 x 职业 x 电影年份 -> 年代偏好分层
-    val movie_publish_year_xx_user_age_xx_user_occupation = new CrossFeature(462, "movie_publish_year_xx_user_age_xx_user_occupation", movie_publish_year, user_age, user_occupation)
-    // 性别 x 职业 x 影片类型 -> 人群细分强特征
-    val movie_genres_xx_user_gender_xx_user_occupation = new CrossFeature(461, "movie_genres_xx_user_gender_xx_user_occupation", movie_genres, user_gender, user_occupation)
-    // 影片均分 x 热度 x 用户均分 -> 品味匹配核心特征
-    val movie_avg_rate_xx_movie_hot_rank_xx_user_avg_rate = new CrossFeature(463, "movie_avg_rate_xx_movie_hot_rank_xx_user_avg_rate", movie_avg_rate, movie_hot_rank, user_avg_rate)
-    // 影片热度 x 用户活跃度 x 用户均分 -> 冷启动核心
-    val movie_hot_rank_xx_user_active_days_xx_user_avg_rate = new CrossFeature(464, "movie_hot_rank_xx_user_active_days_xx_user_avg_rate", movie_hot_rank, user_active_days, user_avg_rate)
-    // 影片类型数 x 用户总打分次数 x 用户均分 -> 行为深度+品味
-    val movie_genre_cnt_xx_user_total_rate_cnt_xx_user_avg_rate = new CrossFeature(465, "movie_genre_cnt_xx_user_total_rate_cnt_xx_user_avg_rate", movie_genre_cnt, user_movie_rate_cnt, user_avg_rate)
-    // 影片类型数 x 热度 x 用户类型均分 -> 类型偏好+热度匹配
-    val movie_genre_cnt_xx_movie_hot_rank_xx_user_genre_avg_rate = new CrossFeature(466, "movie_genre_cnt_xx_movie_hot_rank_xx_user_genre_avg_rate", movie_genre_cnt, movie_hot_rank, user_same_genre_avg_rate)
-    // 影片年份 x 均分 x 用户均分 -> 年代+质量+用户品味
-    val movie_publish_year_xx_movie_avg_rate_xx_user_avg_rate = new CrossFeature(467, "movie_publish_year_xx_movie_avg_rate_xx_user_avg_rate", movie_publish_year, movie_avg_rate, user_avg_rate)
+      // ============================== cross feature: Third-order ==============================
+      // 年龄 x 性别 x 影片类型 -> 人群圈层最核心强特征
+      val movie_genres_xx_user_age_xx_user_gender = new CrossFeature(460, "movie_genres_xx_user_age_xx_user_gender", movie_genres, user_age, user_gender)
+      // 年龄 x 职业 x 电影年份 -> 年代偏好分层
+      val movie_publish_year_xx_user_age_xx_user_occupation = new CrossFeature(462, "movie_publish_year_xx_user_age_xx_user_occupation", movie_publish_year, user_age, user_occupation)
+      // 性别 x 职业 x 影片类型 -> 人群细分强特征
+      val movie_genres_xx_user_gender_xx_user_occupation = new CrossFeature(461, "movie_genres_xx_user_gender_xx_user_occupation", movie_genres, user_gender, user_occupation)
+      // 影片均分 x 热度 x 用户均分 -> 品味匹配核心特征
+      val movie_avg_rate_xx_movie_hot_rank_xx_user_avg_rate = new CrossFeature(463, "movie_avg_rate_xx_movie_hot_rank_xx_user_avg_rate", movie_avg_rate, movie_hot_rank, user_avg_rate)
+      // 影片热度 x 用户活跃度 x 用户均分 -> 冷启动核心
+      val movie_hot_rank_xx_user_active_days_xx_user_avg_rate = new CrossFeature(464, "movie_hot_rank_xx_user_active_days_xx_user_avg_rate", movie_hot_rank, user_active_days, user_avg_rate)
+      // 影片类型数 x 用户总打分次数 x 用户均分 -> 行为深度+品味
+      val movie_genre_cnt_xx_user_total_rate_cnt_xx_user_avg_rate = new CrossFeature(465, "movie_genre_cnt_xx_user_total_rate_cnt_xx_user_avg_rate", movie_genre_cnt, user_movie_rate_cnt, user_avg_rate)
+      // 影片类型数 x 热度 x 用户类型均分 -> 类型偏好+热度匹配
+      val movie_genre_cnt_xx_movie_hot_rank_xx_user_genre_avg_rate = new CrossFeature(466, "movie_genre_cnt_xx_movie_hot_rank_xx_user_genre_avg_rate", movie_genre_cnt, movie_hot_rank, user_same_genre_avg_rate)
+      // 影片年份 x 均分 x 用户均分 -> 年代+质量+用户品味
+      val movie_publish_year_xx_movie_avg_rate_xx_user_avg_rate = new CrossFeature(467, "movie_publish_year_xx_movie_avg_rate_xx_user_avg_rate", movie_publish_year, movie_avg_rate, user_avg_rate)
 
-    cross_features.append(movie_genres_xx_user_age_xx_user_gender)
-    cross_features.append(movie_publish_year_xx_user_age_xx_user_occupation)
-    cross_features.append(movie_genres_xx_user_gender_xx_user_occupation)
-    cross_features.append(movie_avg_rate_xx_movie_hot_rank_xx_user_avg_rate)
-    cross_features.append(movie_hot_rank_xx_user_active_days_xx_user_avg_rate)
-    cross_features.append(movie_genre_cnt_xx_user_total_rate_cnt_xx_user_avg_rate)
-    cross_features.append(movie_genre_cnt_xx_movie_hot_rank_xx_user_genre_avg_rate)
-    cross_features.append(movie_publish_year_xx_movie_avg_rate_xx_user_avg_rate)
+      cross_features.append(movie_genres_xx_user_age_xx_user_gender)
+      cross_features.append(movie_publish_year_xx_user_age_xx_user_occupation)
+      cross_features.append(movie_genres_xx_user_gender_xx_user_occupation)
+      cross_features.append(movie_avg_rate_xx_movie_hot_rank_xx_user_avg_rate)
+      cross_features.append(movie_hot_rank_xx_user_active_days_xx_user_avg_rate)
+      cross_features.append(movie_genre_cnt_xx_user_total_rate_cnt_xx_user_avg_rate)
+      cross_features.append(movie_genre_cnt_xx_movie_hot_rank_xx_user_genre_avg_rate)
+      cross_features.append(movie_publish_year_xx_movie_avg_rate_xx_user_avg_rate)
+    }
 
     return this
   }
