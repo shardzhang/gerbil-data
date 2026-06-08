@@ -2,7 +2,7 @@
 -- date: 2026/6/1 11:31
 -- description:
 
--- 1. 创建专用数据库（避免和 default 混在一起）
+-- 1. 创建ml_1m_db库
 CREATE DATABASE IF NOT EXISTS ml_1m_db;
 USE ml_1m_db;
 

@@ -17,9 +17,11 @@ import utils.ParquetRecord.ParquetRecordBuilder
  * @date 2026/6/1 20:28
  * @note
  *
- *  get: 计算hash值
- *  重新编码: 为每一个hash值从0开始分配一个连续的唯一位置, 构成pos_map: HashMap[(f_n, f_i, hash), pos]
- *  add: 再次用与get同样逻辑计算hash值, 然后根据pos_map直接查询pos值
+ *  get: 计算位置值
+ *  重新编码:
+ *    - 类别/交叉特征: 为每一个hash值从0开始分配一个连续的唯一位置
+ *    - 连续特征: 保留 feature_list 中提供的局部维度编号, 以维持多值向量的维度顺序
+ *  add: 再次用与get同样逻辑计算位置值, 然后根据pos_map直接查询重编码后的pos值
  */
 object FeatureType {
   val Continuous: Byte = 0
@@ -151,6 +153,7 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
 
   /**
     * 连续特征直接使用 feature_list 中提供的局部维度编号, 不再额外 hash.
+    * 对多值向量特征, 这个局部维度编号就是语义维度, 重编码时必须保持不变.
     */
   override def get_pos(dim: Long): ArrayBuffer[Long] = {
     val pos_list = new ArrayBuffer[Long]()

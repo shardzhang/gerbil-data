@@ -34,8 +34,8 @@ import scala.collection.mutable.{ArrayBuffer, HashMap}
  * 基于TFRecord的样本生成, 包括:
  *
  *      1. TFRecord文件
- *      2. nn_pos_map.json编码表(用于离线模型训练)
- *      3. nn_pos_map.bin编码表(用于在线模型推理)
+ *         2. nn_pos_map.json编码表(用于离线模型训练)
+ *         3. nn_pos_map.bin编码表(用于在线模型推理)
  */
 final class FeatureStats(
                           var sum: Double = 0.0,
@@ -389,7 +389,7 @@ object ML1MDataDriver extends Serializable {
   }
 
 
-  def getMovieInfo(spark: SparkSession, path: String): immutable.Map[Int, (String, Array[String])] =  {
+  def getMovieInfo(spark: SparkSession, path: String): immutable.Map[Int, (String, Array[String])] = {
     // item_feature.csv
     spark.read
       .option("sep", "\t")
@@ -540,6 +540,7 @@ object ML1MDataDriver extends Serializable {
     val pos_map_local = new HashMap[(Int, Long), Int]
     for (pos_info <- train_sample_pos_arr) {
       val (f_name, f_index, f_type, pos) = pos_info._1
+      val fieldKey = (f_name, f_index, f_type.toInt)
       val stat = pos_info._2
       // variance. D(x) = E(x^2) - E^2(x), E表示期望
       // power_sum / count - power(sum / cnt, 2)
@@ -553,19 +554,38 @@ object ML1MDataDriver extends Serializable {
       if (stat.count < feature_threshold) {
         ignoredPosCount += 1
       } else {
-        if (!pos_dim.contains((f_name, f_index, f_type))) {
-          pos_dim.put((f_name, f_index, f_type), 1)
+        if (!pos_dim.contains(fieldKey)) {
+          pos_dim.put(fieldKey, 1)
           pos_map.put((f_index, 0L), (0, 0D, 1.0D))
         }
-        if (!pos_map.contains((f_index, pos))) {
-          val index = pos_dim((f_name, f_index, f_type))
-          pos_map.put((f_index, pos), (index, mean, std))
-          pos_map_local.put((f_index, pos), index)
-          pos_dim.put((f_name, f_index, f_type), index + 1)
+
+        val encodedIndex = if (f_type == FeatureType.Continuous) {
+            // Continuous feature slots are semantic dimensions. Preserve slot order by forcing index == pos.
+            if (pos <= 0L || pos > Int.MaxValue.toLong) {
+              throw new IllegalArgumentException(s"Continuous feature ${f_name}[${f_index}] position must be in [1, ${Int.MaxValue}], got ${pos}")
+            }
+            pos.toInt
+        } else if (pos_map.contains((f_index, pos))) {
+          pos_map((f_index, pos))._1
         } else {
-          val (index, history_mean, history_std) = pos_map((f_index, pos))
-          pos_map.put((f_index, pos), (index, (mean + history_mean) / 2.0, (std + history_std) / 2.0))
-          pos_map_local.put((f_index, pos), index)
+          pos_dim(fieldKey)
+        }
+        if (!pos_map.contains((f_index, pos))) {
+          pos_map.put((f_index, pos), (encodedIndex, mean, std))
+          pos_map_local.put((f_index, pos), encodedIndex)
+          val nextDim = if (f_type == FeatureType.Continuous) {
+            math.max(pos_dim(fieldKey), encodedIndex + 1)
+          } else {
+            encodedIndex + 1
+          }
+          pos_dim.put(fieldKey, nextDim)
+        } else {
+          val (_, history_mean, history_std) = pos_map((f_index, pos))
+          pos_map.put((f_index, pos), (encodedIndex, (mean + history_mean) / 2.0, (std + history_std) / 2.0))
+          pos_map_local.put((f_index, pos), encodedIndex)
+          if (f_type == FeatureType.Continuous) {
+            pos_dim.put(fieldKey, math.max(pos_dim(fieldKey), encodedIndex + 1))
+          }
         }
       }
     }
