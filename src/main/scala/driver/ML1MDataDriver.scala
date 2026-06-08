@@ -1,10 +1,11 @@
 package driver
 
+import org.json.{JSONArray, JSONObject}
 import org.apache.spark.sql.types._
 import org.tensorflow.example.Example
 import sample.ML1MTrainSample
 import encoder.FeatureEncoder4ML1M
-import encoder.vectorizer.FeatureEncoder
+import encoder.vectorizer.{FeatureEncoder, FeatureType}
 import org.apache.commons.cli.{DefaultParser, Options}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
@@ -23,17 +24,18 @@ import java.util.concurrent.ThreadLocalRandom
 import scala.collection.compat.MapFactoryExtensionMethods
 import scala.collection.immutable
 import scala.collection.mutable
-import scala.collection.mutable.{HashMap, ListBuffer}
+import scala.collection.mutable.{ArrayBuffer, HashMap}
 
 /**
  * @author shard zhang
  * @date 2026/6/5 11:38
  * @note
+ *
  * 基于TFRecord的样本生成, 包括:
  *
  *      1. TFRecord文件
- *      2. nn_pos.txt编码表(用于离线模型训练)
- *      3. nn_pos.bin编码表(用于在线模型推理)
+ *      2. nn_pos_map.json编码表(用于离线模型训练)
+ *      3. nn_pos_map.bin编码表(用于在线模型推理)
  */
 final class FeatureStats(
                           var sum: Double = 0.0,
@@ -59,16 +61,85 @@ final class FeatureStats(
 
 object ML1MDataDriver extends Serializable {
   val max_dim: Long = 1L << 60
-  private val TrainingNumPartitions = 64
-  private val StatsNumPartitions = 64
 
   private val OutputDay = "20260601"
 
   private def normalizeDir(path: String): String = path.stripSuffix("/")
 
-  private def posMapTextPath(baseDir: String): String = s"${normalizeDir(baseDir)}/nn_pos_map.txt"
+  private def posMapJsonPath(baseDir: String): String = s"${normalizeDir(baseDir)}/nn_pos_map.json"
+
+  private def legacyPosMapTextPath(baseDir: String): String = s"${normalizeDir(baseDir)}/nn_pos_map.txt"
 
   private def posMapBinPath(baseDir: String): String = s"${normalizeDir(baseDir)}/nn_pos_map.bin"
+
+  private def readText(reader: BufferedReader): String = {
+    val content = new StringBuilder()
+    var line = reader.readLine()
+    var firstLine = true
+    while (line != null) {
+      if (!firstLine) {
+        content.append('\n')
+      }
+      content.append(line)
+      firstLine = false
+      line = reader.readLine()
+    }
+    content.toString()
+  }
+
+  private def restorePosDimMapFromJson(path: String,
+                                       posDimMap: mutable.HashMap[(String, Int, Int), Int]): Boolean = {
+    val jsonPath = posMapJsonPath(path)
+    val fs = FileSystem.get(URI.create(jsonPath), new Configuration())
+    val file = new Path(jsonPath)
+    if (!fs.exists(file)) {
+      false
+    } else {
+      val reader = new BufferedReader(new InputStreamReader(fs.open(file), "utf-8"))
+      try {
+        val root = new JSONObject(readText(reader))
+        val features = root.optJSONArray("features")
+        var index = 0
+        while (features != null && index < features.length()) {
+          val feature = features.getJSONObject(index)
+          posDimMap.put(
+            (feature.getString("field_name"), feature.getInt("field_index"), feature.getInt("field_type")),
+            feature.getInt("dim")
+          )
+          index = index + 1
+        }
+      } finally {
+        reader.close()
+      }
+      true
+    }
+  }
+
+  private def restorePosDimMapFromLegacyText(path: String,
+                                             posDimMap: mutable.HashMap[(String, Int, Int), Int]): Boolean = {
+    val textPath = legacyPosMapTextPath(path)
+    val fs = FileSystem.get(URI.create(textPath), new Configuration())
+    val file = new Path(textPath)
+    if (!fs.exists(file)) {
+      false
+    } else {
+      val reader = new BufferedReader(new InputStreamReader(fs.open(file), "utf-8"))
+      try {
+        var line = reader.readLine()
+        line = reader.readLine()
+        while (line != null) {
+          val items = line.split(",")
+          if (items.length >= 4) {
+            posDimMap.put((items(0), items(1).toInt, items(2).toInt), items(3).toInt)
+          }
+          line = reader.readLine()
+        }
+      } finally {
+        reader.close()
+      }
+      true
+    }
+  }
 
   private def readIntLE(reader: DataInputStream): Int = Integer.reverseBytes(reader.readInt())
 
@@ -90,7 +161,7 @@ object ML1MDataDriver extends Serializable {
    * List[(f_name, f_index, f_type, format, hash, value)]
    */
   def get_pos_info_from_a_sample(sample: ML1MTrainSample,
-                                 encoder: FeatureEncoder[ML1MTrainSample]): ListBuffer[(String, Int, Byte, String, Long, Float)] = {
+                                 encoder: FeatureEncoder[ML1MTrainSample]): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     encoder.get_pos_info(sample, max_dim)
   }
 
@@ -122,7 +193,7 @@ object ML1MDataDriver extends Serializable {
    * Parquet格式的Schema
    */
   def parquet_schema: StructType = {
-    val fields = new ListBuffer[StructField]()
+    val fields = new ArrayBuffer[StructField]()
     fields.append(StructField("target", FloatType, nullable = true))
     for ((f_name, _) <- feature_encoder.get_field_name_and_index()) {
       fields.append(StructField(f_name + "_index", ArrayType(LongType, containsNull = false), nullable = true))
@@ -144,22 +215,19 @@ object ML1MDataDriver extends Serializable {
     /** Map(target, index) */
     val target_map = new mutable.HashMap[Int, Int]()
 
-    // nn_pos_map.txt
+    // nn_pos_map.json
     try {
-      val textPath = posMapTextPath(path)
-      val fs = FileSystem.get(URI.create(textPath), new Configuration())
-      val reader = new BufferedReader(new InputStreamReader(fs.open(new Path(textPath)), "utf-8"))
-      var line = reader.readLine()
-      green_println(f"line: ${line}")
-      line = reader.readLine()
-      while (line != null) {
-        val items = line.split(",")
-        pos_dim_map.put((items(0), items(1).toInt, items(2).toInt), items(3).toInt)
-        line = reader.readLine()
+      if (!restorePosDimMapFromJson(path, pos_dim_map)) {
+        restorePosDimMapFromLegacyText(path, pos_dim_map)
       }
-      reader.close()
     } catch {
-      case e: Throwable => green_println(e.toString)
+      case e: Throwable =>
+        green_println(e.toString)
+        try {
+          restorePosDimMapFromLegacyText(path, pos_dim_map)
+        } catch {
+          case legacyError: Throwable => green_println(legacyError.toString)
+        }
     }
 
     // nn_pos_map.bin
@@ -198,48 +266,66 @@ object ML1MDataDriver extends Serializable {
                    pos_map: immutable.HashMap[(Int, Long), (Int, Double, Double)],
                    target_map: immutable.HashMap[Int, Int],
                    pos_dim: immutable.HashMap[(String, Int, Int), Int]): Unit = {
-    // nn_pos_map.txt
+    // nn_pos_map.json
     do {
-      val textPath = posMapTextPath(path)
-      val fs = FileSystem.get(URI.create(textPath), new Configuration())
-      val writer = new BufferedWriter(new OutputStreamWriter(fs.create(new Path(textPath), true), "utf-8"))
-      writer.write("target" + "," + target_map.size + "\n")
+      val jsonPath = posMapJsonPath(path)
+      val fs = FileSystem.get(URI.create(jsonPath), new Configuration())
+      val writer = new BufferedWriter(new OutputStreamWriter(fs.create(new Path(jsonPath), true), "utf-8"))
 
-      /** Map(f_index, (f_name, f_type, dim)) */
-      val pos_dim_map = new HashMap[Int, (String, Int, Int)]()
-      val iter = pos_dim.iterator
-      while (iter.hasNext) {
-        val e = iter.next()
-        pos_dim_map.put(e._1._2, (e._1._1, e._1._3, e._2))
-      }
+      try {
+        val root = new JSONObject()
+        root.put("target_size", target_map.size)
+        val features = new JSONArray()
 
-      /** ListBuffer[(f_index, index, mean, std)] */
-      val pos_map_array = new ListBuffer[(Int, Int, Double, Double)]()
-      /** Map((f_index, pos), (index, mean, std)) */
-      val it = pos_map.iterator
-      while (it.hasNext) {
-        val e = it.next()
-        // (f_index, index, mean, std)
-        pos_map_array.append((e._1._1, e._2._1, e._2._2, e._2._3))
-      }
-      // Map (f_index -> ListBuffer((f_index, index, mean, std),...))
-      val iterator = pos_map_array.groupBy(s => s._1).iterator
-      while (iterator.hasNext) {
-        // f_index -> ListBuffer((f_index, index, mean, std),...)
-        val e = iterator.next()
-        val f_index = e._1
-        // Sort with index in same f_index.
-        val pos_info = e._2.sortWith((a, b) => a._2 < b._2)
-        // (f_name, f_type, dim)
-        val (f_name, f_type, dim) = pos_dim_map(f_index)
-        // f_name, f_index, f_type, dim, size
-        writer.write(f_name + "," + f_index + "," + f_type + "," + dim + "," + pos_info.size)
-        for ((_, index, mean, std) <- pos_info) {
-          writer.write("," + index + ":" + mean + ":" + std)
+        /** Map(f_index, (f_name, f_type, dim)) */
+        val pos_dim_map = new HashMap[Int, (String, Int, Int)]()
+        val iter = pos_dim.iterator
+        while (iter.hasNext) {
+          val e = iter.next()
+          pos_dim_map.put(e._1._2, (e._1._1, e._1._3, e._2))
         }
+
+        /** ArrayBuffer[(f_index, pos, index, mean, std)] */
+        val pos_map_array = new ArrayBuffer[(Int, Long, Int, Double, Double)]()
+        /** Map((f_index, pos), (index, mean, std)) */
+        val it = pos_map.iterator
+        while (it.hasNext) {
+          val e = it.next()
+          // (f_index, pos, index, mean, std)
+          pos_map_array.append((e._1._1, e._1._2, e._2._1, e._2._2, e._2._3))
+        }
+        val iterator = pos_map_array.groupBy(s => s._1).toSeq.sortBy(_._1).iterator
+        while (iterator.hasNext) {
+          val e = iterator.next()
+          val f_index = e._1
+          val pos_info = e._2.sortWith((a, b) => a._3 < b._3)
+          val (f_name, f_type, dim) = pos_dim_map(f_index)
+
+          val feature = new JSONObject()
+          feature.put("field_name", f_name)
+          feature.put("field_index", f_index)
+          feature.put("field_type", f_type)
+          feature.put("dim", dim)
+
+          val entries = new JSONArray()
+          for ((_, pos, index, mean, std) <- pos_info) {
+            val entry = new JSONObject()
+            entry.put("pos", pos)
+            entry.put("index", index)
+            entry.put("mean", mean)
+            entry.put("std", std)
+            entries.put(entry)
+          }
+          feature.put("entries", entries)
+          features.put(feature)
+        }
+
+        root.put("features", features)
+        writer.write(root.toString(2))
         writer.write("\n")
+      } finally {
+        writer.close()
       }
-      writer.close()
     } while (false)
 
     // nn_pos_map.bin
@@ -334,7 +420,8 @@ object ML1MDataDriver extends Serializable {
           target_map: HashMap[Int, Int],
           pos_dim: HashMap[(String, Int, Int), Int],
           inputDir: String,
-          base_dir: String
+          base_dir: String,
+          parts: Int
          ): (HashMap[(Int, Long), (Int, Double, Double)], HashMap[Int, Int], HashMap[(String, Int, Int), Int]) = {
 
     val movie_info = getMovieInfo(spark, inputDir)
@@ -354,7 +441,9 @@ object ML1MDataDriver extends Serializable {
     green_println(s"Transformed sql=${sql}")
     import spark.implicits._
 
-    val trainingSample: RDD[(ML1MTrainSample, Boolean)] = spark.sql(sql).rdd.repartition(TrainingNumPartitions).map(r => {
+    val trainingSample: RDD[(ML1MTrainSample, Boolean)] = spark.sql(sql).rdd
+      .repartition(parts)
+      .map(r => {
         val (sample, ret) = ML1MTrainSample.parseSample(r, movie_info)
         (sample, ret)
       })
@@ -405,7 +494,7 @@ object ML1MDataDriver extends Serializable {
     green_println(s"targets below threshold = ${ignoredTargetCount}")
 
     /**
-     * ListBuffer[(f_name, f_index, f_type, pos, fea), (value_sum, value_power_sum, value_count, value_zero, value_nonzero, value_max, value_min)]
+     * ArrayBuffer[(f_name, f_index, f_type, pos, fea), (value_sum, value_power_sum, value_count, value_zero, value_nonzero, value_max, value_min)]
      */
     val train_sample_pos_arr = trainingSample
       .map(s => s._1)
@@ -422,10 +511,7 @@ object ML1MDataDriver extends Serializable {
         }
         pos_hash.iterator
       })
-      .reduceByKey(
-        (a, b) => a.merge(b),
-        StatsNumPartitions
-      )
+      .reduceByKey((a, b) => a.merge(b))
       .collect()
     green_println(s"pos_arr.size = ${train_sample_pos_arr.length}")
 
@@ -439,7 +525,7 @@ object ML1MDataDriver extends Serializable {
       val variance = stat.powerSum / total_number - Math.pow(stat.sum / total_number, 2)
       var mean = stat.sum / total_number
       var std = math.sqrt(variance + 0.000001)
-      if (f_type == 1) {
+      if (f_type == FeatureType.Categorical) {
         mean = 0D
         std = 1D
       }
@@ -520,6 +606,7 @@ object ML1MDataDriver extends Serializable {
     opts.addOption(null, "sample_ratio", true, "The second sample ratio")
     opts.addOption(null, "input_dir", true, "The base dir of input data")
     opts.addOption(null, "base_dir", true, "The base dir of path")
+    opts.addOption(null, "parts", true, "The TrainingNumPartitions")
 
     val parser = new DefaultParser()
     val cl = parser.parse(opts, args)
@@ -528,6 +615,7 @@ object ML1MDataDriver extends Serializable {
     val sample_ratio = cl.getOptionValue("sample_ratio").toDouble
     val input_dir = cl.getOptionValue("input_dir")
     val base_dir = cl.getOptionValue("base_dir")
+    val parts = cl.getOptionValue("parts").toInt
 
     val spark = SparkSession.builder()
       .appName(this.getClass.getSimpleName.stripSuffix("$"))
@@ -556,7 +644,7 @@ object ML1MDataDriver extends Serializable {
     val (pos_map_before, target_map_before, pos_dim_before) = restore_pos_map(base_dir)
     val (pos_map_after, target_map_after, pos_dim_after) = run(
       spark, feature_threshold, target_threshold, sample_ratio,
-      pos_map_before, target_map_before, pos_dim_before, input_dir, base_dir
+      pos_map_before, target_map_before, pos_dim_before, input_dir, base_dir, parts
     )
     save_pos_map(base_dir, immutable.HashMap.from(pos_map_after), immutable.HashMap.from(target_map_after), immutable.HashMap.from(pos_dim_after))
     val successPath = new Path(s"${normalizeDir(base_dir)}/_SUCCESS")

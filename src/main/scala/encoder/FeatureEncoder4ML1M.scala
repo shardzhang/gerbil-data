@@ -1,6 +1,6 @@
 package encoder
 
-import vectorizer.{CrossFeature, FeatureEncoder, FeatureType, RawFeature, Target}
+import vectorizer.{CrossFeature, FeatureEncoder, FeatureType, RawFeature, RawTarget, CategoricalFeature, ContinuousFeature}
 import sample.ML1MTrainSample
 import utils.MurmurHash3
 
@@ -26,8 +26,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   /**
    * 多分类标签
    */
-  private class TargetID extends Target[T] {
-    override def parse(sample: T): Target[T] = {
+  private class Target extends RawTarget[T] {
+    override def parse(sample: T): RawTarget[T] = {
       target = sample.target
       this
     }
@@ -36,8 +36,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   /**
    * 二分类标签
    */
-  private class Label extends Target[T] {
-    override def parse(sample: T): Target[T] = {
+  private class Label extends RawTarget[T] {
+    override def parse(sample: T): RawTarget[T] = {
       target = if (sample.rating >= 3) {
         1.0F
       } else {
@@ -50,8 +50,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   /**
    * 相关性回归标签
    */
-  private class Rating extends Target[T] {
-    override def parse(sample: T): Target[T] = {
+  private class Rating extends RawTarget[T] {
+    override def parse(sample: T): RawTarget[T] = {
       target = sample.rating
       this
     }
@@ -62,8 +62,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   /**
    * movie_id
    */
-  private class MovieID(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class MovieID(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val movie_id = try {
         sample.item_id.toInt
       } catch {
@@ -81,8 +81,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    * 电影标题多值特征
    * 由于title几乎是唯一标识, 和 movieId 信息重复. 直接处理title信息冗余, 无效果增益
    */
-  private class MovieTitle(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class MovieTitle(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       try {
         val cleanTitle = sample.movie_title.replaceAll("\\s*\\(\\d+\\)\\s*$", "").trim
         val words = cleanTitle.split("\\s+")
@@ -106,8 +106,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    * movie_geners
    * 电影类型标签
    */
-  private class MovieGenres(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class MovieGenres(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       for (gen <- sample.movie_genres) {
         if (gen != null && gen.nonEmpty) {
           val p: MurmurHash3.LongPair = new MurmurHash3.LongPair()
@@ -125,8 +125,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    * movie_rate_count
    * 电影评论次数分桶
    */
-  private class MovieRateCount(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class MovieRateCount(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val buck = sample.movie_rate_count match {
         case 0 => 0
         case x if x <= 2 => 1
@@ -150,8 +150,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   /**
    * 电影平均评分分桶特征
    */
-  private class MovieAvgRate(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class MovieAvgRate(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val buck = sample.movie_avg_rate match {
         case x if x <= 0.0 => 0
         case x if x <= 1.0 => 1
@@ -174,8 +174,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    * 电影类型数量分桶特征
    * 一个电影属于多少种类型. 1类/2类/3类及以上, 类型越多受众越广
    */
-  private class MovieGenreCnt(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class MovieGenreCnt(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val cnt = sample.movie_genres.size
       // 1/2/3+
       val buck = if (cnt >= 3) 3 else cnt
@@ -190,8 +190,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    * 电影热度排名分桶
    * 解决冷启动: 爆款 / 热门 / 普通 / 长尾
    */
-  private class MovieHotRank(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class MovieHotRank(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val rank = try {
         sample.movie_hot_rank
       } catch {
@@ -213,8 +213,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   /**
    * 电影上映年份 (从 title 正则提取)
    */
-  private class MoviePublishYear(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class MoviePublishYear(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val buck = sample.movie_publish_year match {
         case x if x == 0 => 0
         case x if x < 1970 => 1
@@ -235,8 +235,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   /**
    * user_id
    */
-  private class UserID(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserID(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val user_id = try {
         sample.user_id.toInt
       } catch {
@@ -253,8 +253,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    * user_age
    * 用户年龄分桶特征
    */
-  private class UserAge(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserAge(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val age = try {
         sample.age.toInt
       } catch {
@@ -270,8 +270,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   /**
    * user_gender
    */
-  private class UserGender(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserGender(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val buck = sample.gender match {
         case "M" => 1
         case "F" => 2
@@ -287,8 +287,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   /**
    * user_occupation
    */
-  private class UserOccupation(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserOccupation(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val occupation = try {
         sample.occupation.toInt
       } catch {
@@ -304,8 +304,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   /**
    * user_zipcode
    */
-  private class UserZipCode(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserZipCode(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val hash = try {
         val p: MurmurHash3.LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(sample.zip_code.getBytes(), 0, sample.zip_code.length, SEED, p)
@@ -324,8 +324,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    * 用户评分方差分桶
    * 挑剔用户(方差大) / 佛系用户(方差小)
    */
-  private class UserRateStd(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserRateStd(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val std = try {
         sample.user_rate_std
       } catch {
@@ -345,8 +345,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserRateStd7Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserRateStd7Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val std = try {
         sample.user_rate_std_7day
       } catch {
@@ -366,8 +366,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserRateStd15Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserRateStd15Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val std = try {
         sample.user_rate_std_15day
       } catch {
@@ -387,8 +387,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserRateStd30Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserRateStd30Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val std = try {
         sample.user_rate_std_30day
       } catch {
@@ -412,8 +412,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    * 用户活跃天数分桶
    * 区分: 新用户 / 老用户 / 超级用户
    */
-  private class UserActiveDay(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserActiveDay(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val days = try {
         sample.user_active_day
       } catch {
@@ -435,8 +435,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   /**
    * 用户总打分次数 (用户行为丰富度) 
    */
-  private class UserMovieRateCnt(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserMovieRateCnt(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val cnt = try {
         sample.user_rate_cnt
       } catch {
@@ -457,8 +457,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserMovieRateCnt7Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserMovieRateCnt7Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val cnt = try {
         sample.user_rate_7day_cnt
       } catch {
@@ -479,8 +479,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserMovieRateCnt15Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserMovieRateCnt15Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val cnt = try {
         sample.user_rate_15day_cnt
       } catch {
@@ -501,8 +501,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserMovieRateCnt30Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserMovieRateCnt30Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val cnt = try {
         sample.user_rate_30day_cnt
       } catch {
@@ -526,8 +526,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   /**
    * 用户历史平均分: 区分低分/中庸/高分偏好
    */
-  private class UserAvgRate(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserAvgRate(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val avg = try {
         sample.user_avg_rate
       } catch {
@@ -546,8 +546,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserAvgRate7Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserAvgRate7Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val avg = try {
         sample.user_avg_rate_7day
       } catch {
@@ -566,8 +566,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserAvgRate15Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserAvgRate15Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val avg = try {
         sample.user_avg_rate_15day
       } catch {
@@ -586,8 +586,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserAvgRate30Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserAvgRate30Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val avg = try {
         sample.user_avg_rate_30day
       } catch {
@@ -609,8 +609,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   /**
    * 用户历史最爱 3 个电影类型 -> Multi-hot 特征
    */
-  private class UserTop3Genres(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserTop3Genres(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       try {
         val topGenres = sample.user_top3_genres
         for ((g, cnt) <- topGenres) {
@@ -633,8 +633,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    * 用户历史是否看过 [当前电影] 所属类型 (0=未看过/1=看过)
    * 长期兴趣信号
    */
-  private class UserWatchSameGenre(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserWatchSameGenre(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val hit = try {
         val genres = sample.movie_genres.toSet
         val user_genres_rate = sample.user_genres_rates.map(_._1).toSet
@@ -660,8 +660,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    * 用户近 1 天是否看过 [当前电影] 所属类型 (0=未看过/1=看过)
    * 短期兴趣信号
    */
-  private class UserWatchSameGenre1Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserWatchSameGenre1Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val hit = try {
         val currentGenres = sample.movie_genres.toSet
         val recentGenres = sample.user_genres_rate_1days.map(_._1).toSet
@@ -681,8 +681,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    * 用户近 3 天是否看过 [当前电影] 所属类型 (0=未看过/1=看过)
    * 短期兴趣信号
    */
-  private class UserWatchSameGenre3Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserWatchSameGenre3Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val hit = try {
         val currentGenres = sample.movie_genres.toSet
         val recentGenres = sample.user_genres_rate_3days.map(_._1).toSet
@@ -702,8 +702,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    * 用户近 7 天是否看过 [当前电影] 所属类型 (0=未看过/1=看过)
    * 短期兴趣信号
    */
-  private class UserWatchSameGenre7Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserWatchSameGenre7Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val hit = try {
         val currentGenres = sample.movie_genres.toSet
         val recentGenres = sample.user_genres_rate_7days.map(_._1).toSet
@@ -723,8 +723,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    * 用户近 15 天是否看过 [当前电影] 所属类型 (0=未看过/1=看过)
    * 短期兴趣信号
    */
-  private class UserWatchSameGenre15Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserWatchSameGenre15Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val hit = try {
         val currentGenres = sample.movie_genres.toSet
         val recentGenres = sample.user_genres_rate_15days.map(_._1).toSet
@@ -743,8 +743,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   /**
    * 用户对 [当前电影所有类型] 的历史平均分桶
    */
-  private class UserSameGenreAvgRate(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserSameGenreAvgRate(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       var finalRate = 3.0
       val buk = try {
         val user_genre_avg_rate: Map[String, Float] = sample.user_genres_rates.toMap
@@ -779,8 +779,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    * context_time_hour
    * 小时分桶
    */
-  private class ContextTimeHour(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class ContextTimeHour(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       raw_list.append(sample.time_hour.toString)
       feature_list.append(sample.time_hour + 1)
       value_list.append(1.0F)
@@ -792,8 +792,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    * context_time_area
    * 时区分桶
    */
-  private class ContextTimeArea(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class ContextTimeArea(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       raw_list.append(sample.time_area.toString)
       feature_list.append(sample.time_area + 1)
       value_list.append(1.0F)
@@ -805,8 +805,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    * context_time_week
    * 星期分桶
    */
-  private class ContextTimeWeek(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class ContextTimeWeek(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       raw_list.append(sample.week_day.toString)
       feature_list.append(sample.week_day)
       value_list.append(1.0F)
@@ -817,8 +817,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   /**
    * 是否周末: 1=周末(6/7), 0=工作日
    */
-  private class IsWeekend(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class IsWeekend(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       val w = sample.week_day
       val flag = if (w == 6 || w == 7) 2 else 1
       raw_list.append(flag.toString)
@@ -833,8 +833,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    * user_movie_rate
    * 用户电影评分序列(历史全部)
    */
-  private class UserMovieRate(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserMovieRate(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       for (i <- 0 until Math.min(200, sample.user_movie_rates.size)) {
         raw_list.append(sample.user_movie_rates(i)._1.toString)
         feature_list.append(sample.user_movie_rates(i)._1)
@@ -844,8 +844,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserMovieRate1Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserMovieRate1Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       for (i <- 0 until Math.min(200, sample.user_movie_rate_1days.size)) {
         raw_list.append(sample.user_movie_rate_1days(i)._1.toString)
         feature_list.append(sample.user_movie_rate_1days(i)._1)
@@ -855,8 +855,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserMovieRate3Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserMovieRate3Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       for (i <- 0 until Math.min(200, sample.user_movie_rate_3days.size)) {
         raw_list.append(sample.user_movie_rate_3days(i)._1.toString)
         feature_list.append(sample.user_movie_rate_3days(i)._1)
@@ -866,8 +866,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserMovieRate7Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserMovieRate7Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       for (i <- 0 until Math.min(200, sample.user_movie_rate_7days.size)) {
         raw_list.append(sample.user_movie_rate_7days(i)._1.toString)
         feature_list.append(sample.user_movie_rate_7days(i)._1)
@@ -877,8 +877,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserMovieRate15Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserMovieRate15Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       for (i <- 0 until Math.min(200, sample.user_movie_rate_15days.size)) {
         raw_list.append(sample.user_movie_rate_15days(i)._1.toString)
         feature_list.append(sample.user_movie_rate_15days(i)._1)
@@ -892,8 +892,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    * user_genres_rates
    * 用户电影类型评分序列(历史全部)
    */
-  private class UserGenresRate(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserGenresRate(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       for (i <- 0 until Math.min(200, sample.user_genres_rates.size)) {
         val gen = sample.user_genres_rates(i)._1
         val p: MurmurHash3.LongPair = new MurmurHash3.LongPair()
@@ -906,8 +906,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserGenresRate1Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserGenresRate1Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       for (i <- 0 until Math.min(200, sample.user_genres_rate_1days.size)) {
         val gen = sample.user_genres_rate_1days(i)._1
         val p: MurmurHash3.LongPair = new MurmurHash3.LongPair()
@@ -920,8 +920,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserGenresRate3Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserGenresRate3Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       for (i <- 0 until Math.min(200, sample.user_genres_rate_3days.size)) {
         val gen = sample.user_genres_rate_3days(i)._1
         val p: MurmurHash3.LongPair = new MurmurHash3.LongPair()
@@ -934,8 +934,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserGenresRate7Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserGenresRate7Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       for (i <- 0 until Math.min(200, sample.user_genres_rate_7days.size)) {
         val gen = sample.user_genres_rate_7days(i)._1
         val p: MurmurHash3.LongPair = new MurmurHash3.LongPair()
@@ -948,8 +948,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserGenresRate15Day(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserGenresRate15Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       for (i <- 0 until Math.min(200, sample.user_genres_rate_15days.size)) {
         val gen = sample.user_genres_rate_15days(i)._1
         val p: MurmurHash3.LongPair = new MurmurHash3.LongPair()
@@ -966,8 +966,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
    * user_genres_rate_cnts
    * 用户电影类型评分次数序列(历史全部)
    */
-  private class UserGenresRateCnts(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserGenresRateCnts(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       for (i <- 0 until Math.min(200, sample.user_genres_rate_cnts.size)) {
         val gen = sample.user_genres_rate_cnts(i)._1.trim.toLowerCase()
         val total_cnt = sample.user_genres_rate_cnts(i)._2
@@ -981,8 +981,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserGenresRateCnt1Days(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserGenresRateCnt1Days(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       for (i <- 0 until Math.min(200, sample.user_genres_rate_cnt_1days.size)) {
         val gen = sample.user_genres_rate_cnt_1days(i)._1.trim.toLowerCase()
         val total_cnt = sample.user_genres_rate_cnt_1days(i)._2
@@ -996,8 +996,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserGenresRateCnt3Days(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserGenresRateCnt3Days(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       for (i <- 0 until Math.min(200, sample.user_genres_rate_cnt_3days.size)) {
         val gen = sample.user_genres_rate_cnt_3days(i)._1.trim.toLowerCase()
         val total_cnt = sample.user_genres_rate_cnt_3days(i)._2
@@ -1011,8 +1011,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserGenresRateCnt7Days(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserGenresRateCnt7Days(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       for (i <- 0 until Math.min(200, sample.user_genres_rate_cnt_7days.size)) {
         val gen = sample.user_genres_rate_cnt_7days(i)._1.trim.toLowerCase()
         val total_cnt = sample.user_genres_rate_cnt_7days(i)._2
@@ -1026,8 +1026,8 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  private class UserGenresRateCnt15Days(f_i: Int, f_n: String) extends RawFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature[T] = {
+  private class UserGenresRateCnt15Days(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
       for (i <- 0 until Math.min(200, sample.user_genres_rate_cnt_15days.size)) {
         val gen = sample.user_genres_rate_cnt_15days(i)._1.trim.toLowerCase()
         val total_cnt = sample.user_genres_rate_cnt_15days(i)._2
@@ -1042,7 +1042,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   }
 
   override def setup(): FeatureEncoder[T] = {
-    raw_features.clear()
+    raw_cate_features.clear()
     cross_features.clear()
 
     // ============================== target ==============================
@@ -1054,62 +1054,62 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     val user_gender = new UserGender(3, "user_gender")
     val user_occupation = new UserOccupation(4, "user_occupation")
     val user_zip_code = new UserZipCode(5, "user_zip_code")
-    raw_features.append(user_id)
-    raw_features.append(user_age)
-    raw_features.append(user_gender)
-    raw_features.append(user_occupation)
-    raw_features.append(user_zip_code)
+    raw_cate_features.append(user_id)
+    raw_cate_features.append(user_age)
+    raw_cate_features.append(user_gender)
+    raw_cate_features.append(user_occupation)
+    raw_cate_features.append(user_zip_code)
 
     val user_rate_std = new UserRateStd(6, "user_rate_std")
     val user_rate_std_7day = new UserRateStd7Day(7, "user_rate_std_7day")
     val user_rate_std_15day = new UserRateStd15Day(8, "user_rate_std_15day")
     val user_rate_std_30day = new UserRateStd30Day(9, "user_rate_std_30day")
-    raw_features.append(user_rate_std)
-    raw_features.append(user_rate_std_7day)
-    raw_features.append(user_rate_std_15day)
-    raw_features.append(user_rate_std_30day)
+    raw_cate_features.append(user_rate_std)
+    raw_cate_features.append(user_rate_std_7day)
+    raw_cate_features.append(user_rate_std_15day)
+    raw_cate_features.append(user_rate_std_30day)
 
     val user_movie_rate_cnt = new UserMovieRateCnt(10, "user_movie_rate_cnt")
     val user_movie_rate_cnt_7day = new UserMovieRateCnt7Day(11, "user_movie_rate_cnt_7day")
     val user_movie_rate_cnt_15day = new UserMovieRateCnt15Day(12, "user_movie_rate_cnt_15day")
     val user_movie_rate_cnt_30day = new UserMovieRateCnt30Day(13, "user_movie_rate_cnt_30day")
-    raw_features.append(user_movie_rate_cnt)
-    raw_features.append(user_movie_rate_cnt_7day)
-    raw_features.append(user_movie_rate_cnt_15day)
-    raw_features.append(user_movie_rate_cnt_30day)
+    raw_cate_features.append(user_movie_rate_cnt)
+    raw_cate_features.append(user_movie_rate_cnt_7day)
+    raw_cate_features.append(user_movie_rate_cnt_15day)
+    raw_cate_features.append(user_movie_rate_cnt_30day)
 
     val user_avg_rate = new UserAvgRate(14, "user_avg_rate")
     val user_avg_rate_7day = new UserAvgRate7Day(15, "user_avg_rate_7day")
     val user_avg_rate_15day = new UserAvgRate15Day(16, "user_avg_rate_15day")
     val user_avg_rate_30day = new UserAvgRate30Day(17, "user_avg_rate_30day")
-    raw_features.append(user_avg_rate)
-    raw_features.append(user_avg_rate_7day)
-    raw_features.append(user_avg_rate_15day)
-    raw_features.append(user_avg_rate_30day)
+    raw_cate_features.append(user_avg_rate)
+    raw_cate_features.append(user_avg_rate_7day)
+    raw_cate_features.append(user_avg_rate_15day)
+    raw_cate_features.append(user_avg_rate_30day)
 
     // user lifecycle
     val user_active_days = new UserActiveDay(20, "user_active_days")
-    raw_features.append(user_active_days)
+    raw_cate_features.append(user_active_days)
 
 
     // ============================== item ==============================
     val movie_id = new MovieID(101, "movie_id")
     val movie_title = new MovieTitle(102, "movie_title")
     val movie_genres = new MovieGenres(103, "movie_genres")
-    raw_features.append(movie_id)
-    raw_features.append(movie_title)
-    raw_features.append(movie_genres)
+    raw_cate_features.append(movie_id)
+    raw_cate_features.append(movie_title)
+    raw_cate_features.append(movie_genres)
 
     val movie_rate_count = new MovieRateCount(104, "movie_rate_count")
     val movie_avg_rate = new MovieAvgRate(105, "movie_avg_rate")
     val movie_genre_cnt = new MovieGenreCnt(106, "movie_genre_cnt")
     val movie_hot_rank = new MovieHotRank(107, "item_hot_rank")
     val movie_publish_year = new MoviePublishYear(108, "movie_publish_year")
-    raw_features.append(movie_rate_count)
-    raw_features.append(movie_avg_rate)
-    raw_features.append(movie_genre_cnt)
-    raw_features.append(movie_hot_rank)
-    raw_features.append(movie_publish_year)
+    raw_cate_features.append(movie_rate_count)
+    raw_cate_features.append(movie_avg_rate)
+    raw_cate_features.append(movie_genre_cnt)
+    raw_cate_features.append(movie_hot_rank)
+    raw_cate_features.append(movie_publish_year)
 
 
     // ============================== context ==============================
@@ -1117,10 +1117,10 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     val context_time_area = new ContextTimeArea(202, "context_time_area")
     val context_time_week = new ContextTimeWeek(203, "context_time_week")
     val context_is_weekend = new IsWeekend(204, "context_is_weekend")
-    raw_features.append(context_time_hour)
-    raw_features.append(context_time_area)
-    raw_features.append(context_time_week)
-    raw_features.append(context_is_weekend)
+    raw_cate_features.append(context_time_hour)
+    raw_cate_features.append(context_time_area)
+    raw_cate_features.append(context_time_week)
+    raw_cate_features.append(context_is_weekend)
 
 
     // ============================== user behavior ==============================
@@ -1129,36 +1129,36 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     val user_movie_rate_3day = new UserMovieRate3Day(303, "user_movie_rate_3day")
     val user_movie_rate_7day = new UserMovieRate7Day(304, "user_movie_rate_7day")
     val user_movie_rate_15day = new UserMovieRate15Day(305, "user_movie_rate_15day")
-    raw_features.append(user_movie_rate)
-    raw_features.append(user_movie_rate_1day)
-    raw_features.append(user_movie_rate_3day)
-    raw_features.append(user_movie_rate_7day)
-    raw_features.append(user_movie_rate_15day)
+    raw_cate_features.append(user_movie_rate)
+    raw_cate_features.append(user_movie_rate_1day)
+    raw_cate_features.append(user_movie_rate_3day)
+    raw_cate_features.append(user_movie_rate_7day)
+    raw_cate_features.append(user_movie_rate_15day)
 
     val user_genres_rate = new UserGenresRate(306, "user_genres_rate")
     val user_genres_rate_1day = new UserGenresRate1Day(307, "user_genres_rate_1day")
     val user_genres_rate_3day = new UserGenresRate3Day(308, "user_genres_rate_3day")
     val user_genres_rate_7day = new UserGenresRate7Day(309, "user_genres_rate_7day")
     val user_genres_rate_15day = new UserGenresRate15Day(310, "user_genres_rate_15day")
-    raw_features.append(user_genres_rate)
-    raw_features.append(user_genres_rate_1day)
-    raw_features.append(user_genres_rate_3day)
-    raw_features.append(user_genres_rate_7day)
-    raw_features.append(user_genres_rate_15day)
+    raw_cate_features.append(user_genres_rate)
+    raw_cate_features.append(user_genres_rate_1day)
+    raw_cate_features.append(user_genres_rate_3day)
+    raw_cate_features.append(user_genres_rate_7day)
+    raw_cate_features.append(user_genres_rate_15day)
 
     val user_genres_rate_cnts = new UserGenresRateCnts(312, "user_genres_rate_cnts")
     val user_genres_rate_cnt_1days = new UserGenresRateCnt1Days(313, "user_genres_rate_cnt_1days")
     val user_genres_rate_cnt_3days = new UserGenresRateCnt3Days(314, "user_genres_rate_cnt_3days")
     val user_genres_rate_cnt_7days = new UserGenresRateCnt7Days(315, "user_genres_rate_cnt_7days")
     val user_genres_rate_cnt_15days = new UserGenresRateCnt15Days(316, "user_genres_rate_cnt_15days")
-    raw_features.append(user_genres_rate_cnts)
-    raw_features.append(user_genres_rate_cnt_1days)
-    raw_features.append(user_genres_rate_cnt_3days)
-    raw_features.append(user_genres_rate_cnt_7days)
-    raw_features.append(user_genres_rate_cnt_15days)
+    raw_cate_features.append(user_genres_rate_cnts)
+    raw_cate_features.append(user_genres_rate_cnt_1days)
+    raw_cate_features.append(user_genres_rate_cnt_3days)
+    raw_cate_features.append(user_genres_rate_cnt_7days)
+    raw_cate_features.append(user_genres_rate_cnt_15days)
 
     val user_top3_genres = new UserTop3Genres(317, "user_top3_genres")
-    raw_features.append(user_top3_genres)
+    raw_cate_features.append(user_top3_genres)
 
     val user_watch_same_genre = new UserWatchSameGenre(351, "user_watch_same_genre")
     val user_watch_same_genre_1day = new UserWatchSameGenre1Day(352, "user_watch_same_genre_1day")
@@ -1166,12 +1166,12 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     val user_watch_same_genre_7day = new UserWatchSameGenre7Day(354, "user_watch_same_genre_7day")
     val user_watch_same_genre_15day = new UserWatchSameGenre15Day(355, "user_watch_same_genre_15day")
     val user_same_genre_avg_rate = new UserSameGenreAvgRate(356, "user_same_genre_avg_rate")
-    raw_features.append(user_watch_same_genre)
-    raw_features.append(user_watch_same_genre_1day)
-    raw_features.append(user_watch_same_genre_3day)
-    raw_features.append(user_watch_same_genre_7day)
-    raw_features.append(user_watch_same_genre_15day)
-    raw_features.append(user_same_genre_avg_rate)
+    raw_cate_features.append(user_watch_same_genre)
+    raw_cate_features.append(user_watch_same_genre_1day)
+    raw_cate_features.append(user_watch_same_genre_3day)
+    raw_cate_features.append(user_watch_same_genre_7day)
+    raw_cate_features.append(user_watch_same_genre_15day)
+    raw_cate_features.append(user_same_genre_avg_rate)
 
     // Temporarily disable cross features for local end-to-end validation.
     val enableCrossFeatures = false

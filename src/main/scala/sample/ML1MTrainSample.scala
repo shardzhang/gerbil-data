@@ -215,6 +215,12 @@ object ML1MTrainSample {
     }
   }
 
+  private def parseUserAvgRate(user_movie_rates: ArrayBuffer[(Int, Int)]) = {
+    val total_rate = user_movie_rates.map(r => r._2).sum
+    val total_cnt = user_movie_rates.length
+    total_rate / total_cnt
+  }
+
   /**
    * Parse join_sample
    *
@@ -372,20 +378,25 @@ object ML1MTrainSample {
             if (dur >= 0) {
               train_sample.user_movie_rates.append((item_id, rate))
               train_sample.user_rate_cnt += 1
+              train_sample.user_avg_rate = parseUserAvgRate(train_sample.user_movie_rates)
             }
             if (dur >= 0 && dur <= 1) {
               train_sample.user_movie_rate_1days.append((item_id, rate))
+              train_sample.user_avg_rate = parseUserAvgRate(train_sample.user_movie_rate_1days)
             }
             if (dur >= 0 && dur <= 3) {
               train_sample.user_movie_rate_3days.append((item_id, rate))
+              train_sample.user_avg_rate = parseUserAvgRate(train_sample.user_movie_rate_3days)
             }
             if (dur >= 0 && dur <= 7) {
               train_sample.user_movie_rate_7days.append((item_id, rate))
               train_sample.user_rate_7day_cnt += 1
+              train_sample.user_avg_rate = parseUserAvgRate(train_sample.user_movie_rate_7days)
             }
             if (dur >= 0 && dur <= 15) {
               train_sample.user_movie_rate_15days.append((item_id, rate))
               train_sample.user_rate_15day_cnt += 1
+              train_sample.user_avg_rate = parseUserAvgRate(train_sample.user_movie_rate_15days)
             }
             if (dur >= 0 && dur <= 30) {
               train_sample.user_rate_30day_cnt += 1

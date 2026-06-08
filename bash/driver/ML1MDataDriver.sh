@@ -33,4 +33,5 @@ ${JAR_PATH} \
 --target_threshold 1 \
 --sample_ratio 1.0 \
 --input_dir ${input_path} \
---base_dir ${output_path}
+--base_dir ${output_path} \
+--parts 10

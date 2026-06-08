@@ -32,4 +32,5 @@ source "../env.sh" && "${SPARK_HOME}/bin/spark-submit" \
 --target_threshold 1 \
 --sample_ratio 1.0 \
 --input_dir ./tmp/ml-1m-mini \
---base_dir ./tmp/ml-1m-mini-output
+--base_dir ./tmp/ml-1m-mini-output \
+--parts 1

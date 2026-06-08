@@ -182,7 +182,7 @@ spark-submit --class driver.ML1MDataDriver \
 - 模式在 `parquet_schema` 方法中定义
 
 ### 词表文件
-- `nn_pos_map.txt`：人类可读的特征映射
+- `nn_pos_map.json`：人类可读的结构化特征映射
 - `nn_pos_map.bin`：带均值/标准差用于归一化的二进制特征映射
 
 ## 10. 参考资料
