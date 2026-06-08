@@ -6,7 +6,7 @@
 
 cd "$(dirname "$0")"
 
-source ../env.sh
+source ../conf/env.sh
 
 input_path=${ML_1M_PATH}
 output_path=${ML_1M_OUTPUT_PATH}

@@ -6,7 +6,7 @@
 
 cd $(dirname $0)
 
-source ../env.sh
+source ../conf/env.sh
 
 cd ${PROJECT_HOME}
 

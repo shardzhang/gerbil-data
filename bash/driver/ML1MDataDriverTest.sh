@@ -22,7 +22,7 @@ print('created', base)
 print('reset', output)
 PY
 
-source "../env.sh" && "${SPARK_HOME}/bin/spark-submit" \
+source "../conf/env.sh" && "${SPARK_HOME}/bin/spark-submit" \
 --master "local[1]" \
 --class driver.ML1MDataDriver \
 --conf spark.ui.enabled=false \
