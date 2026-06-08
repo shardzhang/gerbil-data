@@ -76,7 +76,7 @@ abstract class RawFeature(f_i: Int, f_n: String, f_t: Byte) {
    * @param dim
    * @return List[hash]
    */
-  def get_pos(dim: Long): ArrayBuffer[Long]
+  def get_hash(dim: Long): ArrayBuffer[Long]
 
   /**
    * get_pos_info
@@ -84,7 +84,7 @@ abstract class RawFeature(f_i: Int, f_n: String, f_t: Byte) {
    * @param dim
    * @return List[(f_name, f_index, format, hash, value)]
    */
-  def get_pos_info(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)]
+  def get_hash_info(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)]
 
   /**
    * TFRecord
@@ -155,7 +155,7 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
     * 连续特征直接使用 feature_list 中提供的局部维度编号, 不再额外 hash.
     * 对多值向量特征, 这个局部维度编号就是语义维度, 重编码时必须保持不变.
     */
-  override def get_pos(dim: Long): ArrayBuffer[Long] = {
+  override def get_hash(dim: Long): ArrayBuffer[Long] = {
     val pos_list = new ArrayBuffer[Long]()
     for (fea <- feature_list) {
       if (fea != 0) {
@@ -165,7 +165,7 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
     pos_list
   }
 
-  override def get_pos_info(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
+  override def get_hash_info(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     val pos_info_list = new ArrayBuffer[(String, Int, Byte, String, Long, Float)]()
     for (i <- feature_list.indices) {
       val fea = feature_list(i)
@@ -317,7 +317,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
    * @param dim
    * @return List[hash]
    */
-  override def get_pos(dim: Long): ArrayBuffer[Long] = {
+  override def get_hash(dim: Long): ArrayBuffer[Long] = {
     val pos_list = new ArrayBuffer[Long]()
     for (i <- feature_list.indices) {
       val fea = feature_list(i)
@@ -329,11 +329,11 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
         bytebuf.putLong(4, fea)
         val p: LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
-        var pos = p.val1 % dim
-        if (pos < 0) {
-          pos += dim
+        var hash = p.val1 % dim
+        if (hash < 0) {
+          hash += dim
         }
-        pos_list.append(pos)
+        pos_list.append(hash)
       }
     }
     pos_list
@@ -344,7 +344,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
    * @param dim
    * @return List[(f_name, f_index, f_type, format, hash)]
    */
-  override def get_pos_info(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
+  override def get_hash_info(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     val pos_info_list = new ArrayBuffer[(String, Int, Byte, String, Long, Float)]()
     // format: f_index:raw_fea
     var fmt: String = ""
@@ -360,11 +360,11 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
         fmt += raw_fea.toString
         val p: LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
-        var pos: Long = p.val1 % dim
-        if (pos < 0) {
-          pos += dim
+        var hash: Long = p.val1 % dim
+        if (hash < 0) {
+          hash += dim
         }
-        pos_info_list.append((f_name, f_index, f_type, fmt, pos, value))
+        pos_info_list.append((f_name, f_index, f_type, fmt, hash, value))
       }
     }
     pos_info_list
@@ -478,14 +478,14 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
         bytebuf.putLong(4, fea)
         val p: LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
-        var pos: Long = p.val1 % dim
-        if (pos < 0) {
-          pos += dim
+        var hash: Long = p.val1 % dim
+        if (hash < 0) {
+          hash += dim
         }
         if (encoded_map.contains(f_name)) {
-          encoded_map(f_name).append(pos)
+          encoded_map(f_name).append(hash)
         } else {
-          encoded_map(f_name) = ArrayBuffer(pos)
+          encoded_map(f_name) = ArrayBuffer(hash)
         }
       }
     }
@@ -544,7 +544,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
    * @param dim
    * @return List[(f_name, f_index, format, hash)]
    */
-  override def get_pos_info(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
+  override def get_hash_info(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     // https://zhuanlan.zhihu.com/p/661834313
     val buf = ArrayBuffer[(String, Int, Byte, String, Long, Float)]()
     for (i <- 0 until rnfs.length) {
@@ -582,14 +582,14 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
         buf.append((f_name, f_index, f_type, fmt, hash, 1.0F))
       }
 
-      var pos = rnfs.length - 1
+      var i = rnfs.length - 1
       var added = false
-      while (!added && pos >= 0) {
-        if (indexes(pos) == rnfs(pos).feature_list.length - 1) {
-          indexes(pos) = 0
-          pos -= 1
+      while (!added && i >= 0) {
+        if (indexes(i) == rnfs(i).feature_list.length - 1) {
+          indexes(i) = 0
+          i -= 1
         } else {
-          indexes(pos) += 1
+          indexes(i) += 1
           added = true
         }
       }
@@ -606,12 +606,12 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
    * @param dim
    * @return List[(f_name, f_index, format, hash)]
    */
-  def get_pos_info(input: T, dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
+  def get_hash_info(input: T, dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     for (c_f <- rnfs) {
       c_f.clear()
       c_f.parse(input)
     }
-    get_pos_info(dim)
+    get_hash_info(dim)
   }
 
   /**
@@ -619,7 +619,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
    * @param dim
    * @return ArrayBuffer[hash]
    */
-  override def get_pos(dim: Long): ArrayBuffer[Long] = {
+  override def get_hash(dim: Long): ArrayBuffer[Long] = {
     // https://zhuanlan.zhihu.com/p/661834313
     val buf = new ArrayBuffer[Long]
     for (i <- indexes.indices) {
@@ -658,14 +658,14 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
         buf.append(hash)
       }
 
-      var pos = rnfs.length - 1
+      var i = rnfs.length - 1
       var added = false
-      while (!added && pos >= 0) {
-        if (indexes(pos) == rnfs(pos).feature_list.length - 1) {
-          indexes(pos) = 0
-          pos -= 1
+      while (!added && i >= 0) {
+        if (indexes(i) == rnfs(i).feature_list.length - 1) {
+          indexes(i) = 0
+          i -= 1
         } else {
-          indexes(pos) += 1
+          indexes(i) += 1
           added = true
         }
       }
@@ -720,24 +720,24 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
         fmt = fmt.stripSuffix("__xx__")
         val p: LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
-        var pos = p.val1 % dim
-        if (pos < 0) {
-          pos += dim
+        var hash = p.val1 % dim
+        if (hash < 0) {
+          hash += dim
         }
         raw_buf.append(fmt)
-        pos_buf.append(pos)
+        pos_buf.append(hash)
         value_buf.append(1.0F)
         has_feature = true
       }
 
-      var pos = rnfs.length - 1
+      var i = rnfs.length - 1
       var added = false
-      while (!added && pos >= 0) {
-        if (indexes(pos) == rnfs(pos).feature_list.length - 1) {
-          indexes(pos) = 0
-          pos -= 1
+      while (!added && i >= 0) {
+        if (indexes(i) == rnfs(i).feature_list.length - 1) {
+          indexes(i) = 0
+          i -= 1
         } else {
-          indexes(pos) += 1
+          indexes(i) += 1
           added = true
         }
       }
@@ -827,14 +827,14 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
         }
       }
 
-      var pos = rnfs.length - 1
+      var i = rnfs.length - 1
       var added = false
-      while (!added && pos >= 0) {
-        if (indexes(pos) == rnfs(pos).feature_list.length - 1) {
-          indexes(pos) = 0
-          pos -= 1
+      while (!added && i >= 0) {
+        if (indexes(i) == rnfs(i).feature_list.length - 1) {
+          indexes(i) = 0
+          i -= 1
         } else {
-          indexes(pos) += 1
+          indexes(i) += 1
           added = true
         }
       }
@@ -932,7 +932,7 @@ abstract class FeatureEncoder[T] {
    * @param dim
    * @return List[pos]
    */
-  def get_pos(input: T, dim: Long): ArrayBuffer[Long] = {
+  def get_hash(input: T, dim: Long): ArrayBuffer[Long] = {
     val buf = ArrayBuffer[Long]()
     for (raw_f <- raw_cate_features) {
       raw_f.clear()
@@ -943,16 +943,16 @@ abstract class FeatureEncoder[T] {
       raw_f.parse(input)
     }
     for (raw_f <- raw_cate_features) {
-      val pos = raw_f.get_pos(dim)
-      buf.appendAll(pos)
+      val hash = raw_f.get_hash(dim)
+      buf.appendAll(hash)
     }
     for (raw_f <- raw_conti_features) {
-      val pos = raw_f.get_pos(dim)
-      buf.appendAll(pos)
+      val hash = raw_f.get_hash(dim)
+      buf.appendAll(hash)
     }
     for (cross_f <- cross_features) {
-      val pos = cross_f.get_pos(dim)
-      buf.appendAll(pos)
+      val hash = cross_f.get_hash(dim)
+      buf.appendAll(hash)
     }
     buf
   }
@@ -963,7 +963,7 @@ abstract class FeatureEncoder[T] {
    * @param dim
    * @return List[(f_name, f_index, f_type, format, pos)]
    */
-  def get_pos_info(input: T, dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
+  def get_hash_info(input: T, dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     val buf = new ArrayBuffer[(String, Int, Byte, String, Long, Float)]
     for (raw_f <- raw_cate_features) {
       raw_f.clear()
@@ -974,15 +974,15 @@ abstract class FeatureEncoder[T] {
       raw_f.parse(input)
     }
     for (raw_f <- raw_cate_features) {
-      val pos_info = raw_f.get_pos_info(dim)
-      buf.appendAll(pos_info)
+      val hash_info = raw_f.get_hash_info(dim)
+      buf.appendAll(hash_info)
     }
     for (raw_f <- raw_conti_features) {
-      val pos_info = raw_f.get_pos_info(dim)
+      val pos_info = raw_f.get_hash_info(dim)
       buf.appendAll(pos_info)
     }
     for (cross_f <- cross_features) {
-      val pos_info = cross_f.get_pos_info(dim)
+      val pos_info = cross_f.get_hash_info(dim)
       buf.appendAll(pos_info)
     }
     buf

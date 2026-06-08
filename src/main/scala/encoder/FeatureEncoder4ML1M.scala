@@ -8,12 +8,12 @@ import utils.MurmurHash3
  * ML1M 样本特征编码器
  *
  * 单值特征:
- *    整型 (Int/Long) -> 可不处理
- *    浮点型 (Float/Double) -> 分桶变为整型
- *    字符串 (String) -> hash变为整型
+ * 整型 (Int/Long) -> 可不处理
+ * 浮点型 (Float/Double) -> 分桶变为整型
+ * 字符串 (String) -> hash变为整型
  *
  * 多值特征:
- *    遍历每个元素, 逐个加入. 若元素为String则先hash
+ * 遍历每个元素, 逐个加入. 若元素为String则先hash
  *
  * @author shard zhang
  * @date 2026/6/3 16:08
@@ -23,6 +23,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   private type T = ML1MTrainSample
 
   // ============================== target ==============================
+
   /**
    * 多分类标签
    */
@@ -212,10 +213,10 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case _: Exception => 99999
       }
       val buck = rank match {
-        case x if x <= 100 => 3   // 爆款
-        case x if x <= 500 => 2   // 热门
-        case x if x <= 2000 => 1  // 中等
-        case _ => 0               // 长尾冷门
+        case x if x <= 100 => 4 // 爆款
+        case x if x <= 500 => 3 // 热门
+        case x if x <= 2000 => 2 // 中等
+        case _ => 1 // 长尾冷门
       }
       raw_list.append(rank.toString)
       feature_list.append(buck)
@@ -246,6 +247,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   }
 
   // ============================== user ==============================
+
   /**
    * user_id
    */
@@ -345,12 +347,12 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       } catch {
         case _: Exception => 0.0
       }
-      // 分桶: 0=完全一致, 1=稳定, 2=一般, 3=挑剔
+      // 分桶: 1=完全一致, 2=稳定, 3=一般, 4=挑剔
       val buck = std match {
-        case x if x <= 0.0 => 0
-        case x if x <= 1.0 => 1
-        case x if x <= 2.0 => 2
-        case _ => 3
+        case x if x <= 0.0 => 1
+        case x if x <= 1.0 => 2
+        case x if x <= 2.0 => 3
+        case _ => 4
       }
       raw_list.append(sample.user_rate_std.toString)
       feature_list.append(buck)
@@ -380,12 +382,12 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       } catch {
         case _: Exception => 0.0
       }
-      // 分桶: 0=完全一致, 1=稳定, 2=一般, 3=挑剔
+      // 分桶: 1=完全一致, 2=稳定, 3=一般, 4=挑剔
       val buck = std match {
-        case x if x <= 0.0 => 0
-        case x if x <= 1.0 => 1
-        case x if x <= 2.0 => 2
-        case _ => 3
+        case x if x <= 0.0 => 1
+        case x if x <= 1.0 => 2
+        case x if x <= 2.0 => 3
+        case _ => 4
       }
       raw_list.append(sample.user_rate_std_7day.toString)
       feature_list.append(buck)
@@ -415,12 +417,12 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       } catch {
         case _: Exception => 0.0
       }
-      // 分桶: 0=完全一致, 1=稳定, 2=一般, 3=挑剔
+      // 分桶: 1=完全一致, 2=稳定, 3=一般, 4=挑剔
       val buck = std match {
-        case x if x <= 0.0 => 0
-        case x if x <= 1.0 => 1
-        case x if x <= 2.0 => 2
-        case _ => 3
+        case x if x <= 0.0 => 1
+        case x if x <= 1.0 => 2
+        case x if x <= 2.0 => 3
+        case _ => 4
       }
       raw_list.append(sample.user_rate_std_15day.toString)
       feature_list.append(buck)
@@ -450,12 +452,12 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       } catch {
         case _: Exception => 0.0
       }
-      // 分桶: 0=完全一致, 1=稳定, 2=一般, 3=挑剔
+      // 分桶: 1=完全一致, 2=稳定, 3=一般, 4=挑剔
       val buck = std match {
-        case x if x <= 0.0 => 0
-        case x if x <= 1.0 => 1
-        case x if x <= 2.0 => 2
-        case _ => 3
+        case x if x <= 0.0 => 1
+        case x if x <= 1.0 => 2
+        case x if x <= 2.0 => 3
+        case _ => 4
       }
       raw_list.append(sample.user_rate_std_30day.toString)
       feature_list.append(buck)
@@ -491,9 +493,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       }
       val buck = days match {
         case 0 => 0
-        case x if x <= 7 => 1   // 1周内
-        case x if x <= 30 => 2  // 1月内
-        case _ => 3             // 老用户
+        case x if x <= 7 => 1 // 1周内
+        case x if x <= 30 => 2 // 1月内
+        case _ => 3 // 老用户
       }
       raw_list.append(sample.user_active_day.toString)
       feature_list.append(buck)
@@ -558,6 +560,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       }
       // 分桶: 用户打分数量区间
       val buck = cnt match {
+        case x if x == 0 => 0
         case x if x <= 10 => 1
         case x if x <= 30 => 2
         case x if x <= 50 => 3
@@ -580,6 +583,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       }
       // 分桶: 用户打分数量区间
       val buck = cnt match {
+        case x if x == 0 => 0
         case x if x <= 10 => 1
         case x if x <= 30 => 2
         case x if x <= 50 => 3
@@ -605,6 +609,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       }
       // 低分用户(＜3)、中庸3、高分偏好(≥4)
       val buck = avg match {
+        case x if x == 0.0 => 0
         case x if x < 3.0 => 1 // 低分用户
         case x if x < 4.0 => 2 // 中庸
         case _ => 3 // 高分偏好
@@ -618,14 +623,14 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
 
   private class UserAvgRateContinue(f_i: Int, f_n: String) extends ContinuousFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
-      val avg = try {
-        sample.user_avg_rate
+      try {
+        val avg = sample.user_avg_rate
+        raw_list.append(avg.toString)
+        feature_list.append(1L)
+        value_list.append(avg)
       } catch {
         case _: Exception => 3.0F
       }
-      raw_list.append(avg.toString)
-      feature_list.append(1L)
-      value_list.append(avg)
       this
     }
   }
@@ -652,14 +657,14 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
 
   private class UserAvgRate7DayContinue(f_i: Int, f_n: String) extends ContinuousFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
-      val avg = try {
-        sample.user_avg_rate_7day
+      try {
+        val avg = sample.user_avg_rate_7day
+        raw_list.append(avg.toString)
+        feature_list.append(1L)
+        value_list.append(avg)
       } catch {
         case _: Exception => 3.0F
       }
-      raw_list.append(avg.toString)
-      feature_list.append(1L)
-      value_list.append(avg)
       this
     }
   }
@@ -673,6 +678,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       }
       // 低分用户(＜3)、中庸3、高分偏好(≥4)
       val buck = avg match {
+        case x if x == 0.0 => 0
         case x if x < 3.0 => 1 // 低分用户
         case x if x < 4.0 => 2 // 中庸
         case _ => 3 // 高分偏好
@@ -686,48 +692,14 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
 
   private class UserAvgRate15DayContinue(f_i: Int, f_n: String) extends ContinuousFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
-      val avg = try {
-        sample.user_avg_rate_15day
+      try {
+        val avg = sample.user_avg_rate_15day
+        raw_list.append(avg.toString)
+        feature_list.append(1L)
+        value_list.append(avg)
       } catch {
         case _: Exception => 3.0F
       }
-      raw_list.append(avg.toString)
-      feature_list.append(1L)
-      value_list.append(avg)
-      this
-    }
-  }
-
-  private class UserAvgRate30Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature = {
-      val avg = try {
-        sample.user_avg_rate_30day
-      } catch {
-        case _: Exception => 3.0
-      }
-      // 低分用户(＜3)、中庸3、高分偏好(≥4)
-      val buck = avg match {
-        case x if x < 3.0 => 1 // 低分用户
-        case x if x < 4.0 => 2 // 中庸
-        case _ => 3 // 高分偏好
-      }
-      raw_list.append(sample.user_avg_rate_30day.toString)
-      feature_list.append(buck)
-      value_list.append(1.0F)
-      this
-    }
-  }
-
-  private class UserAvgRate30DayContinue(f_i: Int, f_n: String) extends ContinuousFeature[T](f_i, f_n) {
-    override def parse(sample: T): RawFeature = {
-      val avg = try {
-        sample.user_avg_rate_30day
-      } catch {
-        case _: Exception => 3.0F
-      }
-      raw_list.append(avg.toString)
-      feature_list.append(1L)
-      value_list.append(avg)
       this
     }
   }
@@ -765,9 +737,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         val genres = sample.movie_genres.toSet
         val user_genres_rate = sample.user_genres_rates.map(_._1).toSet
         val hasOverlap = if (genres.isEmpty || user_genres_rate.isEmpty) {
-          0
-        } else if (genres.intersect(user_genres_rate).nonEmpty) {
           1
+        } else if (genres.intersect(user_genres_rate).nonEmpty) {
+          2
         } else {
           0
         }
@@ -791,14 +763,13 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val hit = try {
         val currentGenres = sample.movie_genres.toSet
         val recentGenres = sample.user_genres_rate_1days.map(_._1).toSet
-        val flag = if (currentGenres.intersect(recentGenres).nonEmpty) 1 else 0
-        flag
+        val flag = if (currentGenres.intersect(recentGenres).nonEmpty) 2 else 1
+        raw_list.append(flag.toString)
+        feature_list.append(flag)
+        value_list.append(1.0F)
       } catch {
         case _: Exception => 0
       }
-      raw_list.append(hit.toString)
-      feature_list.append(hit)
-      value_list.append(1.0F)
       this
     }
   }
@@ -812,14 +783,13 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val hit = try {
         val currentGenres = sample.movie_genres.toSet
         val recentGenres = sample.user_genres_rate_3days.map(_._1).toSet
-        val flag = if (currentGenres.intersect(recentGenres).nonEmpty) 1 else 0
-        flag
+        val flag = if (currentGenres.intersect(recentGenres).nonEmpty) 2 else 1
+        raw_list.append(flag.toString)
+        feature_list.append(flag)
+        value_list.append(1.0F)
       } catch {
         case _: Exception => 0
       }
-      raw_list.append(hit.toString)
-      feature_list.append(hit)
-      value_list.append(1.0F)
       this
     }
   }
@@ -833,14 +803,14 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val hit = try {
         val currentGenres = sample.movie_genres.toSet
         val recentGenres = sample.user_genres_rate_7days.map(_._1).toSet
-        val flag = if (currentGenres.intersect(recentGenres).nonEmpty) 1 else 0
-        flag
+        val flag = if (currentGenres.intersect(recentGenres).nonEmpty) 2 else 1
+        raw_list.append(flag.toString)
+        feature_list.append(flag)
+        value_list.append(1.0F)
       } catch {
         case _: Exception => 0
       }
-      raw_list.append(hit.toString)
-      feature_list.append(hit)
-      value_list.append(1.0F)
+
       this
     }
   }
@@ -854,14 +824,13 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val hit = try {
         val currentGenres = sample.movie_genres.toSet
         val recentGenres = sample.user_genres_rate_15days.map(_._1).toSet
-        val flag = if (currentGenres.intersect(recentGenres).nonEmpty) 1 else 0
-        flag
+        val flag = if (currentGenres.intersect(recentGenres).nonEmpty) 2 else 1
+        raw_list.append(flag.toString)
+        feature_list.append(flag)
+        value_list.append(1.0F)
       } catch {
         case _: Exception => 0
       }
-      raw_list.append(hit.toString)
-      feature_list.append(hit)
-      value_list.append(1.0F)
       this
     }
   }
@@ -921,6 +890,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   }
 
   // ============================== context ==============================
+
   /**
    * context_time_hour
    * 小时分桶
@@ -975,6 +945,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   }
 
   // ============================== user behavior ==============================
+
   /**
    * user_movie_rate
    * 用户电影评分序列(历史全部)
@@ -1136,7 +1107,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         MurmurHash3.murmurhash3_x64_128(gen.getBytes(), 0, gen.length, SEED, p)
         raw_list.append(gen.toString)
         feature_list.append(p.val1)
-        value_list.append(total_cnt.toFloat)  
+        value_list.append(total_cnt.toFloat)
       }
       this
     }
@@ -1151,7 +1122,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         MurmurHash3.murmurhash3_x64_128(gen.getBytes(), 0, gen.length, SEED, p)
         raw_list.append(gen.toString)
         feature_list.append(p.val1)
-        value_list.append(total_cnt.toFloat)  
+        value_list.append(total_cnt.toFloat)
       }
       this
     }
@@ -1166,7 +1137,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         MurmurHash3.murmurhash3_x64_128(gen.getBytes(), 0, gen.length, SEED, p)
         raw_list.append(gen.toString)
         feature_list.append(p.val1)
-        value_list.append(total_cnt.toFloat)  
+        value_list.append(total_cnt.toFloat)
       }
       this
     }
@@ -1181,7 +1152,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         MurmurHash3.murmurhash3_x64_128(gen.getBytes(), 0, gen.length, SEED, p)
         raw_list.append(gen.toString)
         feature_list.append(p.val1)
-        value_list.append(total_cnt.toFloat)  
+        value_list.append(total_cnt.toFloat)
       }
       this
     }
@@ -1193,19 +1164,19 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     cross_features.clear()
 
     // ============================== target ==============================
-    target = new Rating()
+    target = new Target()
 
     // ============================== user ==============================
     // val user_id = new UserID(1, "user_id")
     val user_age = new UserAge(2, "user_age")
     val user_gender = new UserGender(3, "user_gender")
     val user_occupation = new UserOccupation(4, "user_occupation")
-//    val user_zip_code = new UserZipCode(5, "user_zip_code")
+    //    val user_zip_code = new UserZipCode(5, "user_zip_code")
     // raw_cate_features.append(user_id)
     raw_cate_features.append(user_age)
     raw_cate_features.append(user_gender)
     raw_cate_features.append(user_occupation)
-//    raw_cate_features.append(user_zip_code)
+    //    raw_cate_features.append(user_zip_code)
 
     val user_rate_std = new UserRateStd(6, "user_rate_std")
     val user_rate_std_7day = new UserRateStd7Day(7, "user_rate_std_7day")
@@ -1237,24 +1208,21 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     val user_avg_rate = new UserAvgRate(14, "user_avg_rate")
     val user_avg_rate_7day = new UserAvgRate7Day(15, "user_avg_rate_7day")
     val user_avg_rate_15day = new UserAvgRate15Day(16, "user_avg_rate_15day")
-    val user_avg_rate_30day = new UserAvgRate30Day(17, "user_avg_rate_30day")
     raw_cate_features.append(user_avg_rate)
     raw_cate_features.append(user_avg_rate_7day)
     raw_cate_features.append(user_avg_rate_15day)
-    raw_cate_features.append(user_avg_rate_30day)
 
     val user_avg_rate_continue = new UserAvgRateContinue(23, "user_avg_rate_continue")
     val user_avg_rate_7day_continue = new UserAvgRate7DayContinue(24, "user_avg_rate_7day_continue")
     val user_avg_rate_15day_continue = new UserAvgRate15DayContinue(25, "user_avg_rate_15day_continue")
-    val user_avg_rate_30day_continue = new UserAvgRate30DayContinue(26, "user_avg_rate_30day_continue")
     raw_conti_features.append(user_avg_rate_continue)
     raw_conti_features.append(user_avg_rate_7day_continue)
     raw_conti_features.append(user_avg_rate_15day_continue)
-    raw_conti_features.append(user_avg_rate_30day_continue)
 
     // user lifecycle
-    val user_active_days = new UserActiveDay(20, "user_active_days")
-    raw_cate_features.append(user_active_days)
+    // val user_active_day = new UserActiveDay(20, "user_active_day")
+    // raw_cate_features.append(user_active_day)
+    // raw_cate_features.append(user_active_day)
 
 
     // ============================== item ==============================
@@ -1368,17 +1336,6 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val movie_publish_year_xx_user_age = new CrossFeature(406, "movie_publish_year_xx_user_age", movie_publish_year, user_age)
       cross_features.append(movie_publish_year_xx_user_age)
 
-      // {{物品统计 x 用户统计}}
-      // 电影热度排名 x 用户活跃天数 (冷启动核心: 新用户爱热门，老用户爱小众)
-      val movie_hot_rank_xx_user_active_days = new CrossFeature(407, "movie_hot_rank_xx_user_active_days", movie_hot_rank, user_active_days)
-      // 电影均分 x 用户历史平均分 (用户品味 x 影片质量匹配)
-      val movie_avg_rate_xx_user_avg_rate = new CrossFeature(408, "movie_avg_rate_xx_user_avg_rate", movie_avg_rate, user_avg_rate)
-      // 电影类型数量 x 用户总打分次数 (行为深度 x 影片受众广度)
-      val movie_genre_cnt_xx_user_total_rate_cnt = new CrossFeature(409, "movie_genre_cnt_xx_user_total_rate_cnt", movie_genre_cnt, user_movie_rate_cnt)
-      cross_features.append(movie_hot_rank_xx_user_active_days)
-      cross_features.append(movie_avg_rate_xx_user_avg_rate)
-      cross_features.append(movie_genre_cnt_xx_user_total_rate_cnt)
-
       // {{物品统计 x 用户偏好}}
       // 电影评分人数 x 用户打分标准差 (影片流行度 x 用户打分偏好稳定性)
       val movie_rate_count_xx_user_rate_std = new CrossFeature(410, "movie_rate_count_xx_user_rate_std", movie_rate_count, user_rate_std)
@@ -1407,23 +1364,6 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       cross_features.append(movie_genres_xx_user_occupation)
       cross_features.append(movie_genres_xx_user_age)
 
-      // {{物品 x 用户高阶统计}}
-      // 电影均分 x 用户打分标准差 (影片质量 x 用户挑剔程度)
-      val movie_avg_rate_xx_user_rate_std = new CrossFeature(420, "movie_avg_rate_xx_user_rate_std", movie_avg_rate, user_rate_std)
-      // 电影热度 x 用户打分标准差 (强特征: 热度 x 用户挑剔程度)
-      val movie_hot_rank_xx_user_rate_std = new CrossFeature(421, "movie_hot_rank_xx_user_rate_std", movie_hot_rank, user_rate_std)
-      // 电影上映年份 x 用户活跃度 (年代偏好 x 用户活跃程度)
-      val movie_publish_year_xx_user_active_days = new CrossFeature(422, "movie_publish_year_xx_user_active_days", movie_publish_year, user_active_days)
-      // 电影类型数 x 用户活跃度 (类型广度 x 用户行为深度)
-      val movie_genre_cnt_xx_user_active_days = new CrossFeature(423, "movie_genre_cnt_xx_user_active_days", movie_genre_cnt, user_active_days)
-      // 电影热度 x 用户总打分次数 (热度 x 用户行为丰富度)
-      val movie_hot_rank_xx_user_total_rate_cnt = new CrossFeature(424, "movie_hot_rank_xx_user_total_rate_cnt", movie_hot_rank, user_movie_rate_cnt)
-      cross_features.append(movie_avg_rate_xx_user_rate_std)
-      cross_features.append(movie_hot_rank_xx_user_rate_std)
-      cross_features.append(movie_publish_year_xx_user_active_days)
-      cross_features.append(movie_genre_cnt_xx_user_active_days)
-      cross_features.append(movie_hot_rank_xx_user_total_rate_cnt)
-
       // {{节假日}}
       // 电影类型 x 是否周末 (周末/工作日观影类型差异极大)
       val movie_genres_xx_is_weekend = new CrossFeature(450, "movie_genres_xx_is_weekend", movie_genres, context_is_weekend)
@@ -1447,8 +1387,6 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val movie_genres_xx_user_gender_xx_user_occupation = new CrossFeature(461, "movie_genres_xx_user_gender_xx_user_occupation", movie_genres, user_gender, user_occupation)
       // 影片均分 x 热度 x 用户均分 -> 品味匹配核心特征
       val movie_avg_rate_xx_movie_hot_rank_xx_user_avg_rate = new CrossFeature(463, "movie_avg_rate_xx_movie_hot_rank_xx_user_avg_rate", movie_avg_rate, movie_hot_rank, user_avg_rate)
-      // 影片热度 x 用户活跃度 x 用户均分 -> 冷启动核心
-      val movie_hot_rank_xx_user_active_days_xx_user_avg_rate = new CrossFeature(464, "movie_hot_rank_xx_user_active_days_xx_user_avg_rate", movie_hot_rank, user_active_days, user_avg_rate)
       // 影片类型数 x 用户总打分次数 x 用户均分 -> 行为深度+品味
       val movie_genre_cnt_xx_user_total_rate_cnt_xx_user_avg_rate = new CrossFeature(465, "movie_genre_cnt_xx_user_total_rate_cnt_xx_user_avg_rate", movie_genre_cnt, user_movie_rate_cnt, user_avg_rate)
       // 影片类型数 x 热度 x 用户类型均分 -> 类型偏好+热度匹配
@@ -1460,7 +1398,6 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       cross_features.append(movie_publish_year_xx_user_age_xx_user_occupation)
       cross_features.append(movie_genres_xx_user_gender_xx_user_occupation)
       cross_features.append(movie_avg_rate_xx_movie_hot_rank_xx_user_avg_rate)
-      cross_features.append(movie_hot_rank_xx_user_active_days_xx_user_avg_rate)
       cross_features.append(movie_genre_cnt_xx_user_total_rate_cnt_xx_user_avg_rate)
       cross_features.append(movie_genre_cnt_xx_movie_hot_rank_xx_user_genre_avg_rate)
       cross_features.append(movie_publish_year_xx_movie_avg_rate_xx_user_avg_rate)

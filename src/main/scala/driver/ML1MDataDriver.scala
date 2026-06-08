@@ -160,9 +160,9 @@ object ML1MDataDriver extends Serializable {
   /**
    * List[(f_name, f_index, f_type, format, hash, value)]
    */
-  def get_pos_info_from_a_sample(sample: ML1MTrainSample,
+  def get_hash_info_from_a_sample(sample: ML1MTrainSample,
                                  encoder: FeatureEncoder[ML1MTrainSample]): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
-    encoder.get_pos_info(sample, max_dim)
+    encoder.get_hash_info(sample, max_dim)
   }
 
   /**
@@ -210,9 +210,9 @@ object ML1MDataDriver extends Serializable {
 
     /** Map((f_name, f_index, f_type), dim) */
     val pos_dim_map = new mutable.HashMap[(String, Int, Int), Int]()
-    /** Map((f_index, pos), (index, mean, std)) */
+    /** Map((f_index, hash), (pos, mean, std)) */
     val pos_map = new mutable.HashMap[(Int, Long), (Int, Double, Double)]()
-    /** Map(target, index) */
+    /** Map(target, pos) */
     val target_map = new mutable.HashMap[Int, Int]()
 
     // nn_pos_map.json
@@ -290,13 +290,13 @@ object ML1MDataDriver extends Serializable {
           pos_dim_map.put(e._1._2, (e._1._1, e._1._3, e._2))
         }
 
-        /** ArrayBuffer[(f_index, pos, index, mean, std)] */
+        /** ArrayBuffer[(f_index, hash, pos, mean, std)] */
         val pos_map_array = new ArrayBuffer[(Int, Long, Int, Double, Double)]()
-        /** Map((f_index, pos), (index, mean, std)) */
+        /** Map((f_index, hash), (pos, mean, std)) */
         val it = pos_map.iterator
         while (it.hasNext) {
           val e = it.next()
-          // (f_index, pos, index, mean, std)
+          // (f_index, hash, pos, mean, std)
           pos_map_array.append((e._1._1, e._1._2, e._2._1, e._2._2, e._2._3))
         }
         val iterator = pos_map_array.groupBy(s => s._1).toSeq.sortBy(_._1).iterator
@@ -313,10 +313,10 @@ object ML1MDataDriver extends Serializable {
           feature.put("dim", dim)
 
           val entries = new JSONArray()
-          for ((_, pos, index, mean, std) <- pos_info) {
+          for ((_, hash, pos, mean, std) <- pos_info) {
             val entry = new JSONObject()
+            entry.put("hash", hash)
             entry.put("pos", pos)
-            entry.put("index", index)
             entry.put("mean", mean)
             entry.put("std", std)
             entries.put(entry)
@@ -358,16 +358,16 @@ object ML1MDataDriver extends Serializable {
       val writer = new DataOutputStream(new BufferedOutputStream(fs.create(new Path(binPath), true)))
       writeLongLE(writer, OutputDay.toLong)
       writeIntLE(writer, pos_map.size)
-      /** Map((f_index, pos), (index, mean, std)) */
+      /** Map((f_index, hash), (pos, mean, std)) */
       val iterator = pos_map.iterator
       while (iterator.hasNext) {
-        // (f_index, pos), (index, mean, std)
+        // (f_index, hash), (pos, mean, std)
         val kv = iterator.next()
         // f_index
         writeIntLE(writer, kv._1._1)
-        // pos
+        // hash
         writeLongLE(writer, kv._1._2)
-        // index
+        // pos
         writeIntLE(writer, kv._2._1)
         // mean
         writeDoubleLE(writer, kv._2._2)
@@ -431,7 +431,7 @@ object ML1MDataDriver extends Serializable {
    * @param base_dir
    * @return
    * pos_dim: HashMap[(f_name, f_index, f_type), dim)]
-   * pos_map: HashMap[(f_index, pos), (index, mean, std)]
+   * pos_map: HashMap[(f_index, hash), (pos, mean, std)]
    * target_map: HashMap[(target_id, pos)]
    */
   def run(spark: SparkSession,
@@ -515,18 +515,18 @@ object ML1MDataDriver extends Serializable {
     green_println(s"targets below threshold = ${ignoredTargetCount}")
 
     /**
-     * ArrayBuffer[(f_name, f_index, f_type, pos, fea), (value_sum, value_power_sum, value_count, value_zero, value_nonzero, value_max, value_min)]
+     * ArrayBuffer[(f_name, f_index, f_type, hash), (value_sum, value_power_sum, value_count, value_zero, value_nonzero, value_max, value_min)]
      */
-    val train_sample_pos_arr = trainingSample
+    val train_sample_hash_arr = trainingSample
       .map(s => s._1)
       .mapPartitions(samples => {
         val encoder = feature_encoder
-        // Map[(f_name, f_index, f_type, pos, index), (sum, power_sum, count, zero, nonzero, max, min)]
+        // Map((f_name, f_index, f_type, hash), stat)
         val pos_hash = new mutable.HashMap[(String, Int, Byte, Long), FeatureStats]()
         for (sample <- samples) {
-          val one_sample_pos_array = get_pos_info_from_a_sample(sample, encoder)
-          for ((f_name, f_index, f_type, f_raw, pos, value) <- one_sample_pos_array) {
-            val key = (f_name, f_index, f_type, pos)
+          val one_sample_hash_array = get_hash_info_from_a_sample(sample, encoder)
+          for ((f_name, f_index, f_type, f_raw, hash, value) <- one_sample_hash_array) {
+            val key = (f_name, f_index, f_type, hash)
             pos_hash.getOrElseUpdate(key, new FeatureStats()).add(value)
           }
         }
@@ -534,16 +534,16 @@ object ML1MDataDriver extends Serializable {
       })
       .reduceByKey((a, b) => a.merge(b))
       .collect()
-    green_println(s"pos_arr.size = ${train_sample_pos_arr.length}")
+    green_println(s"pos_arr.size = ${train_sample_hash_arr.length}")
 
     var ignoredPosCount = 0
+    // Map[(f_index, hash), pos]
     val pos_map_local = new HashMap[(Int, Long), Int]
-    for (pos_info <- train_sample_pos_arr) {
-      val (f_name, f_index, f_type, pos) = pos_info._1
+    for (pos_info <- train_sample_hash_arr) {
+      val (f_name, f_index, f_type, hash) = pos_info._1
       val fieldKey = (f_name, f_index, f_type.toInt)
       val stat = pos_info._2
-      // variance. D(x) = E(x^2) - E^2(x), E表示期望
-      // power_sum / count - power(sum / cnt, 2)
+      // variance. D(x) = E(x^2) - E^2(x)
       val variance = stat.powerSum / total_number - Math.pow(stat.sum / total_number, 2)
       var mean = stat.sum / total_number
       var std = math.sqrt(variance + 0.000001)
@@ -559,32 +559,32 @@ object ML1MDataDriver extends Serializable {
           pos_map.put((f_index, 0L), (0, 0D, 1.0D))
         }
 
-        val encodedIndex = if (f_type == FeatureType.Continuous) {
-            // Continuous feature slots are semantic dimensions. Preserve slot order by forcing index == pos.
-            if (pos <= 0L || pos > Int.MaxValue.toLong) {
-              throw new IllegalArgumentException(s"Continuous feature ${f_name}[${f_index}] position must be in [1, ${Int.MaxValue}], got ${pos}")
+        val pos = if (f_type == FeatureType.Continuous) {
+            // Continuous feature slots are semantic dimensions. Preserve slot order by forcing hash == pos.
+            if (hash <= 0L || hash > Int.MaxValue.toLong) {
+              throw new IllegalArgumentException(s"Continuous feature ${f_name}[${f_index}] position must be in [1, ${Int.MaxValue}], got ${hash}")
             }
-            pos.toInt
-        } else if (pos_map.contains((f_index, pos))) {
-          pos_map((f_index, pos))._1
+            hash.toInt
+        } else if (pos_map.contains((f_index, hash))) {
+          pos_map((f_index, hash))._1
         } else {
           pos_dim(fieldKey)
         }
-        if (!pos_map.contains((f_index, pos))) {
-          pos_map.put((f_index, pos), (encodedIndex, mean, std))
-          pos_map_local.put((f_index, pos), encodedIndex)
+        if (!pos_map.contains((f_index, hash))) {
+          pos_map.put((f_index, hash), (pos, mean, std))
+          pos_map_local.put((f_index, hash), pos)
           val nextDim = if (f_type == FeatureType.Continuous) {
-            math.max(pos_dim(fieldKey), encodedIndex + 1)
+            math.max(pos_dim(fieldKey), pos + 1)
           } else {
-            encodedIndex + 1
+            pos + 1
           }
           pos_dim.put(fieldKey, nextDim)
         } else {
-          val (_, history_mean, history_std) = pos_map((f_index, pos))
-          pos_map.put((f_index, pos), (encodedIndex, (mean + history_mean) / 2.0, (std + history_std) / 2.0))
-          pos_map_local.put((f_index, pos), encodedIndex)
+          val (_, history_mean, history_std) = pos_map((f_index, hash))
+          pos_map.put((f_index, hash), (pos, (mean + history_mean) / 2.0, (std + history_std) / 2.0))
+          pos_map_local.put((f_index, hash), pos)
           if (f_type == FeatureType.Continuous) {
-            pos_dim.put(fieldKey, math.max(pos_dim(fieldKey), encodedIndex + 1))
+            pos_dim.put(fieldKey, math.max(pos_dim(fieldKey), pos + 1))
           }
         }
       }
@@ -605,8 +605,8 @@ object ML1MDataDriver extends Serializable {
       .mapPartitions(samples => {
         val encoder = feature_encoder
         samples.flatMap(sample => {
-          val (record, _, has_target) = parse_a_sample_parquet(sample, encoder, posMapLocalImmutable, targetMapImmutable)
-          if (has_target) {
+          val (record, has_feature, has_target) = parse_a_sample_parquet(sample, encoder, posMapLocalImmutable, targetMapImmutable)
+          if (has_feature && has_target) {
             Some(Row.fromSeq(record.to_seq(parquetFieldNames)))
           } else {
             None
@@ -616,15 +616,15 @@ object ML1MDataDriver extends Serializable {
 
     spark.createDataFrame(parquetRows, parquetSchema)
       .write
-      .mode("overwrite") // 覆盖写入
-      .parquet(parquetPath) // 写入路径
+      .mode("overwrite")
+      .parquet(parquetPath)
 
     trainingSample.map(s => s._1)
       .mapPartitions(samples => {
         val encoder = feature_encoder
         samples.flatMap(sample => {
-          val (example, has_feature, _) = parse_a_sample_tfrecord(sample, encoder, posMapLocalImmutable, targetMapImmutable)
-          if (has_feature) {
+          val (example, has_feature, has_target) = parse_a_sample_tfrecord(sample, encoder, posMapLocalImmutable, targetMapImmutable)
+          if (has_feature && has_target) {
             Some(example)
           } else {
             None

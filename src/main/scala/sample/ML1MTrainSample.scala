@@ -152,7 +152,6 @@ class ML1MTrainSample extends Serializable {
   var user_avg_rate: Float = 3.0F
   var user_avg_rate_7day: Float = 3.0F
   var user_avg_rate_15day: Float = 3.0F
-  var user_avg_rate_30day: Float = 3.0F
 
   // 用户对电影类型评分序列 (电影类型, 给类型下所有电影的平均评分)
   var user_genres_rates: ArrayBuffer[(String, Float)] = ArrayBuffer.empty[(String, Float)]
@@ -215,10 +214,10 @@ object ML1MTrainSample {
     }
   }
 
-  private def parseUserAvgRate(user_movie_rates: ArrayBuffer[(Int, Int)]) = {
+  private def parseUserAvgRate(user_movie_rates: ArrayBuffer[(Int, Int)]): Float = {
     val total_rate = user_movie_rates.map(r => r._2).sum
     val total_cnt = user_movie_rates.length
-    total_rate / total_cnt
+    total_rate * 1.0F / total_cnt
   }
 
   /**
@@ -382,21 +381,19 @@ object ML1MTrainSample {
             }
             if (dur >= 0 && dur <= 1) {
               train_sample.user_movie_rate_1days.append((item_id, rate))
-              train_sample.user_avg_rate = parseUserAvgRate(train_sample.user_movie_rate_1days)
             }
             if (dur >= 0 && dur <= 3) {
               train_sample.user_movie_rate_3days.append((item_id, rate))
-              train_sample.user_avg_rate = parseUserAvgRate(train_sample.user_movie_rate_3days)
             }
             if (dur >= 0 && dur <= 7) {
               train_sample.user_movie_rate_7days.append((item_id, rate))
               train_sample.user_rate_7day_cnt += 1
-              train_sample.user_avg_rate = parseUserAvgRate(train_sample.user_movie_rate_7days)
+              train_sample.user_avg_rate_7day = parseUserAvgRate(train_sample.user_movie_rate_7days)
             }
             if (dur >= 0 && dur <= 15) {
               train_sample.user_movie_rate_15days.append((item_id, rate))
               train_sample.user_rate_15day_cnt += 1
-              train_sample.user_avg_rate = parseUserAvgRate(train_sample.user_movie_rate_15days)
+              train_sample.user_avg_rate_15day = parseUserAvgRate(train_sample.user_movie_rate_15days)
             }
             if (dur >= 0 && dur <= 30) {
               train_sample.user_rate_30day_cnt += 1
