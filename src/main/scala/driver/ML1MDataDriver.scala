@@ -275,6 +275,11 @@ object ML1MDataDriver extends Serializable {
       try {
         val root = new JSONObject()
         root.put("target_size", target_map.size)
+        val targets = new JSONObject()
+        target_map.toSeq.sortBy(_._2).foreach { case (rawItemId, encodedId) =>
+          targets.put(rawItemId.toString, encodedId)
+        }
+        root.put("targets", targets)
         val features = new JSONArray()
 
         /** Map(f_index, (f_name, f_type, dim)) */
@@ -323,6 +328,23 @@ object ML1MDataDriver extends Serializable {
         root.put("features", features)
         writer.write(root.toString(2))
         writer.write("\n")
+      } finally {
+        writer.close()
+      }
+    } while (false)
+
+    // nn_pos_map.txt
+    do {
+      val textPath = legacyPosMapTextPath(path)
+      val fs = FileSystem.get(URI.create(textPath), new Configuration())
+      val writer = new BufferedWriter(new OutputStreamWriter(fs.create(new Path(textPath), true), "utf-8"))
+      try {
+        writer.write("field_name,field_index,field_type,dim\n")
+        pos_dim.toSeq
+          .sortBy { case ((fieldName, fieldIndex, fieldType), _) => (fieldIndex, fieldType, fieldName) }
+          .foreach { case ((fieldName, fieldIndex, fieldType), dim) =>
+            writer.write(s"${fieldName},${fieldIndex},${fieldType},${dim}\n")
+          }
       } finally {
         writer.close()
       }
@@ -439,7 +461,6 @@ object ML1MDataDriver extends Serializable {
          | select * from join_sample
          |""".stripMargin
     green_println(s"Transformed sql=${sql}")
-    import spark.implicits._
 
     val trainingSample: RDD[(ML1MTrainSample, Boolean)] = spark.sql(sql).rdd
       .repartition(parts)

@@ -63,7 +63,7 @@ abstract class RawFeature(f_i: Int, f_n: String, f_t: Byte) {
 
   val f_name: String = f_n
 
-  // 0: discrete, 1: continuous
+  // 0: continuous, 1: categorical
   var f_type: Byte = f_t
 
   final val SEED: Int = 0x3c074a61
@@ -148,6 +148,34 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
     feature_list.mkString(",")
     value_list.mkString(",")
   }
+
+  /**
+    * 连续特征直接使用 feature_list 中提供的局部维度编号, 不再额外 hash.
+    */
+  override def get_pos(dim: Long): ArrayBuffer[Long] = {
+    val pos_list = new ArrayBuffer[Long]()
+    for (fea <- feature_list) {
+      if (fea != 0) {
+        pos_list.append(fea)
+      }
+    }
+    pos_list
+  }
+
+  override def get_pos_info(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
+    val pos_info_list = new ArrayBuffer[(String, Int, Byte, String, Long, Float)]()
+    for (i <- feature_list.indices) {
+      val fea = feature_list(i)
+      val value = value_list(i)
+      val raw_fea = raw_list(i)
+      if (fea != 0) {
+        val fmt = f_index.toString + ":" + raw_fea.toString
+        pos_info_list.append((f_name, f_index, f_type, fmt, fea, value))
+      }
+    }
+    pos_info_list
+  }
+
   /**
    * TFRecord
    *
@@ -171,7 +199,7 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
       val value = value_list(i)
       if (fea != 0) {
         raw_buf.append(raw_fea)
-        pos_buf.append(i + 1)
+        pos_buf.append(fea)
         value_buf.append(value)
       }
     }
@@ -180,7 +208,70 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
       .putFeature(f_name + "_index", Int64ListFeatureEncoder.encode(pos_buf))
       .putFeature(f_name + "_value", FloatListFeatureEncoder.encode(value_buf))
   }
-  true
+
+  override def add(dim: Long, builder: Example.Builder, pos_map: immutable.HashMap[(Int, Long), Int]): Boolean = {
+    if (pos_map == null) {
+      add(dim, builder)
+      return feature_list.exists(_ != 0)
+    }
+
+    val raw_buf = new ArrayBuffer[String]()      // 原始特征值, for human debug
+    val pos_buf = new ArrayBuffer[Long]()        // 编码后位置, for model
+    val value_buf = new ArrayBuffer[Float]()     // 连续特征值, for model
+    raw_buf.append("R:")
+    pos_buf.append(0L)
+    value_buf.append(1.0F)
+
+    var has_feature = false
+    for (i <- feature_list.indices) {
+      val raw_fea = raw_list(i)
+      val fea = feature_list(i)
+      val value = value_list(i)
+      if (fea != 0 && pos_map.contains((f_index, fea))) {
+        raw_buf.append(raw_fea)
+        pos_buf.append(pos_map((f_index, fea)).toLong)
+        value_buf.append(value)
+        has_feature = true
+      }
+    }
+    builder.getFeaturesBuilder
+      .putFeature(f_name + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
+      .putFeature(f_name + "_index", Int64ListFeatureEncoder.encode(pos_buf))
+      .putFeature(f_name + "_value", FloatListFeatureEncoder.encode(value_buf))
+    has_feature
+  }
+
+  override def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]]): Unit = {
+    val pos_buf = new ArrayBuffer[Long]()
+    for (fea <- feature_list) {
+      if (fea != 0) {
+        pos_buf.append(fea)
+      }
+    }
+    if (pos_buf.nonEmpty) {
+      encoded_map(f_name) = pos_buf
+    }
+  }
+
+  override def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: immutable.HashMap[(Int, Long), Int]): Boolean = {
+    if (pos_map == null) {
+      add(dim, encoded_map)
+      return feature_list.exists(_ != 0)
+    }
+
+    val pos_buf = new ArrayBuffer[Long]()
+    var has_feature = false
+    for (fea <- feature_list) {
+      if (fea != 0 && pos_map.contains((f_index, fea))) {
+        pos_buf.append(pos_map((f_index, fea)).toLong)
+        has_feature = true
+      }
+    }
+    if (has_feature) {
+      encoded_map(f_name) = pos_buf
+    }
+    has_feature
+  }
 }
 
 abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureType.Categorical) extends RawFeature(f_i, f_n, f_t) {
@@ -809,6 +900,9 @@ abstract class FeatureEncoder[T] {
     for (raw_f <- raw_cate_features) {
       buff.append((raw_f.f_name, raw_f.f_index))
     }
+    for (raw_f <- raw_conti_features) {
+      buff.append((raw_f.f_name, raw_f.f_index))
+    }
     for (cross_f <- cross_features) {
       buff.append((cross_f.f_name, cross_f.f_index))
     }
@@ -841,7 +935,15 @@ abstract class FeatureEncoder[T] {
       raw_f.clear()
       raw_f.parse(input)
     }
+    for (raw_f <- raw_conti_features) {
+      raw_f.clear()
+      raw_f.parse(input)
+    }
     for (raw_f <- raw_cate_features) {
+      val pos = raw_f.get_pos(dim)
+      buf.appendAll(pos)
+    }
+    for (raw_f <- raw_conti_features) {
       val pos = raw_f.get_pos(dim)
       buf.appendAll(pos)
     }
@@ -864,7 +966,15 @@ abstract class FeatureEncoder[T] {
       raw_f.clear()
       raw_f.parse(input)
     }
+    for (raw_f <- raw_conti_features) {
+      raw_f.clear()
+      raw_f.parse(input)
+    }
     for (raw_f <- raw_cate_features) {
+      val pos_info = raw_f.get_pos_info(dim)
+      buf.appendAll(pos_info)
+    }
+    for (raw_f <- raw_conti_features) {
       val pos_info = raw_f.get_pos_info(dim)
       buf.appendAll(pos_info)
     }
@@ -935,7 +1045,9 @@ abstract class FeatureEncoder[T] {
       }
     }
     for (raw_f <- raw_conti_features) {
-      raw_f.add(dim, builder)
+      if (raw_f.add(dim, builder, pos_map)) {
+        has_feature = true
+      }
     }
     for (cross_f <- cross_features) {
       if (cross_f.add(dim, builder, pos_map)) {
@@ -961,7 +1073,14 @@ abstract class FeatureEncoder[T] {
       raw_f.clear()
       raw_f.parse(input)
     }
+    for (raw_f: ContinuousFeature[T] <- raw_conti_features) {
+      raw_f.clear()
+      raw_f.parse(input)
+    }
     for (raw_f: CategoricalFeature[T] <- raw_cate_features) {
+      raw_f.add(dim, encoded_map)
+    }
+    for (raw_f: ContinuousFeature[T] <- raw_conti_features) {
       raw_f.add(dim, encoded_map)
     }
     for (cross_f: CrossFeature[T] <- cross_features) {

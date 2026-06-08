@@ -1,18 +1,25 @@
 
 python3 - <<'PY'
+import shutil
 from pathlib import Path
+
 base = Path('./tmp/ml-1m-mini')
+output = Path('./tmp/ml-1m-mini-output')
+shutil.rmtree(base, ignore_errors=True)
+shutil.rmtree(output, ignore_errors=True)
+
 (base / 'item_feature').mkdir(parents=True, exist_ok=True)
 (base / 'join_sample').mkdir(parents=True, exist_ok=True)
 (base / 'item_feature' / 'part-00000.csv').write_text(
-    "1\tToy Story (1995)\tAnimation|Children's|Comedy\t3\t100\t4.5\t1\n",
+    "324\tToy Story (1995)\tAnimation|Children's|Comedy\t3\t100\t4.5\t1\n",
     encoding='utf-8'
 )
 (base / 'join_sample' / 'part-00000.csv').write_text(
-    "1\t1\t978300760\t5\t20000901\t{\"gender\":\"F\",\"age\":\"1\",\"occupation\":\"10\",\"zip_code\":\"48067\"}\t{\"movie_title\":\"Toy Story (1995)\",\"movie_genres\":\"Animation|Children's|Comedy\",\"movie_rate_count\":100,\"movie_avg_rate\":4.5,\"movie_hot_rank\":1}\t{\"user_movie_rate\":\"1:5:978300760\"}\n",
+    "1\t324\t978300760\t5\t20000901\t{\"gender\":\"F\",\"age\":\"1\",\"occupation\":\"10\",\"zip_code\":\"48067\"}\t{\"movie_title\":\"Toy Story (1995)\",\"movie_genres\":\"Animation|Children's|Comedy\",\"movie_rate_count\":100,\"movie_avg_rate\":4.5,\"movie_hot_rank\":1}\t{\"user_movie_rate\":\"1:5:978300760\"}\n",
     encoding='utf-8'
 )
 print('created', base)
+print('reset', output)
 PY
 
 source "../env.sh" && "${SPARK_HOME}/bin/spark-submit" \
