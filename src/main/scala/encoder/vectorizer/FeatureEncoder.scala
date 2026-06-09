@@ -346,8 +346,6 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
    */
   override def get_hash_info(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     val pos_info_list = new ArrayBuffer[(String, Int, Byte, String, Long, Float)]()
-    // format: f_index:raw_fea
-    var fmt: String = ""
     for (i <- feature_list.indices) {
       val fea = feature_list(i)
       val value = value_list(i)
@@ -355,9 +353,8 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
       if (fea != 0) {
         bytebuf.clear()
         bytebuf.putInt(0, f_index)
-        fmt += f_index.toString + ":"
         bytebuf.putLong(4, fea)
-        fmt += raw_fea.toString
+        val fmt = f_index.toString + ":" + raw_fea.toString
         val p: LongPair = new MurmurHash3.LongPair()
         MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
         var hash: Long = p.val1 % dim
@@ -500,10 +497,6 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
    * @return
    */
   override def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: immutable.HashMap[(Int, Long), Int]): Boolean = {
-    encoded_map.clear()
-
-    val pos_buf = new ArrayBuffer[Long]()
-    pos_buf.append(0L)
     var has_feature = false
     for (fea <- feature_list) {
       if (fea != 0) {
@@ -568,7 +561,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
           fmt += rnfs(i).f_index.toString + ":"
           shift += 4
           bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
-          fmt += rnfs(i).feature_list(indexes(i)).toString
+          fmt += rnfs(i).raw_list(indexes(i))
           shift += 8
           fmt += "__xx__"
         }
@@ -644,7 +637,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
           shift += 4
 
           bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
-          fmt += rnfs(i).feature_list(indexes(i)).toString
+          fmt += rnfs(i).raw_list(indexes(i)).toString
           shift += 8
           fmt += "__xx__"
         }
@@ -713,7 +706,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
           fmt += rnfs(i).f_index.toString + ":"
           shift += 4
           bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
-          fmt += rnfs(i).raw_list(indexes(i)).toString
+          fmt += rnfs(i).raw_list(indexes(i))
           shift += 8
           fmt += "__xx__"
         }
@@ -808,7 +801,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
           fmt += rnfs(i).f_index.toString + ":"
           shift += 4
           bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
-          fmt += rnfs(i).feature_list(indexes(i)).toString
+          fmt += rnfs(i).raw_list(indexes(i)).toString
           shift += 8
           fmt += "__xx__"
         }
@@ -873,6 +866,50 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
    * @param encoded_map
    */
   override def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]]): Unit = {
+    for (i <- 0 until rnfs.length) {
+      indexes(i) = 0
+    }
+    var done = false
+    while (!done) {
+      var skip = false
+      for (i <- 0 until rnfs.length) {
+        if (rnfs(i).feature_list.isEmpty || rnfs(i).feature_list(indexes(i)) == 0) {
+          skip = true
+        }
+      }
+      if (!skip) {
+        bytebuf.clear()
+        var shift = 0
+        for (i <- 0 until rnfs.length) {
+          bytebuf.putInt(shift, rnfs(i).f_index)
+          shift += 4
+          bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
+          shift += 8
+        }
+        val p: LongPair = new MurmurHash3.LongPair()
+        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
+        var hash = p.val1 % dim
+        if (hash < 0) {
+          hash += dim
+        }
+        encoded_map.getOrElseUpdate(f_name, ArrayBuffer.empty[Long]).append(hash)
+      }
+
+      var i = rnfs.length - 1
+      var added = false
+      while (!added && i >= 0) {
+        if (indexes(i) == rnfs(i).feature_list.length - 1) {
+          indexes(i) = 0
+          i -= 1
+        } else {
+          indexes(i) += 1
+          added = true
+        }
+      }
+      if (!added) {
+        done = true
+      }
+    }
   }
 
   /**
@@ -882,7 +919,55 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
    * @param pos_map (f_name, List[pos])
    */
   override def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: immutable.HashMap[(Int, Long), Int]): Boolean = {
-    true
+    for (i <- 0 until rnfs.length) {
+      indexes(i) = 0
+    }
+    var done = false
+    var has_feature = false
+    while (!done) {
+      var skip = false
+      for (i <- 0 until rnfs.length) {
+        if (rnfs(i).feature_list.isEmpty || rnfs(i).feature_list(indexes(i)) == 0) {
+          skip = true
+        }
+      }
+      if (!skip) {
+        bytebuf.clear()
+        var shift = 0
+        for (i <- 0 until rnfs.length) {
+          bytebuf.putInt(shift, rnfs(i).f_index)
+          shift += 4
+          bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
+          shift += 8
+        }
+        val p: LongPair = new MurmurHash3.LongPair()
+        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
+        var hash = p.val1 % dim
+        if (hash < 0) {
+          hash += dim
+        }
+        pos_map.get((f_index, hash)).foreach { pos =>
+          encoded_map.getOrElseUpdate(f_name, ArrayBuffer.empty[Long]).append(pos)
+          has_feature = true
+        }
+      }
+
+      var i = rnfs.length - 1
+      var added = false
+      while (!added && i >= 0) {
+        if (indexes(i) == rnfs(i).feature_list.length - 1) {
+          indexes(i) = 0
+          i -= 1
+        } else {
+          indexes(i) += 1
+          added = true
+        }
+      }
+      if (!added) {
+        done = true
+      }
+    }
+    has_feature
   }
 }
 

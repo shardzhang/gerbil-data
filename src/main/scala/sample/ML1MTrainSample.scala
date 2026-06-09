@@ -152,6 +152,7 @@ class ML1MTrainSample extends Serializable {
   var user_avg_rate: Float = 3.0F
   var user_avg_rate_7day: Float = 3.0F
   var user_avg_rate_15day: Float = 3.0F
+  var user_avg_rate_30day: Float = 3.0F
 
   // 用户对电影类型评分序列 (电影类型, 给类型下所有电影的平均评分)
   var user_genres_rates: ArrayBuffer[(String, Float)] = ArrayBuffer.empty[(String, Float)]
@@ -218,6 +219,20 @@ object ML1MTrainSample {
     val total_rate = user_movie_rates.map(r => r._2).sum
     val total_cnt = user_movie_rates.length
     total_rate * 1.0F / total_cnt
+  }
+
+  private def parseUserRateStd(user_movie_rates: ArrayBuffer[(Int, Int)]): Float = {
+    if (user_movie_rates.isEmpty) {
+      return 0.0F
+    }
+    val avg = parseUserAvgRate(user_movie_rates)
+    val variance = user_movie_rates
+      .map { case (_, rate) =>
+        val diff = rate.toFloat - avg
+        diff * diff
+      }
+      .sum / user_movie_rates.length.toFloat
+    math.sqrt(variance.toDouble).toFloat
   }
 
   /**
@@ -342,6 +357,7 @@ object ML1MTrainSample {
       // user_movie_rate
       val user_movie_rate_seq = user_behavior.getString("user_movie_rate")
       if (user_movie_rate_seq != null && user_movie_rate_seq.nonEmpty) {
+        val userMovieRate30Days = ArrayBuffer.empty[(Int, Int)]
         val user_genres_rate_map = mutable.Map[String, Float]().withDefaultValue(0.0f)
         val user_genres_rate_1day_map = mutable.Map[String, Float]().withDefaultValue(0.0f)
         val user_genres_rate_3day_map = mutable.Map[String, Float]().withDefaultValue(0.0f)
@@ -378,6 +394,7 @@ object ML1MTrainSample {
               train_sample.user_movie_rates.append((item_id, rate))
               train_sample.user_rate_cnt += 1
               train_sample.user_avg_rate = parseUserAvgRate(train_sample.user_movie_rates)
+              train_sample.user_rate_std = parseUserRateStd(train_sample.user_movie_rates)
             }
             if (dur >= 0 && dur <= 1) {
               train_sample.user_movie_rate_1days.append((item_id, rate))
@@ -389,14 +406,19 @@ object ML1MTrainSample {
               train_sample.user_movie_rate_7days.append((item_id, rate))
               train_sample.user_rate_7day_cnt += 1
               train_sample.user_avg_rate_7day = parseUserAvgRate(train_sample.user_movie_rate_7days)
+              train_sample.user_rate_std_7day = parseUserRateStd(train_sample.user_movie_rate_7days)
             }
             if (dur >= 0 && dur <= 15) {
               train_sample.user_movie_rate_15days.append((item_id, rate))
               train_sample.user_rate_15day_cnt += 1
               train_sample.user_avg_rate_15day = parseUserAvgRate(train_sample.user_movie_rate_15days)
+              train_sample.user_rate_std_15day = parseUserRateStd(train_sample.user_movie_rate_15days)
             }
             if (dur >= 0 && dur <= 30) {
+              userMovieRate30Days.append((item_id, rate))
               train_sample.user_rate_30day_cnt += 1
+              train_sample.user_avg_rate_30day = parseUserAvgRate(userMovieRate30Days)
+              train_sample.user_rate_std_30day = parseUserRateStd(userMovieRate30Days)
             }
 
             for (g <- genres) {

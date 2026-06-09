@@ -49,7 +49,7 @@ object ParquetRecord {
       if (name == "target") {
         columns.put(name, feature.getFloatList.getValue(0))
       } else if (name.endsWith("_raw")) {
-        columns.put(name, feature.getInt64List.getValueList.asScala.map(_.toLong).toSeq)
+        columns.put(name, feature.getBytesList.getValueList.asScala.map(_.toByteArray).toSeq)
       } else if (name.endsWith("_index")) {
         columns.put(name, feature.getInt64List.getValueList.asScala.map(_.toLong).toSeq)
       } else if (name.endsWith("_value")) {

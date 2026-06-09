@@ -129,17 +129,17 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   private class MovieRateCount(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val buck = sample.movie_rate_count match {
-        case 0 => 0
-        case x if x <= 2 => 1
-        case x if x <= 5 => 2
-        case x if x <= 10 => 3
-        case x if x <= 20 => 4
-        case x if x <= 50 => 5
-        case x if x <= 100 => 6
-        case x if x <= 200 => 7
-        case x if x <= 500 => 8
-        case x if x <= 1000 => 9
-        case _ => 10
+        case 0 => 1
+        case x if x <= 2 => 2
+        case x if x <= 5 => 3
+        case x if x <= 10 => 4
+        case x if x <= 20 => 5
+        case x if x <= 50 => 6
+        case x if x <= 100 => 7
+        case x if x <= 200 => 8
+        case x if x <= 500 => 9
+        case x if x <= 1000 => 10
+        case _ => 11
       }
       raw_list.append(sample.movie_rate_count.toString)
       feature_list.append(buck)
@@ -154,15 +154,15 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   private class MovieAvgRate(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val buck = sample.movie_avg_rate match {
-        case x if x <= 0.0 => 0
-        case x if x <= 1.0 => 1
-        case x if x <= 2.0 => 2
-        case x if x <= 2.5 => 3
-        case x if x <= 3.0 => 4
-        case x if x <= 3.5 => 5
-        case x if x <= 4.0 => 6
-        case x if x <= 4.5 => 7
-        case _ => 8
+        case x if x <= 0.0 => 1
+        case x if x <= 1.0 => 2
+        case x if x <= 2.0 => 3
+        case x if x <= 2.5 => 4
+        case x if x <= 3.0 => 5
+        case x if x <= 3.5 => 6
+        case x if x <= 4.0 => 7
+        case x if x <= 4.5 => 8
+        case _ => 9
       }
       raw_list.append(sample.movie_avg_rate.toString)
       feature_list.append(buck)
@@ -231,13 +231,13 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   private class MoviePublishYear(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val buck = sample.movie_publish_year match {
-        case x if x == 0 => 0
-        case x if x < 1970 => 1
-        case x if x < 1980 => 2
-        case x if x < 1990 => 3
-        case x if x < 2000 => 4
-        case x if x < 2010 => 5
-        case _ => 6
+        case x if x == 0 => 1
+        case x if x < 1970 => 2
+        case x if x < 1980 => 3
+        case x if x < 1990 => 4
+        case x if x < 2000 => 5
+        case x if x < 2010 => 6
+        case _ => 7
       }
       raw_list.append(sample.movie_publish_year.toString)
       feature_list.append(buck)
@@ -492,10 +492,10 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         case _: Exception => 0
       }
       val buck = days match {
-        case 0 => 0
-        case x if x <= 7 => 1 // 1周内
-        case x if x <= 30 => 2 // 1月内
-        case _ => 3 // 老用户
+        case 0 => 1
+        case x if x <= 7 => 2 // 1周内
+        case x if x <= 30 => 3 // 1月内
+        case _ => 4 // 老用户
       }
       raw_list.append(sample.user_active_day.toString)
       feature_list.append(buck)
@@ -560,12 +560,12 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       }
       // 分桶: 用户打分数量区间
       val buck = cnt match {
-        case x if x == 0 => 0
-        case x if x <= 10 => 1
-        case x if x <= 30 => 2
-        case x if x <= 50 => 3
-        case x if x <= 100 => 4
-        case _ => 5
+        case x if x == 0 => 1
+        case x if x <= 10 => 2
+        case x if x <= 30 => 3
+        case x if x <= 50 => 4
+        case x if x <= 100 => 5
+        case _ => 6
       }
       raw_list.append(sample.user_rate_15day_cnt.toString)
       feature_list.append(buck)
@@ -583,12 +583,12 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       }
       // 分桶: 用户打分数量区间
       val buck = cnt match {
-        case x if x == 0 => 0
-        case x if x <= 10 => 1
-        case x if x <= 30 => 2
-        case x if x <= 50 => 3
-        case x if x <= 100 => 4
-        case _ => 5
+        case x if x == 0 => 1
+        case x if x <= 10 => 2
+        case x if x <= 30 => 3
+        case x if x <= 50 => 4
+        case x if x <= 100 => 5
+        case _ => 6
       }
       raw_list.append(sample.user_rate_30day_cnt.toString)
       feature_list.append(buck)
@@ -609,10 +609,10 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       }
       // 低分用户(＜3)、中庸3、高分偏好(≥4)
       val buck = avg match {
-        case x if x == 0.0 => 0
-        case x if x < 3.0 => 1 // 低分用户
-        case x if x < 4.0 => 2 // 中庸
-        case _ => 3 // 高分偏好
+        case x if x == 0.0 => 1
+        case x if x < 3.0 => 2 // 低分用户
+        case x if x < 4.0 => 3 // 中庸
+        case _ => 4 // 高分偏好
       }
       raw_list.append(sample.user_avg_rate.toString)
       feature_list.append(buck)
@@ -644,9 +644,10 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       }
       // 低分用户(＜3)、中庸3、高分偏好(≥4)
       val buck = avg match {
-        case x if x < 3.0 => 1 // 低分用户
-        case x if x < 4.0 => 2 // 中庸
-        case _ => 3 // 高分偏好
+        case x if x == 0.0 => 1
+        case x if x < 3.0 => 2 // 低分用户
+        case x if x < 4.0 => 3 // 中庸
+        case _ => 4 // 高分偏好
       }
       raw_list.append(sample.user_avg_rate_7day.toString)
       feature_list.append(buck)
@@ -678,10 +679,10 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       }
       // 低分用户(＜3)、中庸3、高分偏好(≥4)
       val buck = avg match {
-        case x if x == 0.0 => 0
-        case x if x < 3.0 => 1 // 低分用户
-        case x if x < 4.0 => 2 // 中庸
-        case _ => 3 // 高分偏好
+        case x if x == 0.0 => 1
+        case x if x < 3.0 => 2 // 低分用户
+        case x if x < 4.0 => 3 // 中庸
+        case _ => 4 // 高分偏好
       }
       raw_list.append(sample.user_avg_rate_15day.toString)
       feature_list.append(buck)
@@ -694,6 +695,40 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     override def parse(sample: T): RawFeature = {
       try {
         val avg = sample.user_avg_rate_15day
+        raw_list.append(avg.toString)
+        feature_list.append(1L)
+        value_list.append(avg)
+      } catch {
+        case _: Exception => 3.0F
+      }
+      this
+    }
+  }
+
+  private class UserAvgRate30Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
+      val avg = try {
+        sample.user_avg_rate_30day
+      } catch {
+        case _: Exception => 3.0
+      }
+      val buck = avg match {
+        case x if x == 0.0 => 1
+        case x if x < 3.0 => 2
+        case x if x < 4.0 => 3
+        case _ => 4
+      }
+      raw_list.append(sample.user_avg_rate_30day.toString)
+      feature_list.append(buck)
+      value_list.append(1.0F)
+      this
+    }
+  }
+
+  private class UserAvgRate30DayContinue(f_i: Int, f_n: String) extends ContinuousFeature[T](f_i, f_n) {
+    override def parse(sample: T): RawFeature = {
+      try {
+        val avg = sample.user_avg_rate_30day
         raw_list.append(avg.toString)
         feature_list.append(1L)
         value_list.append(avg)
@@ -741,11 +776,11 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         } else if (genres.intersect(user_genres_rate).nonEmpty) {
           2
         } else {
-          0
+          1
         }
         hasOverlap
       } catch {
-        case _: Exception => 0
+        case _: Exception => 1
       }
       raw_list.append(hit.toString)
       feature_list.append(hit)
@@ -1208,22 +1243,20 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     val user_avg_rate = new UserAvgRate(14, "user_avg_rate")
     val user_avg_rate_7day = new UserAvgRate7Day(15, "user_avg_rate_7day")
     val user_avg_rate_15day = new UserAvgRate15Day(16, "user_avg_rate_15day")
+    val user_avg_rate_30day = new UserAvgRate30Day(17, "user_avg_rate_30day")
     raw_cate_features.append(user_avg_rate)
     raw_cate_features.append(user_avg_rate_7day)
     raw_cate_features.append(user_avg_rate_15day)
+    raw_cate_features.append(user_avg_rate_30day)
 
     val user_avg_rate_continue = new UserAvgRateContinue(23, "user_avg_rate_continue")
     val user_avg_rate_7day_continue = new UserAvgRate7DayContinue(24, "user_avg_rate_7day_continue")
     val user_avg_rate_15day_continue = new UserAvgRate15DayContinue(25, "user_avg_rate_15day_continue")
+    val user_avg_rate_30day_continue = new UserAvgRate30DayContinue(26, "user_avg_rate_30day_continue")
     raw_conti_features.append(user_avg_rate_continue)
     raw_conti_features.append(user_avg_rate_7day_continue)
     raw_conti_features.append(user_avg_rate_15day_continue)
-
-    // user lifecycle
-    // val user_active_day = new UserActiveDay(20, "user_active_day")
-    // raw_cate_features.append(user_active_day)
-    // raw_cate_features.append(user_active_day)
-
+    raw_conti_features.append(user_avg_rate_30day_continue)
 
     // ============================== item ==============================
     // val movie_id = new MovieID(101, "movie_id")
