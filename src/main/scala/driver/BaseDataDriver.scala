@@ -1,25 +1,30 @@
 package driver
 
-import com.google.common.io.{LittleEndianDataInputStream, LittleEndianDataOutputStream}
-import encoder.vectorizer.FeatureEncoder
-import encoder.vectorizer.FeatureType
-import org.apache.spark.sql.SparkSession
+import org.apache.hadoop.io.BytesWritable
+import org.apache.hadoop.io.NullWritable
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
-import org.apache.spark.rdd.RDD
-import org.json.{JSONArray, JSONObject}
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types.{ArrayType, FloatType, LongType, StructField, StructType}
+import org.apache.spark.storage.StorageLevel
+import org.apache.spark.rdd.RDD
+import com.google.common.io.{LittleEndianDataInputStream, LittleEndianDataOutputStream}
+import org.tensorflow.hadoop.io.TFRecordFileOutputFormat
 import org.tensorflow.example.Example
-import utils.LogUtils.green_println
-import utils.ParquetRecord
+import org.json.{JSONArray, JSONObject}
 
 import java.io.{BufferedInputStream, BufferedOutputStream, BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter}
 import java.net.URI
 import java.util.concurrent.ThreadLocalRandom
-import scala.collection.immutable
 import scala.collection.mutable
 import scala.collection.mutable.{ArrayBuffer, HashMap}
 import scala.reflect.ClassTag
+
+import utils.LogUtils.green_println
+import utils.ParquetRecord
+import encoder.vectorizer.FeatureEncoder
+import encoder.vectorizer.FeatureType
 
 /**
  * 特征值统计量:
@@ -30,9 +35,8 @@ import scala.reflect.ClassTag
  */
 final class FeatureStat(var sum: Double = 0.0D, var powerSum: Double = 0.0D, var count: Long = 0L) extends Serializable {
   def add(value: Float): FeatureStat = {
-    val valueDouble = value.toDouble
-    sum += valueDouble
-    powerSum += valueDouble * valueDouble
+    sum += value.toDouble
+    powerSum += value.toDouble * value.toDouble
     count += 1L
     this
   }
@@ -368,13 +372,15 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
           pos_map: HashMap[(Int, Long), PosInfo],
           target_map: HashMap[Int, Int],
           pos_dim: HashMap[(String, Int, Int), Int],
-          inputDir: String,
-          outputDir: String,
+          input_dir: String,
+          output_dir: String,
           parts: Int): (HashMap[(Int, Long), PosInfo], HashMap[Int, Int], HashMap[(String, Int, Int), Int]) = {
 
-    val trainingSample = loadTrainingSamples(spark, inputDir, parts)
-      .filter { case (sample, _) => keepSample(sample, sample_ratio) }
-      .persist(org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER)
+    val trainingSample = loadTrainingSamples(spark, input_dir, parts)
+      .filter {
+        case (sample, _) => keepSample(sample, sample_ratio)
+      }
+      .persist(StorageLevel.MEMORY_AND_DISK_SER)
 
     val ret_counts = trainingSample
       .map(s => (s._2, 1))
@@ -382,7 +388,7 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
       .collect()
 
     for (ret <- ret_counts) {
-      green_println(s"Transformed ret_counts ${ret._1} ${ret._2}")
+      green_println(s"ret_counts ${ret._1} ${ret._2}")
     }
 
     val sample_num: Array[(Int, Int)] = trainingSample
@@ -414,10 +420,10 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
       }
       total_number += occurrence
     }
-    green_println(s"total valid target number ${total_number}")
-    green_println(s"new targets added = ${newTargetCount}")
-    green_println(s"existing targets reused = ${existingTargetCount}")
-    green_println(s"targets below threshold = ${ignoredTargetCount}")
+    green_println(s"new targets added: ${newTargetCount}")
+    green_println(s"existing targets reused: ${existingTargetCount}")
+    green_println(s"targets below threshold: ${ignoredTargetCount}")
+    green_println(s"total target number: ${total_number}")
 
     val train_sample_hash_arr = trainingSample
       .map { case (sample, _) => sample }
@@ -470,7 +476,7 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
         } else {
           pos_dim(fieldKey)
         }
-        val merged = pos_map.get((f_index, hash)) match {
+        val merged: PosInfo = pos_map.get((f_index, hash)) match {
           case Some(history) => history.copy(pos = pos).merge(stat)
           case None => PosInfo(pos, stat.sum, stat.powerSum, stat.count)
         }
@@ -487,19 +493,21 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
     green_println(s"Transformed after target_map = ${target_map.size} (累加后的target个数)")
     green_println(s"Transformed after pos_dim = ${pos_dim.size} (累加后的特征域个数)")
 
-    val tfRecordPath = s"${outputDir.stripSuffix("/")}/${yesterday}/tfrecord"
-    val parquetPath = s"${outputDir.stripSuffix("/")}/${yesterday}/parquet"
+    val tfRecordPath = s"${output_dir.stripSuffix("/")}/${yesterday}/tfrecord"
+    val parquetPath = s"${output_dir.stripSuffix("/")}/${yesterday}/parquet"
     val parquetSchema = parquet_schema
     val parquetFieldNames = parquetSchema.fieldNames.toSeq
     val posMapLocalImmutable: collection.Map[(Int, Long), Int] = pos_map_local
     val targetMapImmutable: collection.Map[Int, Int] = target_map
-    val parquetRows = trainingSample.map { case (sample, _) => sample }
+
+    val parquetRows = trainingSample
+      .map { case (sample, _) => sample }
       .mapPartitions(samples => {
         val encoder = feature_encoder
         samples.flatMap(sample => {
           val (record, has_feature, has_target) = parse_a_sample_parquet(sample, encoder, posMapLocalImmutable, targetMapImmutable)
           if (has_feature && has_target) {
-            Some(org.apache.spark.sql.Row.fromSeq(record.to_seq(parquetFieldNames)))
+            Some(Row.fromSeq(record.to_seq(parquetFieldNames)))
           } else {
             None
           }
@@ -511,7 +519,8 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
       .mode("overwrite")
       .parquet(parquetPath)
 
-    trainingSample.map { case (sample, _) => sample }
+    trainingSample
+      .map { case (sample, _) => sample }
       .mapPartitions(samples => {
         val encoder = feature_encoder
         samples.flatMap(sample => {
@@ -524,11 +533,11 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
         })
       })
       .map(example => {
-        val key = new org.apache.hadoop.io.BytesWritable(example.toByteArray)
-        val value = org.apache.hadoop.io.NullWritable.get()
+        val key = new BytesWritable(example.toByteArray)
+        val value = NullWritable.get()
         (key, value)
       })
-      .saveAsNewAPIHadoopFile[org.tensorflow.hadoop.io.TFRecordFileOutputFormat](tfRecordPath)
+      .saveAsNewAPIHadoopFile[TFRecordFileOutputFormat](tfRecordPath)
 
     (pos_map, target_map, pos_dim)
   }

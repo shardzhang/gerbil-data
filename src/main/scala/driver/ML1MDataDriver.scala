@@ -1,17 +1,16 @@
 package driver
 
-import sample.ML1MTrainSample
-import encoder.FeatureEncoder4ML1M
-import encoder.vectorizer.{FeatureEncoder, FeatureType}
 import org.apache.commons.cli.{DefaultParser, Options}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
+
+import sample.ML1MTrainSample
+import encoder.FeatureEncoder4ML1M
+import encoder.vectorizer.FeatureEncoder
 import utils.LogUtils.green_println
 import utils.LogUtils.setLogLevel
-import scala.collection
-import scala.collection.mutable.HashMap
 
 /**
  * @author shard zhang
@@ -99,7 +98,6 @@ object ML1MDataDriver extends BaseDataDriver[ML1MTrainSample] {
     val output_dir = cl.getOptionValue("output_dir")
     val parts = cl.getOptionValue("parts").toInt
     val yesterday = cl.getOptionValue("yesterday")
-    val dayBeforeYesterday = utils.DateUtils.getDay(-1, yesterday, "yyyyMMdd")
 
     val spark = SparkSession.builder()
       .appName(this.getClass.getSimpleName.stripSuffix("$"))
