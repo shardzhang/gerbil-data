@@ -181,11 +181,10 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
    * @return 是否存在对应 json 文件并恢复成功
    */
   protected def restoreFromJson(path: String,
-                                yesterday: String,
                                 posMap: mutable.HashMap[(Int, Long), PosInfo],
                                 targetMap: mutable.HashMap[Int, Int],
                                 posDimMap: mutable.HashMap[(String, Int, Int), Int]): Boolean = {
-    val jsonPath = s"${path}/${yesterday}/pos_map.json"
+    val jsonPath = s"${path}/pos_map.json"
     val fs = FileSystem.get(URI.create(jsonPath), new Configuration())
     val file = new Path(jsonPath)
     if (!fs.exists(file)) {
@@ -238,9 +237,8 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
    * 恢复 pos_map.txt, 仅恢复特征域维度信息.
    */
   protected def restoreFromText(path: String,
-                                yesterday: String,
                                 posDimMap: mutable.HashMap[(String, Int, Int), Int]): Boolean = {
-    val textPath = s"${path}/${yesterday}/pos_map.txt"
+    val textPath = s"${path}/pos_map.txt"
     val fs = FileSystem.get(URI.create(textPath), new Configuration())
     val file = new Path(textPath)
     if (!fs.exists(file)) {
@@ -321,13 +319,12 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
    *   2. target_map: Map[target_id, pos]
    *   3. pos_dim:    Map[(f_name, f_index, f_type), dim]
    */
-  def restore_pos_map(path: String,
-                      yesterday: String): (HashMap[(Int, Long), PosInfo], HashMap[Int, Int], HashMap[(String, Int, Int), Int]) = {
+  def restore_pos_map(path: String): (HashMap[(Int, Long), PosInfo], HashMap[Int, Int], HashMap[(String, Int, Int), Int]) = {
     val pos_dim_map = new mutable.HashMap[(String, Int, Int), Int]()
     val pos_map = new mutable.HashMap[(Int, Long), PosInfo]()
     val target_map = new mutable.HashMap[Int, Int]()
 
-    restoreFromJson(path, yesterday, pos_map, target_map, pos_dim_map)
+    restoreFromJson(path, pos_map, target_map, pos_dim_map)
 
     green_println(s"read pos_map size = ${pos_map.size}")
     green_println(s"read target_map size = ${target_map.size}")
@@ -350,7 +347,6 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
     saveToJson(path, yesterday, pos_map, target_map, pos_dim)
     saveToText(path, yesterday, pos_dim)
     saveToBin(path, yesterday, pos_map, target_map, pos_dim)
-
     green_println(s"write pos_map size: ${pos_map.size}")
     green_println(s"write target_map size: ${target_map.size}")
     green_println(s"write pos_dim size: ${pos_dim.size}")
@@ -546,7 +542,7 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
                           target_map: collection.Map[Int, Int],
                           pos_dim: collection.Map[(String, Int, Int), Int]): Unit = {
     do {
-      val binPath = s"${path}/${yesterday}/pos_map.bin"
+      val binPath = s"${path}/pos_map.bin"
       green_println(s"write pos_map.bin path = ${binPath}")
       val fs = FileSystem.get(URI.create(binPath), new Configuration())
       val writer = new LittleEndianDataOutputStream(new BufferedOutputStream(fs.create(new Path(binPath), true)))
@@ -603,7 +599,7 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
                            yesterday: String,
                            pos_dim: collection.Map[(String, Int, Int), Int]): Unit = {
     do {
-      val textPath = s"${path}/${yesterday}/pos_map.txt"
+      val textPath = s"${path}/pos_map.txt"
       green_println(s"write pos_map.text path = ${textPath}")
       val fs = FileSystem.get(URI.create(textPath), new Configuration())
       val writer = new BufferedWriter(new OutputStreamWriter(fs.create(new Path(textPath), true), "utf-8"))
@@ -629,7 +625,7 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
                            target_map: collection.Map[Int, Int],
                            pos_dim: collection.Map[(String, Int, Int), Int]): Unit = {
     do {
-      val jsonPath = s"${path}/${yesterday}/pos_map.json"
+      val jsonPath = s"${path}/pos_map.json"
       green_println(s"write pos_map.json path = ${jsonPath}")
       val fs = FileSystem.get(URI.create(jsonPath), new Configuration())
       val writer = new BufferedWriter(new OutputStreamWriter(fs.create(new Path(jsonPath), true), "utf-8"))

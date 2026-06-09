@@ -121,7 +121,7 @@ object ML1MDataDriver extends BaseDataDriver[ML1MTrainSample] {
       green_println(outputPath.toString + " exists and delete.")
       fs.delete(outputPath, true)
     }
-    val (pos_map_before, target_map_before, pos_dim_before) = restore_pos_map(output_dir, dayBeforeYesterday)
+    val (pos_map_before, target_map_before, pos_dim_before) = restore_pos_map(output_dir)
     val (pos_map_after, target_map_after, pos_dim_after) = run(
       spark, yesterday, feature_threshold, target_threshold, sample_ratio,
       pos_map_before, target_map_before, pos_dim_before, input_dir, output_dir, parts

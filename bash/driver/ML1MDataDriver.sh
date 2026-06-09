@@ -10,7 +10,7 @@ source ../conf/env.sh
 
 day="20260609"
 input_path=${ML_1M_PATH}
-output_path=${input_path}
+output_path=${input_path}/train_sample
 
 "${SPARK_HOME}/bin/spark-submit" \
 --master 'local[*]' \
