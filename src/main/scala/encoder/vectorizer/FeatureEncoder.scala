@@ -1,6 +1,7 @@
 package encoder.vectorizer
 import java.nio.{ByteBuffer, ByteOrder}
 import java.nio.charset.StandardCharsets.UTF_8
+import scala.collection
 import scala.collection.mutable
 import scala.collection.immutable
 import scala.collection.mutable.{HashMap, ArrayBuffer}
@@ -44,7 +45,7 @@ abstract class RawTarget[T] {
    * @param target_map raw target to encoded target
    * @return
    */
-  def add(builder: Example.Builder, target_map: immutable.HashMap[Int, Int]): Boolean = {
+  def add(builder: Example.Builder, target_map: collection.Map[Int, Int]): Boolean = {
     if (target_map == null) {
       builder.getFeaturesBuilder
         .putFeature("target", FloatListFeatureEncoder.encode(Seq(target)))
@@ -102,7 +103,7 @@ abstract class RawFeature(f_i: Int, f_n: String, f_t: Byte) {
    * @param pos_map ((f_index, hash), pos)
    * @return
    */
-  def add(dim: Long, builder: Example.Builder, pos_map: immutable.HashMap[(Int, Long), Int]): Boolean
+  def add(dim: Long, builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int]): Boolean
 
   /**
    * TSV
@@ -118,7 +119,7 @@ abstract class RawFeature(f_i: Int, f_n: String, f_t: Byte) {
    * @param dim     hash space dimension
    * @param pos_map (f_name, List[pos])
    */
-  def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: immutable.HashMap[(Int, Long), Int]): Boolean
+  def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: collection.Map[(Int, Long), Int]): Boolean
 }
 
 abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureType.Continuous) extends RawFeature(f_i, f_n, f_t) {
@@ -212,7 +213,7 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
       .putFeature(f_name + "_value", FloatListFeatureEncoder.encode(value_buf))
   }
 
-  override def add(dim: Long, builder: Example.Builder, pos_map: immutable.HashMap[(Int, Long), Int]): Boolean = {
+  override def add(dim: Long, builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     if (pos_map == null) {
       add(dim, builder)
       return feature_list.exists(_ != 0)
@@ -256,7 +257,7 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
     }
   }
 
-  override def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: immutable.HashMap[(Int, Long), Int]): Boolean = {
+  override def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     if (pos_map == null) {
       add(dim, encoded_map)
       return feature_list.exists(_ != 0)
@@ -417,7 +418,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
    * @param pos_map ((f_index, hash), pos)
    * @return has_feature
    */
-  override def add(dim: Long, builder: Example.Builder, pos_map: immutable.HashMap[(Int, Long), Int]): Boolean = {
+  override def add(dim: Long, builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     val raw_buf = new ArrayBuffer[String]()      // 原始特征值, for human debug
     val pos_buf = new ArrayBuffer[Long]()        // 编码后位置, for model
     val value_buf = new ArrayBuffer[Float]()     // 频次/权重, for model
@@ -496,7 +497,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
    * @param pos_map (f_name, List[pos])
    * @return
    */
-  override def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: immutable.HashMap[(Int, Long), Int]): Boolean = {
+  override def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     var has_feature = false
     for (fea <- feature_list) {
       if (fea != 0) {
@@ -768,7 +769,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
    * @param pos_map ((f_index, hash), pos)
    * @return
    */
-  override def add(dim: Long, builder: Example.Builder, pos_map: immutable.HashMap[(Int, Long), Int]): Boolean = {
+  override def add(dim: Long, builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     // https://zhuanlan.zhihu.com/p/661834313
     val raw_buf = new ArrayBuffer[String]()      // 原始特征值, for human debug
     val pos_buf = new ArrayBuffer[Long]()        // 编码后位置, for model
@@ -851,7 +852,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
    * @param pos_map Map[(f_index, hash), pos]
    * @return
    */
-  def add(input: T, dim: Long, builder: Example.Builder, pos_map: immutable.HashMap[(Int, Long), Int]): Boolean = {
+  def add(input: T, dim: Long, builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     for (c_f <- rnfs) {
       c_f.clear()
       c_f.parse(input)
@@ -918,7 +919,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
    * @param dim     hash space dimension
    * @param pos_map (f_name, List[pos])
    */
-  override def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: immutable.HashMap[(Int, Long), Int]): Boolean = {
+  override def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     for (i <- 0 until rnfs.length) {
       indexes(i) = 0
     }
@@ -1111,7 +1112,7 @@ abstract class FeatureEncoder[T] {
    * @param target_map
    * @return
    */
-  def encode(input: T, dim: Long, builder: Example.Builder, pos_map: immutable.HashMap[(Int, Long), Int], target_map: immutable.HashMap[Int, Int]): (Boolean, Boolean) = {
+  def encode(input: T, dim: Long, builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int], target_map: collection.Map[Int, Int]): (Boolean, Boolean) = {
     for (raw_f <- raw_cate_features) {
       raw_f.clear()
       raw_f.parse(input)
@@ -1193,7 +1194,7 @@ abstract class FeatureEncoder[T] {
    * @param target_map
    * @return
    */
-  def encode(input: T, dim: Long, parquet_builder: ParquetRecordBuilder, pos_map: immutable.HashMap[(Int, Long), Int], target_map: immutable.HashMap[Int, Int]): (Boolean, Boolean) = {
+  def encode(input: T, dim: Long, parquet_builder: ParquetRecordBuilder, pos_map: collection.Map[(Int, Long), Int], target_map: collection.Map[Int, Int]): (Boolean, Boolean) = {
     val example_builder = Example.newBuilder()
     val (has_feature, has_target) = encode(input, dim, example_builder, pos_map, target_map)
     parquet_builder.clear()

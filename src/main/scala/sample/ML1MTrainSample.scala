@@ -3,6 +3,7 @@ package sample
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, ZoneId}
+import scala.collection
 import scala.collection.mutable
 import scala.collection.immutable
 import scala.collection.mutable.ArrayBuffer
@@ -242,7 +243,7 @@ object ML1MTrainSample {
    * @param movie_info Map[movie_id, (title, genres)]
    * @return
    */
-  def parseSample(row: Row, movie_info: immutable.Map[Int, (String, Array[String])]): (ML1MTrainSample, Boolean) = {
+  def parseSample(row: Row, movie_info: collection.Map[Int, (String, Array[String])]): (ML1MTrainSample, Boolean) = {
     val train_sample = new ML1MTrainSample()
     var ret = true
 
@@ -337,17 +338,6 @@ object ML1MTrainSample {
       train_sample.age = user_profile.getString("age")
       train_sample.occupation = user_profile.getString("occupation")
       train_sample.zip_code = user_profile.getString("zip_code")
-    }
-
-    // 解析用户统计特征
-    json = try {
-      row.getAs[String]("user_stat_feature")
-    } catch {
-      case _: Exception => null
-    }
-    if (json != null && json != "{}") {
-      val user_stat_feature = JSON.parseObject(json)
-      train_sample.user_active_day = user_stat_feature.getIntValue("active_days")
     }
 
     // parse user behavior

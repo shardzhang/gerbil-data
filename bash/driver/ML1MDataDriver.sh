@@ -8,13 +8,9 @@ cd "$(dirname "$0")"
 
 source ../conf/env.sh
 
+day="20260609"
 input_path=${ML_1M_PATH}
-output_path=${ML_1M_OUTPUT_PATH}
-if [[ -d "$output_path" ]]; then
-  echo "目录已存在, 正在删除: $output_path"
-  rm -rf "$output_path"
-  mkdir -p $output_path
-fi
+output_path=${input_path}
 
 "${SPARK_HOME}/bin/spark-submit" \
 --master 'local[*]' \
@@ -38,5 +34,6 @@ ${JAR_PATH} \
 --target_threshold 1 \
 --sample_ratio 1.0 \
 --input_dir ${input_path} \
---base_dir ${output_path} \
+--output_dir ${output_path} \
+--yesterday ${day} \
 --parts 10
