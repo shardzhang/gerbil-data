@@ -390,31 +390,31 @@ object ML1MTrainSample {
                 ret = false
                 Double.MaxValue
             }
-            if (dur >= 0) {
+            if (dur > 0) {
               train_sample.user_movie_rates.append((item_id, rate))
               train_sample.user_rate_cnt += 1
               train_sample.user_avg_rate = parseUserAvgRate(train_sample.user_movie_rates)
               train_sample.user_rate_std = parseUserRateStd(train_sample.user_movie_rates)
             }
-            if (dur >= 0 && dur <= 1) {
+            if (dur > 0 && dur <= 1) {
               train_sample.user_movie_rate_1days.append((item_id, rate))
             }
-            if (dur >= 0 && dur <= 3) {
+            if (dur > 0 && dur <= 3) {
               train_sample.user_movie_rate_3days.append((item_id, rate))
             }
-            if (dur >= 0 && dur <= 7) {
+            if (dur > 0 && dur <= 7) {
               train_sample.user_movie_rate_7days.append((item_id, rate))
               train_sample.user_rate_7day_cnt += 1
               train_sample.user_avg_rate_7day = parseUserAvgRate(train_sample.user_movie_rate_7days)
               train_sample.user_rate_std_7day = parseUserRateStd(train_sample.user_movie_rate_7days)
             }
-            if (dur >= 0 && dur <= 15) {
+            if (dur > 0 && dur <= 15) {
               train_sample.user_movie_rate_15days.append((item_id, rate))
               train_sample.user_rate_15day_cnt += 1
               train_sample.user_avg_rate_15day = parseUserAvgRate(train_sample.user_movie_rate_15days)
               train_sample.user_rate_std_15day = parseUserRateStd(train_sample.user_movie_rate_15days)
             }
-            if (dur >= 0 && dur <= 30) {
+            if (dur > 0 && dur <= 30) {
               userMovieRate30Days.append((item_id, rate))
               train_sample.user_rate_30day_cnt += 1
               train_sample.user_avg_rate_30day = parseUserAvgRate(userMovieRate30Days)
@@ -423,23 +423,23 @@ object ML1MTrainSample {
 
             for (g <- genres) {
               val gen = g.trim.toLowerCase()
-              if (dur >= 0) {
+              if (dur > 0) {
                 user_genres_rate_cnt_map(gen) += 1
                 user_genres_rate_map(gen) += rate
               }
-              if (dur >= 0 && dur <= 1) {
+              if (dur > 0 && dur <= 1) {
                 user_genres_rate_cnt_1day_map(gen) += 1
                 user_genres_rate_1day_map(gen) += rate
               }
-              if (dur >= 0 && dur <= 3) {
+              if (dur > 0 && dur <= 3) {
                 user_genres_rate_cnt_3day_map(gen) += 1
                 user_genres_rate_3day_map(gen) += rate
               }
-              if (dur >= 0 && dur <= 7) {
+              if (dur > 0 && dur <= 7) {
                 user_genres_rate_cnt_7day_map(gen) += 1
                 user_genres_rate_7day_map(gen) += rate
               }
-              if (dur >= 0 && dur <= 15) {
+              if (dur > 0 && dur <= 15) {
                 user_genres_rate_cnt_15day_map(gen) += 1
                 user_genres_rate_15day_map(gen) += rate
               }
