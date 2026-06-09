@@ -80,6 +80,14 @@ final case class PosInfo(pos: Int, sum: Double = 0.0D, powerSum: Double = 0.0D, 
 object ML1MDataDriver extends Serializable {
   val max_dim: Long = 1L << 60
 
+  private def legacyPosInfo(pos: Int, mean: Double, std: Double, count: Long): PosInfo = {
+    val safeCount = math.max(count, 1L)
+    val variance = math.max(std * std - 0.000001D, 0.0D)
+    val sum = mean * safeCount.toDouble
+    val powerSum = (variance + mean * mean) * safeCount.toDouble
+    PosInfo(pos, sum, powerSum, safeCount)
+  }
+
   private def readText(reader: BufferedReader): String = {
     val content = new StringBuilder()
     var line = reader.readLine()
@@ -283,7 +291,7 @@ object ML1MDataDriver extends Serializable {
         val pos = reader.readInt()
         val mean = reader.readDouble()
         val std = reader.readDouble()
-        pos_map.put((f_index, hash), PosInfo(pos, mean, std, 1L))
+        pos_map.put((f_index, hash), legacyPosInfo(pos, mean, std, 1L))
         pos_dim_map.put((f_name, f_index, f_type), dim)
         size = size - 1
       }
@@ -764,6 +772,7 @@ object ML1MDataDriver extends Serializable {
     opts.addOption(null, "input_dir", true, "The base dir of input data")
     opts.addOption(null, "base_dir", true, "The base dir of path")
     opts.addOption(null, "parts", true, "The TrainingNumPartitions")
+    opts.addOption(null, "yesterday", true, "The date")
 
     val parser = new DefaultParser()
     val cl = parser.parse(opts, args)
@@ -773,7 +782,8 @@ object ML1MDataDriver extends Serializable {
     val input_dir = cl.getOptionValue("input_dir")
     val base_dir = cl.getOptionValue("base_dir")
     val parts = cl.getOptionValue("parts").toInt
-    val yesterday = "20260601"
+    val yesterday = cl.getOptionValue("yesterday")
+    val dayBeforeYesterday = utils.DateUtils.getDay(-1, yesterday, "yyyyMMdd")
 
     val spark = SparkSession.builder()
       .appName(this.getClass.getSimpleName.stripSuffix("$"))
@@ -799,7 +809,7 @@ object ML1MDataDriver extends Serializable {
       green_println(outputPath.toString + " exists and delete.")
       fs.delete(outputPath, true)
     }
-    val (pos_map_before, target_map_before, pos_dim_before) = restore_pos_map(base_dir, yesterday)
+    val (pos_map_before, target_map_before, pos_dim_before) = restore_pos_map(base_dir, dayBeforeYesterday)
     val (pos_map_after, target_map_after, pos_dim_after) = run(
       spark, yesterday, feature_threshold, target_threshold, sample_ratio,
       pos_map_before, target_map_before, pos_dim_before, input_dir, base_dir, parts

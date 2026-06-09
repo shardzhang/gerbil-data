@@ -12,7 +12,7 @@ object DateUtils {
   /**
    * 获取date的前后n天的日期, 且输出和输入的日期格式一致
    *
-   * @param diff
+   * @param diff >0 表示未来, <0表示过去
    * @param date
    * @param pattern
    */

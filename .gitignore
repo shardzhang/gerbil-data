@@ -20,3 +20,7 @@ target/
 .metals/
 .bloop/
 bash/driver/tmp/
+.classpath/
+.factorypath/
+.project/
+.settings/
