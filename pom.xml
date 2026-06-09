@@ -37,7 +37,14 @@
             <version>3.0.9</version>
             <scope>test</scope>
         </dependency>
-        
+
+        <!-- LittleEndianDataInputStream, LittleEndianDataOutputStream -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>18.0</version>
+        </dependency>
+
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_${scala.binary.version}</artifactId>
