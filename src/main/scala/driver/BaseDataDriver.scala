@@ -6,7 +6,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types.{ArrayType, FloatType, LongType, StructField, StructType}
+import org.apache.spark.sql.types.{ArrayType, FloatType, LongType, StringType, StructField, StructType}
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.rdd.RDD
 import com.google.common.io.{LittleEndianDataInputStream, LittleEndianDataOutputStream}
@@ -20,7 +20,6 @@ import java.util.concurrent.ThreadLocalRandom
 import scala.collection.mutable
 import scala.collection.mutable.{ArrayBuffer, HashMap}
 import scala.reflect.ClassTag
-
 import utils.LogUtils.green_println
 import utils.ParquetRecord
 import encoder.vectorizer.FeatureEncoder
@@ -141,10 +140,11 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
     val fields = new ArrayBuffer[StructField]()
     fields.append(StructField("target", FloatType, nullable = true))
     for ((f_name, _) <- feature_encoder.get_field_name_and_index()) {
+      fields.append(StructField(f_name + "_raw", ArrayType(StringType, containsNull = false), nullable = true))
       fields.append(StructField(f_name + "_index", ArrayType(LongType, containsNull = false), nullable = true))
       fields.append(StructField(f_name + "_value", ArrayType(FloatType, containsNull = false), nullable = true))
     }
-    StructType(fields.toSeq)
+    StructType(fields)
   }
 
   /**
@@ -486,12 +486,12 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
         pos_dim.put(fieldKey, math.max(currentDim, pos + 1))
       }
     }
-    green_println(s"Transformed ignored_pos_count = ${ignoredPosCount} (本次run()中, 所有特征域内, 被过滤特征值个数)")
-    green_println(s"Transformed reused_history_pos_count = ${reusedHistoryPosCount} (本次run()中, 低频但沿用历史词表的特征值个数)")
-    green_println(s"Transformed pos_map_local = ${pos_map_local.size} (本次run()中, 所有特征域内, 满足阈值条件的特征值个数)")
-    green_println(s"Transformed after pos_map = ${pos_map.size} (累加后的特征值个数)")
-    green_println(s"Transformed after target_map = ${target_map.size} (累加后的target个数)")
-    green_println(s"Transformed after pos_dim = ${pos_dim.size} (累加后的特征域个数)")
+    green_println(s"ignored_pos_count: ${ignoredPosCount}. 被过滤特征值总个数")
+    green_println(s"reused_history_pos_count: ${reusedHistoryPosCount}. 低频但沿用历史词表的特征值总个数")
+    green_println(s"pos_map_local: ${pos_map_local.size}. 有效特征值总个数")
+    green_println(s"pos_map: ${pos_map.size}. 累加后的特征值总个数")
+    green_println(s"target_map: ${target_map.size}. 累加后的target总个数")
+    green_println(s"pos_dim: ${pos_dim.size}. 累加后的特征域总个数")
 
     val tfRecordPath = s"${output_dir.stripSuffix("/")}/${yesterday}/tfrecord"
     val parquetPath = s"${output_dir.stripSuffix("/")}/${yesterday}/parquet"
@@ -500,7 +500,7 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
     val posMapLocalImmutable: collection.Map[(Int, Long), Int] = pos_map_local
     val targetMapImmutable: collection.Map[Int, Int] = target_map
 
-    val parquetRows = trainingSample
+    val parquetRows: RDD[Row] = trainingSample
       .map { case (sample, _) => sample }
       .mapPartitions(samples => {
         val encoder = feature_encoder
