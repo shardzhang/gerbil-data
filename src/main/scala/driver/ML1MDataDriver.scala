@@ -44,7 +44,7 @@ object ML1MDataDriver extends BaseDataDriver[ML1MTrainSample] {
       s"""
          | select * from join_sample
          |""".stripMargin
-    green_println(s"Transformed sql=${sql}")
+    green_println(s"sql=${sql}")
 
     spark.sql(sql).rdd
       .repartition(parts)
