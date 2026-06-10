@@ -1,11 +1,11 @@
 package encoder.vectorizer
+
 import java.nio.{ByteBuffer, ByteOrder}
 import java.nio.charset.StandardCharsets.UTF_8
-import scala.collection
 import scala.collection.mutable
-import scala.collection.immutable
-import scala.collection.mutable.{HashMap, ArrayBuffer}
+import scala.collection.mutable.ArrayBuffer
 import org.tensorflow.example.Example
+
 import tfrecords.serde.BytesListFeatureEncoder
 import tfrecords.serde.{FloatListFeatureEncoder, Int64ListFeatureEncoder}
 import utils.MurmurHash3.LongPair
@@ -144,12 +144,6 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
     raw_list.clear()
     feature_list.clear()
     value_list.clear()
-  }
-
-  override def toString: String = {
-    raw_list.mkString(",")
-    feature_list.mkString(",")
-    value_list.mkString(",")
   }
 
   /**
@@ -307,10 +301,15 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
     value_list.clear()
   }
 
-  override def toString: String = {
-    raw_list.mkString(",")
-    feature_list.mkString(",")
-    value_list.mkString(",")
+  def computeHash(fea: Long, dim: Long): Long = {
+    bytebuf.clear()
+    bytebuf.putInt(0, f_index)
+    bytebuf.putLong(4, fea)
+    val p: LongPair = new MurmurHash3.LongPair()
+    MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
+    var hash = p.val1 % dim
+    if (hash < 0) hash += dim
+    hash
   }
 
   /**
@@ -322,18 +321,8 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
     val pos_list = new ArrayBuffer[Long]()
     for (i <- feature_list.indices) {
       val fea = feature_list(i)
-      val value = value_list(i)
-      val raw_fea = raw_list(i)
       if (fea != 0) {
-        bytebuf.clear()
-        bytebuf.putInt(0, f_index)
-        bytebuf.putLong(4, fea)
-        val p: LongPair = new MurmurHash3.LongPair()
-        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
-        var hash = p.val1 % dim
-        if (hash < 0) {
-          hash += dim
-        }
+        val hash = computeHash(fea, dim)
         pos_list.append(hash)
       }
     }
@@ -352,16 +341,8 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
       val value = value_list(i)
       val raw_fea = raw_list(i)
       if (fea != 0) {
-        bytebuf.clear()
-        bytebuf.putInt(0, f_index)
-        bytebuf.putLong(4, fea)
-        val fmt = f_index.toString + ":" + raw_fea.toString
-        val p: LongPair = new MurmurHash3.LongPair()
-        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
-        var hash: Long = p.val1 % dim
-        if (hash < 0) {
-          hash += dim
-        }
+        val fmt = f_index.toString + ":" + raw_fea
+        val hash = computeHash(fea, dim)
         pos_info_list.append((f_name, f_index, f_type, fmt, hash, value))
       }
     }
@@ -378,7 +359,6 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
     val raw_buf = new ArrayBuffer[String]()      // 原始特征值, for human debug
     val pos_buf = new ArrayBuffer[Long]()        // 编码后位置, for model
     val value_buf = new ArrayBuffer[Float]()     // 频次/权重, for model
-    // raw_buf pos_buf value_buf 三者size不等则抛出异常
     if (raw_buf.size != pos_buf.size || raw_buf.size != value_buf.size) {
       throw new IllegalArgumentException("raw_buf, pos_buf, value_buf size not equal")
     } 
@@ -390,15 +370,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
       val fea = feature_list(i)
       val value = value_list(i)
       if (fea != 0) {
-        bytebuf.clear()
-        bytebuf.putInt(0, f_index)
-        bytebuf.putLong(4, fea)
-        val p: LongPair = new MurmurHash3.LongPair()
-        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
-        var hash: Long = p.val1 % dim
-        if (hash < 0) {
-          hash += dim
-        }
+        val hash = computeHash(fea, dim)
         raw_buf.append(raw_fea)
         pos_buf.append(hash)
         value_buf.append(value)
@@ -422,7 +394,6 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
     val raw_buf = new ArrayBuffer[String]()      // 原始特征值, for human debug
     val pos_buf = new ArrayBuffer[Long]()        // 编码后位置, for model
     val value_buf = new ArrayBuffer[Float]()     // 频次/权重, for model
-    // raw_buf pos_buf value_buf 三者size不等则抛出异常
     if (raw_buf.size != pos_buf.size || raw_buf.size != value_buf.size) {
       throw new IllegalArgumentException("raw_buf, pos_buf, value_buf size not equal")
     } 
@@ -436,18 +407,10 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
       val fea = feature_list(i)
       val value = value_list(i)
       if (fea != 0) {
-        bytebuf.clear()
-        bytebuf.putInt(0, f_index)
-        bytebuf.putLong(4, fea)
-        val p: LongPair = new MurmurHash3.LongPair()
-        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
-        var hash: Long = p.val1 % dim
-        if (hash < 0) {
-          hash += dim
-        }
+        val hash = computeHash(fea, dim)
         if (pos_map.contains((f_index, hash))) {
-          val pos = pos_map((f_index, hash))
           raw_buf.append(raw_fea)
+          val pos = pos_map((f_index, hash))
           pos_buf.append(pos)
           value_buf.append(value)
           has_feature = true
@@ -468,18 +431,9 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
    * @param encoded_map
    */
   override def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]]): Unit = {
-    encoded_map.clear()
     for (fea <- feature_list) {
       if (fea != 0) {
-        bytebuf.clear()
-        bytebuf.putInt(0, f_index)
-        bytebuf.putLong(4, fea)
-        val p: LongPair = new MurmurHash3.LongPair()
-        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
-        var hash: Long = p.val1 % dim
-        if (hash < 0) {
-          hash += dim
-        }
+        val hash = computeHash(fea, dim)
         if (encoded_map.contains(f_name)) {
           encoded_map(f_name).append(hash)
         } else {
@@ -501,15 +455,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
     var has_feature = false
     for (fea <- feature_list) {
       if (fea != 0) {
-        bytebuf.clear()
-        bytebuf.putInt(0, f_index)
-        bytebuf.putLong(4, fea)
-        val p: LongPair = new MurmurHash3.LongPair()
-        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
-        var hash: Long = p.val1 % dim
-        if (hash < 0) {
-          hash += dim
-        }
+        val hash = computeHash(fea, dim)
         if (pos_map.contains((f_index, hash))) {
           val pos = pos_map((f_index, hash))
           if (encoded_map.contains(f_name)) {
@@ -532,6 +478,22 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
 
   val bytebuf: ByteBuffer = ByteBuffer.allocate(key_len).order(ByteOrder.LITTLE_ENDIAN)
 
+  def computeHash(dim: Long): Long = {
+    bytebuf.clear()
+    var shift = 0
+    for (i <- 0 until rnfs.length) {
+      bytebuf.putInt(shift, rnfs(i).f_index)
+      shift += 4
+      bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
+      shift += 8
+    }
+    val p: LongPair = new MurmurHash3.LongPair()
+    MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
+    var hash = p.val1 % dim
+    if (hash < 0) hash += dim
+    hash
+  }
+
   /**
    *
    * @param input
@@ -553,26 +515,14 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
         }
       }
       if (!skip) {
-        bytebuf.clear()
-        var shift = 0
-        // format: f_index:f_value__xx__f_index:f_value
         var fmt: String = ""
         for (i <- 0 until rnfs.length) {
-          bytebuf.putInt(shift, rnfs(i).f_index)
           fmt += rnfs(i).f_index.toString + ":"
-          shift += 4
-          bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
           fmt += rnfs(i).raw_list(indexes(i))
-          shift += 8
           fmt += "__xx__"
         }
         fmt = fmt.stripSuffix("__xx__")
-        val p: LongPair = new MurmurHash3.LongPair()
-        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
-        var hash = p.val1 % dim
-        if (hash < 0) {
-          hash += dim
-        }
+        val hash = computeHash(dim)
         buf.append((f_name, f_index, f_type, fmt, hash, 1.0F))
       }
 
@@ -628,28 +578,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
         }
       }
       if (!skip) {
-        bytebuf.clear()
-        var shift = 0
-        // format: f_index:f_value__xx__f_index:f_value
-        var fmt: String = ""
-        for (i <- 0 until rnfs.length) {
-          bytebuf.putInt(shift, rnfs(i).f_index)
-          fmt += rnfs(i).f_index.toString + ":"
-          shift += 4
-
-          bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
-          fmt += rnfs(i).raw_list(indexes(i)).toString
-          shift += 8
-          fmt += "__xx__"
-        }
-        fmt = fmt.stripSuffix("__xx__")
-        val p: LongPair = new MurmurHash3.LongPair()
-        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
-        var hash: Long = p.val1 % dim
-        if (hash < 0) {
-          hash += dim
-        }
-        buf.append(hash)
+        buf.append(computeHash(dim))
       }
 
       var i = rnfs.length - 1
@@ -698,28 +627,15 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
         }
       }
       if (!skip) {
-        bytebuf.clear()
-        var shift = 0
-        // format: f_index:f_value__xx__f_index:f_value
         var fmt: String = ""
         for (i <- 0 until rnfs.length) {
-          bytebuf.putInt(shift, rnfs(i).f_index)
           fmt += rnfs(i).f_index.toString + ":"
-          shift += 4
-          bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
           fmt += rnfs(i).raw_list(indexes(i))
-          shift += 8
           fmt += "__xx__"
         }
         fmt = fmt.stripSuffix("__xx__")
-        val p: LongPair = new MurmurHash3.LongPair()
-        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
-        var hash = p.val1 % dim
-        if (hash < 0) {
-          hash += dim
-        }
         raw_buf.append(fmt)
-        pos_buf.append(hash)
+        pos_buf.append(computeHash(dim))
         value_buf.append(1.0F)
         has_feature = true
       }
@@ -793,29 +709,18 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
       }
 
       if (!skip) {
-        bytebuf.clear()
-        var shift = 0
-        // format: f_index:f_value__xx__f_index:f_value
         var fmt: String = ""
         for (i <- 0 until rnfs.length) {
-          bytebuf.putInt(shift, rnfs(i).f_index)
           fmt += rnfs(i).f_index.toString + ":"
-          shift += 4
-          bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
           fmt += rnfs(i).raw_list(indexes(i)).toString
-          shift += 8
           fmt += "__xx__"
         }
         fmt = fmt.stripSuffix("__xx__")
-        val p: LongPair = new MurmurHash3.LongPair()
-        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
-        var hash = p.val1 % dim
-        if (hash < 0) {
-          hash += dim
-        }
+        val hash = computeHash(dim)
         if (pos_map.contains((f_index, hash))) {
-          pos_buf.append(pos_map((f_index, hash)))
+          val pos = pos_map((f_index, hash))
           raw_buf.append(fmt)
+          pos_buf.append(pos)
           value_buf.append(1.0F)
           has_feature = true
         }
@@ -879,21 +784,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
         }
       }
       if (!skip) {
-        bytebuf.clear()
-        var shift = 0
-        for (i <- 0 until rnfs.length) {
-          bytebuf.putInt(shift, rnfs(i).f_index)
-          shift += 4
-          bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
-          shift += 8
-        }
-        val p: LongPair = new MurmurHash3.LongPair()
-        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
-        var hash = p.val1 % dim
-        if (hash < 0) {
-          hash += dim
-        }
-        encoded_map.getOrElseUpdate(f_name, ArrayBuffer.empty[Long]).append(hash)
+        encoded_map.getOrElseUpdate(f_name, ArrayBuffer.empty[Long]).append(computeHash(dim))
       }
 
       var i = rnfs.length - 1
@@ -933,21 +824,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
         }
       }
       if (!skip) {
-        bytebuf.clear()
-        var shift = 0
-        for (i <- 0 until rnfs.length) {
-          bytebuf.putInt(shift, rnfs(i).f_index)
-          shift += 4
-          bytebuf.putLong(shift, rnfs(i).feature_list(indexes(i)))
-          shift += 8
-        }
-        val p: LongPair = new MurmurHash3.LongPair()
-        MurmurHash3.murmurhash3_x64_128(bytebuf.array(), 0, key_len, SEED, p)
-        var hash = p.val1 % dim
-        if (hash < 0) {
-          hash += dim
-        }
-        pos_map.get((f_index, hash)).foreach { pos =>
+        pos_map.get((f_index, computeHash(dim))).foreach { pos =>
           encoded_map.getOrElseUpdate(f_name, ArrayBuffer.empty[Long]).append(pos)
           has_feature = true
         }
@@ -1091,6 +968,7 @@ abstract class FeatureEncoder[T] {
       raw_f.parse(input)
     }
     target.parse(input).add(builder)
+
     for (raw_f <- raw_cate_features) {
       raw_f.add(dim, builder)
     }
@@ -1166,6 +1044,9 @@ abstract class FeatureEncoder[T] {
       raw_f.clear()
       raw_f.parse(input)
     }
+
+    target.parse(input)
+
     for (raw_f: CategoricalFeature[T] <- raw_cate_features) {
       raw_f.add(dim, encoded_map)
     }

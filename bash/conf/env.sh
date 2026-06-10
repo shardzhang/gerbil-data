@@ -16,7 +16,7 @@ PROTOC_VERSION="3.6.0"
 
 if [[ $(uname -s) == "Darwin" ]]; then
   echo "Running on macOS"
-  export BASE_HOME="/Users/dazhang/PycharmProject"
+  export BASE_HOME="~/PycharmProject"
   PROTOC_ARCHIVE="protoc-${PROTOC_VERSION}-osx-x86_64.zip"
   PROTOC_HOME="/usr/local/bin/protoc-${PROTOC_VERSION}-osx-x86_64"
   if /usr/libexec/java_home -v 1.8 >/dev/null 2>&1; then
@@ -51,7 +51,7 @@ export ML_1M_OUTPUT_PATH="${BASE_HOME}/data/ml-1m-output"
 export PROJECT_HOME="${BASE_HOME}/gerbil-data"
 
 # Spark
-export SPARK_HOME=$( [[ $(uname -s) == "Darwin" ]] && echo "/Users/dazhang/Library/Caches/spark-3.4.0-bin-hadoop3" || echo "/opt/spark-3.4.0-bin-hadoop3" )
+export SPARK_HOME=$( [[ $(uname -s) == "Darwin" ]] && echo "~/Library/Caches/spark-3.4.0-bin-hadoop3" || echo "/opt/spark-3.4.0-bin-hadoop3" )
 export PATH=$SPARK_HOME/bin:$PATH
 export SPARK_LOCAL_IP=127.0.0.1
 
