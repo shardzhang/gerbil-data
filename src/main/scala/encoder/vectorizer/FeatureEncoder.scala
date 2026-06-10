@@ -17,11 +17,11 @@ import utils.ParquetRecord.ParquetRecordBuilder
  * @date 2026/6/1 20:28
  * @note
  *
- *  get: 计算位置值
- *  重新编码:
+ *  1. get: 计算位置值
+ *  2. 重新编码:
  *    - 类别/交叉特征: 为每一个hash值从0开始分配一个连续的唯一位置
  *    - 连续特征: 保留 feature_list 中提供的局部维度编号, 以维持多值向量的维度顺序
- *  add: 再次用与get同样逻辑计算位置值, 然后根据pos_map直接查询重编码后的pos值
+ *  3. add: 再次用与get同样逻辑计算位置值, 然后根据pos_map直接查询重编码后的pos值
  */
 object FeatureType {
   val Continuous: Byte = 0

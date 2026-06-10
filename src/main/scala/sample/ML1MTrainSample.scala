@@ -214,6 +214,9 @@ object ML1MTrainSample {
   }
 
   private def parseUserAvgRate(user_movie_rates: ArrayBuffer[(Int, Int)]): Float = {
+    if (user_movie_rates.isEmpty) {
+      return 3.0F
+    }
     val total_rate = user_movie_rates.map(r => r._2).sum
     val total_cnt = user_movie_rates.length
     total_rate * 1.0F / total_cnt
@@ -375,7 +378,7 @@ object ML1MTrainSample {
               case e: Exception =>
                 green_println("Parse user_movie_rate: " + e.toString + " " + item)
                 ret = false
-                Double.MaxValue
+                -1.0
             }
             if (dur > 0) {
               train_sample.user_movie_rates.append((item_id, rate))

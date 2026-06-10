@@ -3,6 +3,7 @@ package encoder
 import vectorizer.{CrossFeature, FeatureEncoder, FeatureType, RawFeature, RawTarget, CategoricalFeature, ContinuousFeature}
 import sample.ML1MTrainSample
 import utils.MurmurHash3
+import utils.LogUtils.green_println
 
 /**
  * ML1M 样本特征编码器
@@ -68,7 +69,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val movie_id = try {
         sample.item_id.toInt
       } catch {
-        case _: Exception => 0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0
       }
       raw_list.append(sample.item_id)
       feature_list.append(movie_id)
@@ -97,8 +100,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
           }
         }
       } catch {
-        case _: Exception =>
-      }
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          }
       this
     }
   }
@@ -176,7 +180,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val avg = try {
         sample.movie_avg_rate.toFloat
       } catch {
-        case _: Exception => 0.0F
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0.0F
       }
       raw_list.append(avg.toString)
       feature_list.append(1L)
@@ -210,7 +216,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val rank = try {
         sample.movie_hot_rank
       } catch {
-        case _: Exception => 99999
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          99999
       }
       val buck = rank match {
         case x if x <= 100 => 4 // 爆款
@@ -256,7 +264,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val user_id = try {
         sample.user_id.toInt
       } catch {
-        case _: Exception => 0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0
       }
       raw_list.append(sample.user_id.toString)
       feature_list.append(user_id)
@@ -274,7 +284,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val age = try {
         sample.age.toInt
       } catch {
-        case _: Exception => 0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0
       }
       raw_list.append(sample.age.toString)
       feature_list.append(age)
@@ -308,7 +320,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val occupation = try {
         sample.occupation.toInt
       } catch {
-        case _: Exception => 0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0
       }
       raw_list.append(sample.occupation.toString)
       feature_list.append(occupation)
@@ -327,7 +341,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         MurmurHash3.murmurhash3_x64_128(sample.zip_code.getBytes(), 0, sample.zip_code.length, SEED, p)
         p.val1
       } catch {
-        case _: Exception => 0L
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0L
       }
       raw_list.append(sample.zip_code.toString)
       feature_list.append(hash)
@@ -345,7 +361,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val std = try {
         sample.user_rate_std
       } catch {
-        case _: Exception => 0.0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0.0
       }
       // 分桶: 1=完全一致, 2=稳定, 3=一般, 4=挑剔
       val buck = std match {
@@ -366,7 +384,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val std = try {
         sample.user_rate_std
       } catch {
-        case _: Exception => 0.0F
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0.0F
       }
       raw_list.append(std.toString)
       feature_list.append(1L)
@@ -380,7 +400,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val std = try {
         sample.user_rate_std_7day
       } catch {
-        case _: Exception => 0.0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0.0
       }
       // 分桶: 1=完全一致, 2=稳定, 3=一般, 4=挑剔
       val buck = std match {
@@ -401,7 +423,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val std = try {
         sample.user_rate_std_7day
       } catch {
-        case _: Exception => 0.0F
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0.0F
       }
       raw_list.append(std.toString)
       feature_list.append(1L)
@@ -415,7 +439,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val std = try {
         sample.user_rate_std_15day
       } catch {
-        case _: Exception => 0.0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0.0
       }
       // 分桶: 1=完全一致, 2=稳定, 3=一般, 4=挑剔
       val buck = std match {
@@ -436,7 +462,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val std = try {
         sample.user_rate_std_15day
       } catch {
-        case _: Exception => 0.0F
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0.0F
       }
       raw_list.append(std.toString)
       feature_list.append(1L)
@@ -450,7 +478,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val std = try {
         sample.user_rate_std_30day
       } catch {
-        case _: Exception => 0.0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0.0
       }
       // 分桶: 1=完全一致, 2=稳定, 3=一般, 4=挑剔
       val buck = std match {
@@ -471,7 +501,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val std = try {
         sample.user_rate_std_30day
       } catch {
-        case _: Exception => 0.0F
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0.0F
       }
       raw_list.append(std.toString)
       feature_list.append(1L)
@@ -489,7 +521,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val days = try {
         sample.user_active_day
       } catch {
-        case _: Exception => 0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0
       }
       val buck = days match {
         case 0 => 1
@@ -512,7 +546,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val cnt = try {
         sample.user_rate_cnt
       } catch {
-        case _: Exception => 0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0
       }
       // 分桶: 用户打分数量区间
       val buck = cnt match {
@@ -534,7 +570,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val cnt = try {
         sample.user_rate_7day_cnt
       } catch {
-        case _: Exception => 0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0
       }
       // 分桶: 用户打分数量区间
       val buck = cnt match {
@@ -556,7 +594,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val cnt = try {
         sample.user_rate_15day_cnt
       } catch {
-        case _: Exception => 0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0
       }
       // 分桶: 用户打分数量区间
       val buck = cnt match {
@@ -579,7 +619,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val cnt = try {
         sample.user_rate_30day_cnt
       } catch {
-        case _: Exception => 0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0
       }
       // 分桶: 用户打分数量区间
       val buck = cnt match {
@@ -605,7 +647,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val avg = try {
         sample.user_avg_rate
       } catch {
-        case _: Exception => 3.0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          3.0
       }
       // 低分用户(＜3)、中庸3、高分偏好(≥4)
       val buck = avg match {
@@ -629,7 +673,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         feature_list.append(1L)
         value_list.append(avg)
       } catch {
-        case _: Exception => 3.0F
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          3.0F
       }
       this
     }
@@ -640,7 +686,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val avg = try {
         sample.user_avg_rate_7day
       } catch {
-        case _: Exception => 3.0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          3.0
       }
       // 低分用户(＜3)、中庸3、高分偏好(≥4)
       val buck = avg match {
@@ -664,7 +712,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         feature_list.append(1L)
         value_list.append(avg)
       } catch {
-        case _: Exception => 3.0F
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          3.0F
       }
       this
     }
@@ -675,7 +725,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val avg = try {
         sample.user_avg_rate_15day
       } catch {
-        case _: Exception => 3.0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          3.0
       }
       // 低分用户(＜3)、中庸3、高分偏好(≥4)
       val buck = avg match {
@@ -699,7 +751,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         feature_list.append(1L)
         value_list.append(avg)
       } catch {
-        case _: Exception => 3.0F
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          3.0F
       }
       this
     }
@@ -710,7 +764,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       val avg = try {
         sample.user_avg_rate_30day
       } catch {
-        case _: Exception => 3.0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          3.0
       }
       val buck = avg match {
         case x if x == 0.0 => 1
@@ -733,7 +789,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         feature_list.append(1L)
         value_list.append(avg)
       } catch {
-        case _: Exception => 3.0F
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          3.0F
       }
       this
     }
@@ -756,8 +814,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
           }
         }
       } catch {
-        case _: Exception =>
-      }
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          }
       this
     }
   }
@@ -780,7 +839,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         }
         hasOverlap
       } catch {
-        case _: Exception => 1
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          1
       }
       raw_list.append(hit.toString)
       feature_list.append(hit)
@@ -803,7 +864,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         feature_list.append(flag)
         value_list.append(1.0F)
       } catch {
-        case _: Exception => 0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0
       }
       this
     }
@@ -823,7 +886,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         feature_list.append(flag)
         value_list.append(1.0F)
       } catch {
-        case _: Exception => 0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0
       }
       this
     }
@@ -843,7 +908,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         feature_list.append(flag)
         value_list.append(1.0F)
       } catch {
-        case _: Exception => 0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0
       }
 
       this
@@ -864,7 +931,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
         feature_list.append(flag)
         value_list.append(1.0F)
       } catch {
-        case _: Exception => 0
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          0
       }
       this
     }
@@ -895,7 +964,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
           case _ => 5
         }
       } catch {
-        case _: Exception => 3
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          3
       }
       raw_list.append(finalRate.toString)
       feature_list.append(buk)
@@ -915,7 +986,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
           rates.sum / rates.size
         }
       } catch {
-        case _: Exception => 3.0F
+        case e: Exception =>
+          green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
+          3.0F
       }
       raw_list.append(finalRate.toString)
       feature_list.append(1L)

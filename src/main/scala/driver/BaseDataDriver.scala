@@ -276,43 +276,46 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
                                posMap: mutable.HashMap[(Int, Long), PosInfo],
                                targetMap: mutable.HashMap[Int, Int],
                                posDimMap: mutable.HashMap[(String, Int, Int), Int]): Unit = {
+    val binPath = s"${path}/${yesterday}/pos_map.bin"
     try {
-      val binPath = s"${path}/${yesterday}/pos_map.bin"
       val fs = FileSystem.get(URI.create(binPath), new Configuration())
       val reader = new LittleEndianDataInputStream(new BufferedInputStream(fs.open(new Path(binPath))))
+      try {
+        val timestamp = reader.readLong()
+        var size = reader.readInt()
+        green_println(s"timestamp: ${timestamp}")
+        green_println(s"pos_map size: ${size}")
 
-      val timestamp = reader.readLong()
-      var size = reader.readInt()
-      green_println(s"timestamp: ${timestamp}")
-      green_println(s"pos_map size: ${size}")
-
-      while (size > 0) {
-        val f_name = reader.readUTF()
-        val f_index = reader.readInt()
-        val f_type = reader.readInt()
-        val dim = reader.readInt()
-        val hash = reader.readLong()
-        val pos = reader.readInt()
-        val mean = reader.readDouble()
-        val std = reader.readDouble()
-        posMap.put((f_index, hash), legacyPosInfo(pos, mean, std, 1L))
-        posDimMap.put((f_name, f_index, f_type), dim)
-        size = size - 1
-      }
-
-      size = reader.readInt()
-      green_println(s"target_map size = ${size}")
-      while (size > 0) {
-        val target_id = reader.readInt()
-        val pos = reader.readInt()
-        if (!targetMap.contains(target_id)) {
-          targetMap.put(target_id, pos)
+        while (size > 0) {
+          val f_name = reader.readUTF()
+          val f_index = reader.readInt()
+          val f_type = reader.readInt()
+          val dim = reader.readInt()
+          val hash = reader.readLong()
+          val pos = reader.readInt()
+          val mean = reader.readDouble()
+          val std = reader.readDouble()
+          posMap.put((f_index, hash), legacyPosInfo(pos, mean, std, 1L))
+          posDimMap.put((f_name, f_index, f_type), dim)
+          size = size - 1
         }
-        size = size - 1
+
+        size = reader.readInt()
+        green_println(s"target_map size = ${size}")
+        while (size > 0) {
+          val target_id = reader.readInt()
+          val pos = reader.readInt()
+          if (!targetMap.contains(target_id)) {
+            targetMap.put(target_id, pos)
+          }
+          size = size - 1
+        }
+      } finally {
+        reader.close()
       }
-      reader.close()
     } catch {
-      case e: Throwable => println(e.toString)
+      case e: Exception =>
+        green_println(s"restoreFromBin failed for ${binPath}: ${e.toString}")
     }
   }
 

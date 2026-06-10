@@ -44,6 +44,7 @@ public class TFRecordFileInputFormat extends FileInputFormat<BytesWritable, Null
       private TFRecordReader reader;
       private long length;
       private long begin;
+      private boolean isCompressed;
       private byte[] current;
 
       @Override public void initialize(InputSplit split, TaskAttemptContext context)
@@ -61,8 +62,10 @@ public class TFRecordFileInputFormat extends FileInputFormat<BytesWritable, Null
         FSDataInputStream fsIn = fs.open(file, TFRecordIOConf.getBufferSize(conf));
         if (codec != null) {
           fsdis = codec.createInputStream(fsIn);
+          isCompressed = true;
         } else {
           fsdis = fsIn;
+          isCompressed = false;
         }
         reader = new TFRecordReader(fsdis, TFRecordIOConf.getDoCrc32Check(conf));
       }
@@ -81,6 +84,9 @@ public class TFRecordFileInputFormat extends FileInputFormat<BytesWritable, Null
       }
 
       @Override public float getProgress() throws IOException, InterruptedException {
+        if (isCompressed) {
+          return 0.0f;
+        }
         return (((Seekable)fsdis).getPos() - begin) / (length + 1e-6f);
       }
 
