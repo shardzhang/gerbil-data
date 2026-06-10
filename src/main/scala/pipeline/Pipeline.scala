@@ -12,18 +12,17 @@ import scala.collection.mutable.{ArrayBuffer, HashMap}
 import scala.reflect.ClassTag
 import utils.LogUtils.green_println
 import featurizer.core.{FeatureType, Featurizer}
-import pipeline.serde.{PosMapSerDe, SampleSerDe}
+import pipeline.serde.{PosMapSerDe, SampleWriter}
 import pipeline.stats.{PosInfo, RunningValueStats}
 
 abstract class Pipeline[T: ClassTag] extends Serializable {
+  @transient var hadoopConf: Configuration = new Configuration()
+  @transient val posMapSerDe: PosMapSerDe = new PosMapSerDe(hadoopConf)
+  @transient lazy val writer: SampleWriter[T] = new SampleWriter[T](feature_encoder, max_dim)
+
   def max_dim: Long
 
   def feature_encoder: Featurizer[T]
-
-  @transient var hadoopConf: Configuration = new Configuration()
-
-  @transient val posMapSerDe: PosMapSerDe = new PosMapSerDe(hadoopConf)
-  @transient lazy val sampleSerDe: SampleSerDe[T] = new SampleSerDe[T](feature_encoder, max_dim)
 
   def loadTrainingSamples(spark: SparkSession, inputDir: String, parts: Int): RDD[(T, Boolean)]
 
@@ -187,11 +186,11 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     val targetMapImmutable: collection.Map[Int, Int] = target_map
 
     if (output_format == "parquet" || output_format == "both") {
-      sampleSerDe.writeParquet(trainingSample, spark, parquetSchema, parquetFieldNames, posMapLocalImmutable, targetMapImmutable, parquetPath)
+      writer.writeParquet(trainingSample, spark, parquetSchema, parquetFieldNames, posMapLocalImmutable, targetMapImmutable, parquetPath)
     }
 
     if (output_format == "tfrecord" || output_format == "both") {
-      sampleSerDe.writeTfrecord(trainingSample, posMapLocalImmutable, targetMapImmutable, tfRecordPath)
+      writer.writeTfrecord(trainingSample, posMapLocalImmutable, targetMapImmutable, tfRecordPath)
     }
 
     (pos_map, target_map, pos_dim)

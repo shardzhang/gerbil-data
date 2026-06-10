@@ -12,7 +12,7 @@ import scala.reflect.ClassTag
 import featurizer.core.Featurizer
 import pipeline.stats.PosInfo
 
-class SampleSerDe[T: ClassTag](feature_encoder: Featurizer[T], max_dim: Long) extends Serializable {
+class SampleWriter[T: ClassTag](feature_encoder: Featurizer[T], max_dim: Long) extends Serializable {
 
   def writeParquet(trainingSample: RDD[(T, Boolean)],
                    spark: SparkSession,
