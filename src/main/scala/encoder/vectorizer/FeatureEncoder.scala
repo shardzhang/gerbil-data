@@ -97,40 +97,6 @@ abstract class RawFeature(f_i: Int, f_n: String, f_t: Byte) {
    * @return List[(f_name, f_index, format, hash, value)]
    */
   def get_hash_info(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)]
-
-  /**
-   * TFRecord
-   *
-   * @param dim hash space dimension
-   * @param builder
-   */
-  def add(dim: Long, builder: Example.Builder): Unit
-
-  /**
-   * TFRecord
-   *
-   * @param dim     hash space dimension
-   * @param builder
-   * @param pos_map ((f_index, hash), pos)
-   * @return
-   */
-  def add(dim: Long, builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int]): Boolean
-
-  /**
-   * TSV
-   *
-   * @param dim
-   * @param encoded_map
-   */
-  def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]]): Unit
-
-  /**
-   * TSV
-   *
-   * @param dim     hash space dimension
-   * @param pos_map (f_name, List[pos])
-   */
-  def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: collection.Map[(Int, Long), Int]): Boolean
 }
 
 abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureType.Continuous) extends RawFeature(f_i, f_n, f_t) {
@@ -191,7 +157,7 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
    * @param dim hash space dimension
    * @param builder
    */
-  override def add(dim: Long, builder: Example.Builder): Unit = {
+  def add(dim: Long, builder: Example.Builder): Unit = {
     val raw_buf = new ArrayBuffer[String]()      // 原始特征值, for human debug
     val pos_buf = new ArrayBuffer[Long]()        // 编码后位置, for model
     val value_buf = new ArrayBuffer[Float]()     // 频次/权重, for model
@@ -218,7 +184,7 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
       .putFeature(f_name + "_value", FloatListFeatureEncoder.encode(value_buf))
   }
 
-  override def add(dim: Long, builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int]): Boolean = {
+  def add(dim: Long, builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     if (pos_map == null) {
       add(dim, builder)
       return feature_list.exists(_ != 0)
@@ -250,7 +216,7 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
     has_feature
   }
 
-  override def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]]): Unit = {
+  def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]]): Unit = {
     val pos_buf = new ArrayBuffer[Long]()
     for (fea <- feature_list) {
       if (fea != 0) {
@@ -262,7 +228,7 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
     }
   }
 
-  override def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: collection.Map[(Int, Long), Int]): Boolean = {
+  def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     if (pos_map == null) {
       add(dim, encoded_map)
       return feature_list.exists(_ != 0)
@@ -389,7 +355,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
    * @param dim hash space dimension
    * @param builder
    */
-  override def add(dim: Long, builder: Example.Builder): Unit = {
+  def add(dim: Long, builder: Example.Builder): Unit = {
     val raw_buf = new ArrayBuffer[String]()      // 原始特征值, for human debug
     val pos_buf = new ArrayBuffer[Long]()        // 编码后位置, for model
     val value_buf = new ArrayBuffer[Float]()     // 频次/权重, for model
@@ -424,7 +390,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
    * @param pos_map ((f_index, hash), pos)
    * @return has_feature
    */
-  override def add(dim: Long, builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int]): Boolean = {
+  def add(dim: Long, builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     val raw_buf = new ArrayBuffer[String]()      // 原始特征值, for human debug
     val pos_buf = new ArrayBuffer[Long]()        // 编码后位置, for model
     val value_buf = new ArrayBuffer[Float]()     // 频次/权重, for model
@@ -464,7 +430,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
    * @param dim
    * @param encoded_map
    */
-  override def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]]): Unit = {
+  def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]]): Unit = {
     for (fea <- feature_list) {
       if (fea != 0) {
         val hash = computeHash(fea, dim)
@@ -485,7 +451,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
    * @param pos_map (f_name, List[pos])
    * @return
    */
-  override def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: collection.Map[(Int, Long), Int]): Boolean = {
+  def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     var has_feature = false
     for (fea <- feature_list) {
       if (fea != 0) {
@@ -642,7 +608,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
    * @param dim hash space dimension
    * @param builder
    */
-  override def add(dim: Long, builder: Example.Builder): Unit = {
+  def add(dim: Long, builder: Example.Builder): Unit = {
     // https://zhuanlan.zhihu.com/p/661834313
     val raw_buf = new ArrayBuffer[String]()      // 原始特征值, for human debug
     val pos_buf = new ArrayBuffer[Long]()        // 编码后位置, for model
@@ -693,7 +659,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
    * @param pos_map ((f_index, hash), pos)
    * @return
    */
-  override def add(dim: Long, builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int]): Boolean = {
+  def add(dim: Long, builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     // https://zhuanlan.zhihu.com/p/661834313
     val raw_buf = new ArrayBuffer[String]()      // 原始特征值, for human debug
     val pos_buf = new ArrayBuffer[Long]()        // 编码后位置, for model
@@ -748,7 +714,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
    * @param dim
    * @param encoded_map
    */
-  override def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]]): Unit = {
+  def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]]): Unit = {
     foreachCombination {
       encoded_map.getOrElseUpdate(f_name, ArrayBuffer.empty[Long]).append(computeHash(dim))
     }
@@ -760,7 +726,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
    * @param dim     hash space dimension
    * @param pos_map (f_name, List[pos])
    */
-  override def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: collection.Map[(Int, Long), Int]): Boolean = {
+  def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     var has_feature = false
     foreachCombination {
       pos_map.get((f_index, computeHash(dim))).foreach { pos =>
