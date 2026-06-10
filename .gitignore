@@ -20,8 +20,10 @@ target/
 .metals/
 .bloop/
 bash/driver/tmp/
-.classpath/
-.factorypath/
-.project/
-.settings/
+.classpath
+.factorypath
+.project
+.settings
 .DS_Store
+.vscode/settings.json
+.mvn-local-settings.xml
