@@ -21,5 +21,6 @@ bash/driver/tmp/
 .project
 .settings
 .vscode/settings.json
+bash/conf/env.sh
 **/.DS_Store
 .mvn-local-settings.xml
