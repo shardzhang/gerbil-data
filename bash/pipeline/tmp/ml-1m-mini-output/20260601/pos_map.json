@@ -1,0 +1,1129 @@
+{
+  "yesterday": "20260601",
+  "features": [
+    {
+      "field_name": "user_age",
+      "field_index": 2,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 406137468029146623,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_gender",
+      "field_index": 3,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 475592809992177890,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_occupation",
+      "field_index": 4,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 172166424126197814,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_rate_std",
+      "field_index": 6,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 1141214927524233423,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_rate_std_7day",
+      "field_index": 7,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 682913861955500093,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_rate_std_15day",
+      "field_index": 8,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 1013512850805693903,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_rate_std_30day",
+      "field_index": 9,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 532351222099230115,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_movie_rate_cnt",
+      "field_index": 10,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 360592752664285190,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_movie_rate_cnt_7day",
+      "field_index": 11,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 257336728091865751,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_movie_rate_cnt_15day",
+      "field_index": 12,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 293991093028164930,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_movie_rate_cnt_30day",
+      "field_index": 13,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 1113040957556150452,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_avg_rate",
+      "field_index": 14,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 460096281696444246,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_avg_rate_7day",
+      "field_index": 15,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 442263566225449932,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_avg_rate_15day",
+      "field_index": 16,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 110683898882082976,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_avg_rate_30day",
+      "field_index": 17,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 1056743555977956095,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_rate_std_continue",
+      "field_index": 18,
+      "field_type": 0,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 1,
+          "pos": 1,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 1,
+          "mean": 0,
+          "std": 0.001
+        }
+      ]
+    },
+    {
+      "field_name": "user_rate_std_7day_continue",
+      "field_index": 19,
+      "field_type": 0,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 1,
+          "pos": 1,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 1,
+          "mean": 0,
+          "std": 0.001
+        }
+      ]
+    },
+    {
+      "field_name": "user_rate_std_15day_continue",
+      "field_index": 21,
+      "field_type": 0,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 1,
+          "pos": 1,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 1,
+          "mean": 0,
+          "std": 0.001
+        }
+      ]
+    },
+    {
+      "field_name": "user_rate_std_30day_continue",
+      "field_index": 22,
+      "field_type": 0,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 1,
+          "pos": 1,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 1,
+          "mean": 0,
+          "std": 0.001
+        }
+      ]
+    },
+    {
+      "field_name": "user_avg_rate_continue",
+      "field_index": 23,
+      "field_type": 0,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 1,
+          "pos": 1,
+          "sum": 3,
+          "power_sum": 9,
+          "count": 1,
+          "mean": 3,
+          "std": 0.001
+        }
+      ]
+    },
+    {
+      "field_name": "user_avg_rate_7day_continue",
+      "field_index": 24,
+      "field_type": 0,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 1,
+          "pos": 1,
+          "sum": 3,
+          "power_sum": 9,
+          "count": 1,
+          "mean": 3,
+          "std": 0.001
+        }
+      ]
+    },
+    {
+      "field_name": "user_avg_rate_15day_continue",
+      "field_index": 25,
+      "field_type": 0,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 1,
+          "pos": 1,
+          "sum": 3,
+          "power_sum": 9,
+          "count": 1,
+          "mean": 3,
+          "std": 0.001
+        }
+      ]
+    },
+    {
+      "field_name": "user_avg_rate_30day_continue",
+      "field_index": 26,
+      "field_type": 0,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 1,
+          "pos": 1,
+          "sum": 3,
+          "power_sum": 9,
+          "count": 1,
+          "mean": 3,
+          "std": 0.001
+        }
+      ]
+    },
+    {
+      "field_name": "movie_title",
+      "field_index": 102,
+      "field_type": 1,
+      "dim": 3,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 1098180365524232307,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 1104163906220666021,
+          "pos": 2,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "movie_genres",
+      "field_index": 103,
+      "field_type": 1,
+      "dim": 4,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 455283446279749614,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 185122559323260987,
+          "pos": 2,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 358817676182095097,
+          "pos": 3,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "movie_rate_count",
+      "field_index": 104,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 562767179125507673,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "movie_avg_rate",
+      "field_index": 105,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 685481695033655600,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "movie_genre_cnt",
+      "field_index": 106,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 265166136616548586,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "item_hot_rank",
+      "field_index": 107,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 299974534397081452,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "movie_publish_year",
+      "field_index": 108,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 385332702950952957,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "movie_avg_rate_continue",
+      "field_index": 109,
+      "field_type": 0,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 1,
+          "pos": 1,
+          "sum": 4.5,
+          "power_sum": 20.25,
+          "count": 1,
+          "mean": 4.5,
+          "std": 0.001
+        }
+      ]
+    },
+    {
+      "field_name": "context_time_hour",
+      "field_index": 201,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 282778811379576411,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "context_time_area",
+      "field_index": 202,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 993930743021175948,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "context_time_week",
+      "field_index": 203,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 1085489153914296341,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "context_is_weekend",
+      "field_index": 204,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 1069214378691416081,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_watch_same_genre",
+      "field_index": 351,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 846949757815938755,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_watch_same_genre_1day",
+      "field_index": 352,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 545657663001560625,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_watch_same_genre_3day",
+      "field_index": 353,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 561701324117737909,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_watch_same_genre_7day",
+      "field_index": 354,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 141380640614144553,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_watch_same_genre_15day",
+      "field_index": 355,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 873901813435884565,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_same_genre_avg_rate",
+      "field_index": 356,
+      "field_type": 1,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 374004349519933512,
+          "pos": 1,
+          "sum": 1,
+          "power_sum": 1,
+          "count": 1,
+          "mean": 0,
+          "std": 1
+        }
+      ]
+    },
+    {
+      "field_name": "user_same_genre_avg_rate_continue",
+      "field_index": 357,
+      "field_type": 0,
+      "dim": 2,
+      "entries": [
+        {
+          "hash": 0,
+          "pos": 0,
+          "sum": 0,
+          "power_sum": 0,
+          "count": 0,
+          "mean": 0,
+          "std": 1
+        },
+        {
+          "hash": 1,
+          "pos": 1,
+          "sum": 3,
+          "power_sum": 9,
+          "count": 1,
+          "mean": 3,
+          "std": 0.001
+        }
+      ]
+    }
+  ],
+  "feature_size": 42,
+  "target_size": 1,
+  "targets": {
+    "324": 0
+  }
+}
