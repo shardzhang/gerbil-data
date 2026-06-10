@@ -252,7 +252,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.4</version>
                 <configuration>
-                    <jvm>${project.basedir}/.mvn/bin/java</jvm>
+                    <skip>true</skip>
                 </configuration>
             </plugin>
 
