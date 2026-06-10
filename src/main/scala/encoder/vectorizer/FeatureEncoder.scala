@@ -185,7 +185,7 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
     val pos_buf = new ArrayBuffer[Long]()        // 编码后位置, for model
     val value_buf = new ArrayBuffer[Float]()     // 频次/权重, for model
     // raw_buf pos_buf value_buf 三者size不等则抛出异常
-    if (raw_buf.size != pos_buf.size || raw_buf.size != value_buf.size) {
+    if (raw_list.size != feature_list.size || raw_list.size != value_list.size) {
       throw new IllegalArgumentException("raw_buf, pos_buf, value_buf size not equal")
     }
     raw_buf.append("R:")
@@ -359,7 +359,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
     val raw_buf = new ArrayBuffer[String]()      // 原始特征值, for human debug
     val pos_buf = new ArrayBuffer[Long]()        // 编码后位置, for model
     val value_buf = new ArrayBuffer[Float]()     // 频次/权重, for model
-    if (raw_buf.size != pos_buf.size || raw_buf.size != value_buf.size) {
+    if (raw_list.size != feature_list.size || raw_list.size != value_list.size) {
       throw new IllegalArgumentException("raw_buf, pos_buf, value_buf size not equal")
     } 
     raw_buf.append("R:")
@@ -394,7 +394,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
     val raw_buf = new ArrayBuffer[String]()      // 原始特征值, for human debug
     val pos_buf = new ArrayBuffer[Long]()        // 编码后位置, for model
     val value_buf = new ArrayBuffer[Float]()     // 频次/权重, for model
-    if (raw_buf.size != pos_buf.size || raw_buf.size != value_buf.size) {
+    if (raw_list.size != feature_list.size || raw_list.size != value_list.size) {
       throw new IllegalArgumentException("raw_buf, pos_buf, value_buf size not equal")
     } 
     raw_buf.append("R:")
@@ -494,15 +494,10 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
     hash
   }
 
-  /**
-   *
-   * @param input
-   * @param dim
-   * @return List[(f_name, f_index, format, hash)]
-   */
-  override def get_hash_info(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
+  // body: => Unit（by-name parameter, 每次循环都重新执行 body）
+  def foreachCombination(body: => Unit): Unit = {
     // https://zhuanlan.zhihu.com/p/661834313
-    val buf = ArrayBuffer[(String, Int, Byte, String, Long, Float)]()
+
     for (i <- 0 until rnfs.length) {
       indexes(i) = 0
     }
@@ -515,15 +510,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
         }
       }
       if (!skip) {
-        var fmt: String = ""
-        for (i <- 0 until rnfs.length) {
-          fmt += rnfs(i).f_index.toString + ":"
-          fmt += rnfs(i).raw_list(indexes(i))
-          fmt += "__xx__"
-        }
-        fmt = fmt.stripSuffix("__xx__")
-        val hash = computeHash(dim)
-        buf.append((f_name, f_index, f_type, fmt, hash, 1.0F))
+        body
       }
 
       var i = rnfs.length - 1
@@ -540,6 +527,24 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
       if (!added) {
         done = true
       }
+    }
+  }
+
+  /**
+   *
+   * @param input
+   * @param dim
+   * @return List[(f_name, f_index, format, hash)]
+   */
+  override def get_hash_info(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
+    val buf = ArrayBuffer[(String, Int, Byte, String, Long, Float)]()
+    foreachCombination {
+      var fmt: String = ""
+      for (i <- 0 until rnfs.length) {
+        fmt += rnfs(i).f_index.toString + ":" + rnfs(i).raw_list(indexes(i))
+        if (i < rnfs.length - 1) fmt += "__xx__"
+      }
+      buf.append((f_name, f_index, f_type, fmt, computeHash(dim), 1.0F))
     }
     buf
   }
@@ -564,37 +569,9 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
    * @return ArrayBuffer[hash]
    */
   override def get_hash(dim: Long): ArrayBuffer[Long] = {
-    // https://zhuanlan.zhihu.com/p/661834313
     val buf = new ArrayBuffer[Long]
-    for (i <- indexes.indices) {
-      indexes(i) = 0
-    }
-    var done = false
-    while (!done) {
-      var skip = false
-      for (i <- 0 until rnfs.length) {
-        if (rnfs(i).feature_list.isEmpty || rnfs(i).feature_list(indexes(i)) == 0) {
-          skip = true
-        }
-      }
-      if (!skip) {
-        buf.append(computeHash(dim))
-      }
-
-      var i = rnfs.length - 1
-      var added = false
-      while (!added && i >= 0) {
-        if (indexes(i) == rnfs(i).feature_list.length - 1) {
-          indexes(i) = 0
-          i -= 1
-        } else {
-          indexes(i) += 1
-          added = true
-        }
-      }
-      if (!added) {
-        done = true
-      }
+    foreachCombination {
+      buf.append(computeHash(dim))
     }
     buf
   }
@@ -613,47 +590,18 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
     raw_buf.append("R:")
     pos_buf.append(0L)
     value_buf.append(1.0F)
-    for (i <- 0 until rnfs.length) {
-      indexes(i) = 0
-    }
 
     var has_feature = false
-    var done = false
-    while (!done) {
-      var skip = false
+    foreachCombination {
+      var fmt: String = ""
       for (i <- 0 until rnfs.length) {
-        if (rnfs(i).feature_list.isEmpty || rnfs(i).feature_list(indexes(i)) == 0) {
-          skip = true
-        }
+        fmt += rnfs(i).f_index.toString + ":" + rnfs(i).raw_list(indexes(i))
+        if (i < rnfs.length - 1) fmt += "__xx__"
       }
-      if (!skip) {
-        var fmt: String = ""
-        for (i <- 0 until rnfs.length) {
-          fmt += rnfs(i).f_index.toString + ":"
-          fmt += rnfs(i).raw_list(indexes(i))
-          fmt += "__xx__"
-        }
-        fmt = fmt.stripSuffix("__xx__")
-        raw_buf.append(fmt)
-        pos_buf.append(computeHash(dim))
-        value_buf.append(1.0F)
-        has_feature = true
-      }
-
-      var i = rnfs.length - 1
-      var added = false
-      while (!added && i >= 0) {
-        if (indexes(i) == rnfs(i).feature_list.length - 1) {
-          indexes(i) = 0
-          i -= 1
-        } else {
-          indexes(i) += 1
-          added = true
-        }
-      }
-      if (!added) {
-        done = true
-      }
+      raw_buf.append(fmt)
+      pos_buf.append(computeHash(dim))
+      value_buf.append(1.0F)
+      has_feature = true
     }
     builder.getFeaturesBuilder
       .putFeature(f_name + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
@@ -694,51 +642,20 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
     pos_buf.append(0L)
     value_buf.append(1.0F)
 
-    for (i <- 0 until rnfs.length) {
-      indexes(i) = 0
-    }
-
     var has_feature = false
-    var done = false
-    while (!done) {
-      var skip = false
+    foreachCombination {
+      var fmt: String = ""
       for (i <- 0 until rnfs.length) {
-        if (rnfs(i).feature_list.isEmpty || rnfs(i).feature_list(indexes(i)) == 0) {
-          skip = true
-        }
+        fmt += rnfs(i).f_index.toString + ":" + rnfs(i).raw_list(indexes(i))
+        if (i < rnfs.length - 1) fmt += "__xx__"
       }
-
-      if (!skip) {
-        var fmt: String = ""
-        for (i <- 0 until rnfs.length) {
-          fmt += rnfs(i).f_index.toString + ":"
-          fmt += rnfs(i).raw_list(indexes(i)).toString
-          fmt += "__xx__"
-        }
-        fmt = fmt.stripSuffix("__xx__")
-        val hash = computeHash(dim)
-        if (pos_map.contains((f_index, hash))) {
-          val pos = pos_map((f_index, hash))
-          raw_buf.append(fmt)
-          pos_buf.append(pos)
-          value_buf.append(1.0F)
-          has_feature = true
-        }
-      }
-
-      var i = rnfs.length - 1
-      var added = false
-      while (!added && i >= 0) {
-        if (indexes(i) == rnfs(i).feature_list.length - 1) {
-          indexes(i) = 0
-          i -= 1
-        } else {
-          indexes(i) += 1
-          added = true
-        }
-      }
-      if (!added) {
-        done = true
+      val hash = computeHash(dim)
+      if (pos_map.contains((f_index, hash))) {
+        val pos = pos_map((f_index, hash))
+        raw_buf.append(fmt)
+        pos_buf.append(pos)
+        value_buf.append(1.0F)
+        has_feature = true
       }
     }
     builder.getFeaturesBuilder
@@ -772,35 +689,8 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
    * @param encoded_map
    */
   override def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]]): Unit = {
-    for (i <- 0 until rnfs.length) {
-      indexes(i) = 0
-    }
-    var done = false
-    while (!done) {
-      var skip = false
-      for (i <- 0 until rnfs.length) {
-        if (rnfs(i).feature_list.isEmpty || rnfs(i).feature_list(indexes(i)) == 0) {
-          skip = true
-        }
-      }
-      if (!skip) {
-        encoded_map.getOrElseUpdate(f_name, ArrayBuffer.empty[Long]).append(computeHash(dim))
-      }
-
-      var i = rnfs.length - 1
-      var added = false
-      while (!added && i >= 0) {
-        if (indexes(i) == rnfs(i).feature_list.length - 1) {
-          indexes(i) = 0
-          i -= 1
-        } else {
-          indexes(i) += 1
-          added = true
-        }
-      }
-      if (!added) {
-        done = true
-      }
+    foreachCombination {
+      encoded_map.getOrElseUpdate(f_name, ArrayBuffer.empty[Long]).append(computeHash(dim))
     }
   }
 
@@ -811,38 +701,11 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
    * @param pos_map (f_name, List[pos])
    */
   override def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: collection.Map[(Int, Long), Int]): Boolean = {
-    for (i <- 0 until rnfs.length) {
-      indexes(i) = 0
-    }
-    var done = false
     var has_feature = false
-    while (!done) {
-      var skip = false
-      for (i <- 0 until rnfs.length) {
-        if (rnfs(i).feature_list.isEmpty || rnfs(i).feature_list(indexes(i)) == 0) {
-          skip = true
-        }
-      }
-      if (!skip) {
-        pos_map.get((f_index, computeHash(dim))).foreach { pos =>
-          encoded_map.getOrElseUpdate(f_name, ArrayBuffer.empty[Long]).append(pos)
-          has_feature = true
-        }
-      }
-
-      var i = rnfs.length - 1
-      var added = false
-      while (!added && i >= 0) {
-        if (indexes(i) == rnfs(i).feature_list.length - 1) {
-          indexes(i) = 0
-          i -= 1
-        } else {
-          indexes(i) += 1
-          added = true
-        }
-      }
-      if (!added) {
-        done = true
+    foreachCombination {
+      pos_map.get((f_index, computeHash(dim))).foreach { pos =>
+        encoded_map.getOrElseUpdate(f_name, ArrayBuffer.empty[Long]).append(pos)
+        has_feature = true
       }
     }
     has_feature
@@ -1045,7 +908,7 @@ abstract class FeatureEncoder[T] {
       raw_f.parse(input)
     }
 
-    target.parse(input)
+    target.parse(input) // fixme
 
     for (raw_f: CategoricalFeature[T] <- raw_cate_features) {
       raw_f.add(dim, encoded_map)
