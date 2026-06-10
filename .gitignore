@@ -10,13 +10,9 @@ spark-warehouse/
 hs_err_pid*
 .target
 .idea
-.DS_Store
-*/.DS_Store
-**/.DS_Store
 .target/
 target/
 .mvn/
-.mvn-local-settings.xml
 .metals/
 .bloop/
 bash/driver/tmp/
@@ -24,6 +20,6 @@ bash/driver/tmp/
 .factorypath
 .project
 .settings
-.DS_Store
 .vscode/settings.json
+**/.DS_Store
 .mvn-local-settings.xml
