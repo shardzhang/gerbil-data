@@ -6,24 +6,26 @@ import utils.LogUtils.{green_println, setLogLevel}
 /**
  * @author shard zhang
  * @date 2026/5/29 12:09
- * @note ML-1M 读取原始样本, 拼接用户特征, 物品特征, 用户行为序列特征, 形成最终明文样本
+ * @note ML-1M reads raw samples, joins user profiles, item features, and user behavior sequences to form final plaintext samples
+ *       Reads clean samples and joins user profiles, item features, and user behavior sequences.
  *
- *       DataFrame 负责读原始文本并注册临时表，SQL 负责全部核心业务逻辑
+ *       DataFrames load raw text; SQL handles all transformation logic.
+ *       DataFrames load raw text; SQL handles all transformation logic.
  *
- *       输入:
+ *       Input:
  *       users.dat
  *       movie_feature.csv
  *       clean_sample.csv
  *       user_movie_rate.csv
  *
- *       输出:
+ *       Output:
  *       user_id \t item_id \t time_stamp \t rating \t day \t user_profile \t item_feature \t user_behavior
  *
- *       逻辑:
- *       1. 读取原始文本并拆分字段
- *       2. 过滤非法数据
- *       3. 拼接用户特征 + 物品特征 + 用户行为序列特征
- *       4. 形成最终明文样本
+ *       Logic:
+ *       1. Parse raw text and split fields
+ *       2. Filter invalid data
+ *       3. Join user profiles + item features + user behavior sequences
+ *       4. Form final plaintext samples
  */
 object ML1MJoinSample {
   private val RAW_SEP = "::"
@@ -67,6 +69,7 @@ object ML1MJoinSample {
         .toDF("movie_id", "movie_title", "movie_genres", "movie_genre_cnt", "movie_rate_count", "movie_avg_rate", "movie_hot_rank")
         .createOrReplaceTempView("movie_feature")
       
+      // Assemble final sample: join clean sample with user profile, movie feature, and user behavior
       val sql =
         s"""
            |WITH user_profile AS (

@@ -1,4 +1,5 @@
 
+# note: Mini integration test: creates a tiny ML-1M dataset, runs the full pipeline, validates output
 python3 - <<'PY'
 import shutil
 from pathlib import Path

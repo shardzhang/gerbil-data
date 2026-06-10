@@ -2,7 +2,7 @@
 
 # name: shard zhang
 # date: 2026/6/1 22:42
-# note:  
+# note: Compile TensorFlow Example protobuf definitions to Java classes
 
 cd $(dirname $0)
 

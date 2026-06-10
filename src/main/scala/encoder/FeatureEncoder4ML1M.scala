@@ -6,28 +6,17 @@ import utils.MurmurHash3
 import utils.LogUtils.green_println
 
 /**
- * ML1M 样本特征编码器
+ * Feature encoder for the ML1M dataset.
  *
- * 单值特征:
- * 整型 (Int/Long) -> 可不处理
- * 浮点型 (Float/Double) -> 分桶变为整型
- * 字符串 (String) -> hash变为整型
- *
- * 多值特征:
- * 遍历每个元素, 逐个加入. 若元素为String则先hash
- *
- * @author shard zhang
- * @date 2026/6/3 16:08
- * @note
+ * Single-value: Int/Long kept as-is; Float/Double bucketized; String hashed.
+ * Multi-value: each element processed individually; strings hashed via MurmurHash3.
  */
 class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
   private type T = ML1MTrainSample
 
   // ============================== target ==============================
 
-  /**
-   * 多分类标签
-   */
+  /** Multi-class classification target. */
   private class Target extends RawTarget[T] {
     override def parse(sample: T): RawTarget[T] = {
       target = sample.target
@@ -35,9 +24,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * 二分类标签
-   */
+  /** Binary classification label (rating >= 3 => positive). */
   private class Label extends RawTarget[T] {
     override def parse(sample: T): RawTarget[T] = {
       target = if (sample.rating >= 3) {
@@ -49,9 +36,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * 相关性回归标签
-   */
+  /** Regression target: raw rating value. */
   private class Rating extends RawTarget[T] {
     override def parse(sample: T): RawTarget[T] = {
       target = sample.rating
@@ -61,9 +46,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
 
   // ============================== item ==============================
 
-  /**
-   * movie_id
-   */
+  /** Movie ID as categorical feature. */
   private class MovieID(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val movie_id = try {
@@ -80,11 +63,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * movie_title. 
-   * 电影标题多值特征
-   * 由于title几乎是唯一标识, 和 movieId 信息重复. 直接处理title信息冗余, 无效果增益
-   */
+  /** Movie title as multi-value feature (words hashed). Mostly redundant with movie_id. */
   private class MovieTitle(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       try {
@@ -107,10 +86,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * movie_geners
-   * 电影类型标签
-   */
+  /** Movie genres as multi-value categorical feature. */
   private class MovieGenres(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       for (gen <- sample.movie_genres) {
@@ -126,10 +102,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * movie_rate_count
-   * 电影评论次数分桶
-   */
+  /** Movie review count, bucketized into 11 tiers. */
   private class MovieRateCount(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val buck = sample.movie_rate_count match {
@@ -152,9 +125,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * 电影平均评分分桶特征
-   */
+  /** Movie average rating, bucketized into 9 tiers. */
   private class MovieAvgRate(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val buck = sample.movie_avg_rate match {
@@ -191,10 +162,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * 电影类型数量分桶特征
-   * 一个电影属于多少种类型. 1类/2类/3类及以上, 类型越多受众越广
-   */
+  /** Number of genres a movie belongs to (1/2/3+), bucketized. More genres = wider appeal. */
   private class MovieGenreCnt(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val cnt = sample.movie_genres.size
@@ -207,10 +175,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * 电影热度排名分桶
-   * 解决冷启动: 爆款 / 热门 / 普通 / 长尾
-   */
+  /** Movie popularity rank bucketized: blockbuster / popular / average / long-tail (cold-start). */
   private class MovieHotRank(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val rank = try {
@@ -221,10 +186,10 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
           99999
       }
       val buck = rank match {
-        case x if x <= 100 => 4 // 爆款
-        case x if x <= 500 => 3 // 热门
-        case x if x <= 2000 => 2 // 中等
-        case _ => 1 // 长尾冷门
+        case x if x <= 100 => 4 // blockbuster
+        case x if x <= 500 => 3 // popular
+        case x if x <= 2000 => 2 // average
+        case _ => 1 // long-tail
       }
       raw_list.append(rank.toString)
       feature_list.append(buck)
@@ -233,9 +198,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * 电影上映年份 (从 title 正则提取)
-   */
+  /** Movie publish year extracted from title, bucketized by decade. */
   private class MoviePublishYear(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val buck = sample.movie_publish_year match {
@@ -256,9 +219,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
 
   // ============================== user ==============================
 
-  /**
-   * user_id
-   */
+  /** User ID as categorical feature. */
   private class UserID(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val user_id = try {
@@ -275,10 +236,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * user_age
-   * 用户年龄分桶特征
-   */
+  /** User age as categorical feature. */
   private class UserAge(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val age = try {
@@ -295,9 +253,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * user_gender
-   */
+  /** User gender: M=1, F=2. */
   private class UserGender(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val buck = sample.gender match {
@@ -312,9 +268,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * user_occupation
-   */
+  /** User occupation as categorical feature. */
   private class UserOccupation(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val occupation = try {
@@ -331,9 +285,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * user_zipcode
-   */
+  /** User zip code, hashed via MurmurHash3. */
   private class UserZipCode(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val hash = try {
@@ -352,10 +304,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * 用户评分方差分桶
-   * 挑剔用户(方差大) / 佛系用户(方差小)
-   */
+  /** User rating std-dev bucketized: picky (high variance) vs easygoing (low variance). */
   private class UserRateStd(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val std = try {
@@ -365,7 +314,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
           green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
           0.0
       }
-      // 分桶: 1=完全一致, 2=稳定, 3=一般, 4=挑剔
+      // buckets: 1=identical, 2=stable, 3=moderate, 4=picky
       val buck = std match {
         case x if x <= 0.0 => 1
         case x if x <= 1.0 => 2
@@ -404,7 +353,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
           green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
           0.0
       }
-      // 分桶: 1=完全一致, 2=稳定, 3=一般, 4=挑剔
+      // buckets: 1=identical, 2=stable, 3=moderate, 4=picky
       val buck = std match {
         case x if x <= 0.0 => 1
         case x if x <= 1.0 => 2
@@ -443,7 +392,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
           green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
           0.0
       }
-      // 分桶: 1=完全一致, 2=稳定, 3=一般, 4=挑剔
+      // buckets: 1=identical, 2=stable, 3=moderate, 4=picky
       val buck = std match {
         case x if x <= 0.0 => 1
         case x if x <= 1.0 => 2
@@ -482,7 +431,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
           green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
           0.0
       }
-      // 分桶: 1=完全一致, 2=稳定, 3=一般, 4=挑剔
+      // buckets: 1=identical, 2=stable, 3=moderate, 4=picky
       val buck = std match {
         case x if x <= 0.0 => 1
         case x if x <= 1.0 => 2
@@ -512,10 +461,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * 用户活跃天数分桶
-   * 区分: 新用户 / 老用户 / 超级用户
-   */
+  /** User active days bucketized: new / regular / power user. */
   private class UserActiveDay(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val days = try {
@@ -527,9 +473,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       }
       val buck = days match {
         case 0 => 1
-        case x if x <= 7 => 2 // 1周内
-        case x if x <= 30 => 3 // 1月内
-        case _ => 4 // 老用户
+        case x if x <= 7 => 2 // within 1 week
+        case x if x <= 30 => 3 // within 1 month
+        case _ => 4 // veteran
       }
       raw_list.append(sample.user_active_day.toString)
       feature_list.append(buck)
@@ -538,9 +484,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * 用户总打分次数 (用户行为丰富度) 
-   */
+  /** Total user rating count (behavior richness). */
   private class UserMovieRateCnt(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val cnt = try {
@@ -550,7 +494,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
           green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
           0
       }
-      // 分桶: 用户打分数量区间
+      // buckets: user rating count ranges
       val buck = cnt match {
         case x if x <= 10 => 1
         case x if x <= 30 => 2
@@ -574,7 +518,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
           green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
           0
       }
-      // 分桶: 用户打分数量区间
+      // buckets: user rating count ranges
       val buck = cnt match {
         case x if x <= 10 => 1
         case x if x <= 30 => 2
@@ -598,7 +542,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
           green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
           0
       }
-      // 分桶: 用户打分数量区间
+      // buckets: user rating count ranges
       val buck = cnt match {
         case x if x == 0 => 1
         case x if x <= 10 => 2
@@ -623,7 +567,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
           green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
           0
       }
-      // 分桶: 用户打分数量区间
+      // buckets: user rating count ranges
       val buck = cnt match {
         case x if x == 0 => 1
         case x if x <= 10 => 2
@@ -639,9 +583,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * 用户历史平均分: 区分低分/中庸/高分偏好
-   */
+  /** User historical average rating: low (<3) / medium (3-4) / high (>=4). */
   private class UserAvgRate(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val avg = try {
@@ -651,12 +593,12 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
           green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
           3.0
       }
-      // 低分用户(＜3)、中庸3、高分偏好(≥4)
+      // low (<3), medium (3-4), high (>=4)
       val buck = avg match {
         case x if x == 0.0 => 1
-        case x if x < 3.0 => 2 // 低分用户
-        case x if x < 4.0 => 3 // 中庸
-        case _ => 4 // 高分偏好
+        case x if x < 3.0 => 2 // low-rating user
+        case x if x < 4.0 => 3 // moderate
+        case _ => 4 // high-rating preference
       }
       raw_list.append(sample.user_avg_rate.toString)
       feature_list.append(buck)
@@ -690,12 +632,12 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
           green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
           3.0
       }
-      // 低分用户(＜3)、中庸3、高分偏好(≥4)
+      // low (<3), medium (3-4), high (>=4)
       val buck = avg match {
         case x if x == 0.0 => 1
-        case x if x < 3.0 => 2 // 低分用户
-        case x if x < 4.0 => 3 // 中庸
-        case _ => 4 // 高分偏好
+        case x if x < 3.0 => 2 // low-rating user
+        case x if x < 4.0 => 3 // moderate
+        case _ => 4 // high-rating preference
       }
       raw_list.append(sample.user_avg_rate_7day.toString)
       feature_list.append(buck)
@@ -729,12 +671,12 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
           green_println(s"FeatureEncoder4ML1M parse error: ${e.getMessage}")
           3.0
       }
-      // 低分用户(＜3)、中庸3、高分偏好(≥4)
+      // low (<3), medium (3-4), high (>=4)
       val buck = avg match {
         case x if x == 0.0 => 1
-        case x if x < 3.0 => 2 // 低分用户
-        case x if x < 4.0 => 3 // 中庸
-        case _ => 4 // 高分偏好
+        case x if x < 3.0 => 2 // low-rating user
+        case x if x < 4.0 => 3 // moderate
+        case _ => 4 // high-rating preference
       }
       raw_list.append(sample.user_avg_rate_15day.toString)
       feature_list.append(buck)
@@ -797,9 +739,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * 用户历史最爱 3 个电影类型 -> Multi-hot 特征
-   */
+  /** User's top 3 favorite genres as multi-hot feature. */
   private class UserTop3Genres(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       try {
@@ -821,10 +761,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * 用户历史是否看过 [当前电影] 所属类型 (0=未看过/1=看过)
-   * 长期兴趣信号
-   */
+  /** Whether user ever watched the current movie's genres (long-term interest signal). */
   private class UserWatchSameGenre(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val hit = try {
@@ -850,10 +787,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * 用户近 1 天是否看过 [当前电影] 所属类型 (0=未看过/1=看过)
-   * 短期兴趣信号
-   */
+  /** Whether user watched same genre in last 1 day (short-term interest). */
   private class UserWatchSameGenre1Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val hit = try {
@@ -872,10 +806,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * 用户近 3 天是否看过 [当前电影] 所属类型 (0=未看过/1=看过)
-   * 短期兴趣信号
-   */
+  /** Whether user watched same genre in last 3 days (short-term interest). */
   private class UserWatchSameGenre3Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val hit = try {
@@ -894,10 +825,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * 用户近 7 天是否看过 [当前电影] 所属类型 (0=未看过/1=看过)
-   * 短期兴趣信号
-   */
+  /** Whether user watched same genre in last 7 days (short-term interest). */
   private class UserWatchSameGenre7Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val hit = try {
@@ -917,10 +845,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * 用户近 15 天是否看过 [当前电影] 所属类型 (0=未看过/1=看过)
-   * 短期兴趣信号
-   */
+  /** Whether user watched same genre in last 15 days (short-term interest). */
   private class UserWatchSameGenre15Day(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val hit = try {
@@ -939,9 +864,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * 用户对 [当前电影所有类型] 的历史平均分桶
-   */
+  /** User's historical average rating for current movie's genres, bucketized. */
   private class UserSameGenreAvgRate(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       var finalRate = 3.0
@@ -952,9 +875,9 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
           user_genre_avg_rate.get(g)
         }
         finalRate = if (rates.isEmpty) {
-          3.0 // 无历史, 中性默认分
+            3.0 // no history, default neutral score
         } else {
-          rates.sum / rates.size // 多个类型取平均
+           rates.sum / rates.size // average across genres
         }
         finalRate match {
           case x if x <= 1.0 => 1
@@ -999,10 +922,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
 
   // ============================== context ==============================
 
-  /**
-   * context_time_hour
-   * 小时分桶
-   */
+  /** Hour of day as categorical feature. */
   private class ContextTimeHour(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       raw_list.append(sample.time_hour.toString)
@@ -1012,10 +932,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * context_time_area
-   * 时区分桶
-   */
+  /** Time-of-day area as categorical feature. */
   private class ContextTimeArea(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       raw_list.append(sample.time_area.toString)
@@ -1025,10 +942,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * context_time_week
-   * 星期分桶
-   */
+  /** Day of week as categorical feature. */
   private class ContextTimeWeek(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       raw_list.append(sample.week_day.toString)
@@ -1038,9 +952,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * 是否周末: 1=周末(6/7), 0=工作日
-   */
+  /** Weekend flag: 2 if sat/sun, 1 otherwise. */
   private class IsWeekend(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       val w = sample.week_day
@@ -1054,10 +966,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
 
   // ============================== user behavior ==============================
 
-  /**
-   * user_movie_rate
-   * 用户电影评分序列(历史全部)
-   */
+  /** User's full movie rating history sequence. */
   private class UserMovieRate(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       for (i <- 0 until Math.min(200, sample.user_movie_rates.size)) {
@@ -1113,10 +1022,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * user_genres_rates
-   * 用户电影类型评分序列(历史全部)
-   */
+  /** User's genre rating history (full). */
   private class UserGenresRate(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       for (i <- 0 until Math.min(200, sample.user_genres_rates.size)) {
@@ -1187,10 +1093,7 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     }
   }
 
-  /**
-   * user_genres_rate_cnts
-   * 用户电影类型评分次数序列(历史全部)
-   */
+  /** User's genre rating count sequence (full history). */
   private class UserGenresRateCnts(f_i: Int, f_n: String) extends CategoricalFeature[T](f_i, f_n) {
     override def parse(sample: T): RawFeature = {
       for (i <- 0 until Math.min(200, sample.user_genres_rate_cnts.size)) {
@@ -1416,20 +1319,19 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
     raw_cate_features.append(user_same_genre_avg_rate)
     raw_conti_features.append(user_same_genre_avg_rate_continue)
 
-    // Temporarily disable cross features for local end-to-end validation.
+    // Cross features disabled for local end-to-end testing; enable for production.
     val enableCrossFeatures = false
     if (enableCrossFeatures) {
-      // ============================== cross feature: Second-order ==============================
-      // {{类型 x 时间窗口兴趣}}
-      // 电影类型 x 用户全历史偏好类型 (长期兴趣匹配，核心强特征)
+      // ============================== second-order cross features ==============================
+      // Genre x user full-history genre preference (long-term interest matching)
       val movie_genres_xx_user_genres_rate = new CrossFeature(401, "movie_genres_xx_user_genres_rate", movie_genres, user_genres_rate)
-      // 电影类型 x 用户近1天偏好类型 (超短期实时兴趣，时效性强)
+      // Genre x user 1-day genre preference (ultra-short-term interest)
       val movie_genres_xx_user_genres_rate_1day = new CrossFeature(402, "movie_genres_xx_user_genres_rate_1day", movie_genres, user_genres_rate_1day)
-      // 电影类型 x 用户近3天偏好类型 (短期实时兴趣)
+      // Genre x user 3-day genre preference (short-term interest)
       val movie_genres_xx_user_genres_rate_3day = new CrossFeature(403, "movie_genres_xx_user_genres_rate_3day", movie_genres, user_genres_rate_3day)
-      // 电影类型 x 用户近7天偏好类型 (中期兴趣偏好)
+      // Genre x user 7-day genre preference (mid-term interest)
       val movie_genres_xx_user_genres_rate_7day = new CrossFeature(404, "movie_genres_xx_user_genres_rate_7day", movie_genres, user_genres_rate_7day)
-      // 电影类型 x 用户近15天偏好类型 (中长期兴趣偏好)
+      // Genre x user 15-day genre preference (mid-to-long-term interest)
       val movie_genres_xx_user_genres_rate_15day = new CrossFeature(405, "movie_genres_xx_user_genres_rate_15day", movie_genres, user_genres_rate_15day)
       cross_features.append(movie_genres_xx_user_genres_rate)
       cross_features.append(movie_genres_xx_user_genres_rate_1day)
@@ -1437,21 +1339,19 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       cross_features.append(movie_genres_xx_user_genres_rate_7day)
       cross_features.append(movie_genres_xx_user_genres_rate_15day)
 
-      // {{物品基础 x 用户基础}}
-      // 电影上映年份 x 用户年龄 (年代偏好 + 年龄圈层匹配)
+      // Item base x user base: publish year x age (era + demographic match)
       val movie_publish_year_xx_user_age = new CrossFeature(406, "movie_publish_year_xx_user_age", movie_publish_year, user_age)
       cross_features.append(movie_publish_year_xx_user_age)
 
-      // {{物品统计 x 用户偏好}}
-      // 电影评分人数 x 用户打分标准差 (影片流行度 x 用户打分偏好稳定性)
+      // Item stats x user preference: rate count x rating std (popularity x pickiness)
       val movie_rate_count_xx_user_rate_std = new CrossFeature(410, "movie_rate_count_xx_user_rate_std", movie_rate_count, user_rate_std)
-      // 电影热度 x 用户历史平均分 (热门度 x 用户评分偏好)
+      // Hot rank x user avg rate (popularity x rating taste)
       val movie_hot_rank_xx_user_avg_rate = new CrossFeature(411, "movie_hot_rank_xx_user_avg_rate", movie_hot_rank, user_avg_rate)
-      // 电影上映年份 x 用户历史平均分 (年代偏好 x 用户评分风格)
+      // Publish year x user avg rate (era preference x rating style)
       val movie_publish_year_xx_user_avg_rate = new CrossFeature(412, "movie_publish_year_xx_user_avg_rate", movie_publish_year, user_avg_rate)
-      // 电影类型数量 x 用户历史平均分 (类型复杂度 x 用户评分偏好)
+      // Genre count x user avg rate (complexity x rating preference)
       val movie_genre_cnt_xx_user_avg_rate = new CrossFeature(413, "movie_genre_cnt_xx_user_avg_rate", movie_genre_cnt, user_avg_rate)
-      // 电影热度 x 用户类型偏好均分 (热度 x 细分类型喜爱度)
+      // Hot rank x user genre avg rate (popularity x niche taste)
       val movie_hot_rank_xx_user_genre_avg_rate = new CrossFeature(414, "movie_hot_rank_xx_user_genre_avg_rate", movie_hot_rank, user_same_genre_avg_rate)
       cross_features.append(movie_rate_count_xx_user_rate_std)
       cross_features.append(movie_hot_rank_xx_user_avg_rate)
@@ -1459,45 +1359,43 @@ class FeatureEncoder4ML1M extends FeatureEncoder[ML1MTrainSample] {
       cross_features.append(movie_genre_cnt_xx_user_avg_rate)
       cross_features.append(movie_hot_rank_xx_user_genre_avg_rate)
 
-      // {{类型 x 用户属性}}
-      // 用户性别 x 电影类型 (男女偏好差异巨大)
+      // Genre x user demographics: gender x genre (strong gender preference)
       val movie_genres_xx_user_gender = new CrossFeature(417, "movie_genres_xx_user_gender", movie_genres, user_gender)
-      // 用户职业 x 电影类型 (职业圈层偏好明显)
+      // Occupation x genre (professional circle preference)
       val movie_genres_xx_user_occupation = new CrossFeature(418, "movie_genres_xx_user_occupation", movie_genres, user_occupation)
-      // 电影类型 x 用户年龄 (不同年龄偏好类型差异大)
+      // Genre x age (age-based genre preference varies significantly)
       val movie_genres_xx_user_age = new CrossFeature(419, "movie_genres_xx_user_age", movie_genres, user_age)
       cross_features.append(movie_genres_xx_user_gender)
       cross_features.append(movie_genres_xx_user_occupation)
       cross_features.append(movie_genres_xx_user_age)
 
-      // {{节假日}}
-      // 电影类型 x 是否周末 (周末/工作日观影类型差异极大)
+      // Holiday-related: genre x weekend (weekend/weekday genre divergence)
       val movie_genres_xx_is_weekend = new CrossFeature(450, "movie_genres_xx_is_weekend", movie_genres, context_is_weekend)
-      // 电影热度 x 是否周末 (周末更爱看热门, 工作日更爱看小众)
+      // Hot rank x weekend (blockbusters on weekends, niche on weekdays)
       val movie_hot_rank_xx_is_weekend = new CrossFeature(451, "movie_hot_rank_xx_is_weekend", movie_hot_rank, context_is_weekend)
-      // 用户年龄 x 是否周末 (不同年龄周末观影偏好分层)
+      // Age x weekend (age-based weekend viewing patterns)
       val user_age_xx_is_weekend = new CrossFeature(452, "user_age_xx_is_weekend", user_age, context_is_weekend)
-      // 用户性别 x 时段 (男女在不同时段观影偏好差异)
+      // Gender x time hour (male/female viewing time preference)
       val user_gender_xx_context_time_hour = new CrossFeature(453, "user_gender_xx_context_time_hour", user_gender, context_time_hour)
       cross_features.append(movie_genres_xx_is_weekend)
       cross_features.append(movie_hot_rank_xx_is_weekend)
       cross_features.append(user_age_xx_is_weekend)
       cross_features.append(user_gender_xx_context_time_hour)
 
-      // ============================== cross feature: Third-order ==============================
-      // 年龄 x 性别 x 影片类型 -> 人群圈层最核心强特征
+      // ============================== third-order cross features ==============================
+      // Age x gender x genre (core demographic segmentation)
       val movie_genres_xx_user_age_xx_user_gender = new CrossFeature(460, "movie_genres_xx_user_age_xx_user_gender", movie_genres, user_age, user_gender)
-      // 年龄 x 职业 x 电影年份 -> 年代偏好分层
+      // Age x occupation x publish year (era preference stratification)
       val movie_publish_year_xx_user_age_xx_user_occupation = new CrossFeature(462, "movie_publish_year_xx_user_age_xx_user_occupation", movie_publish_year, user_age, user_occupation)
-      // 性别 x 职业 x 影片类型 -> 人群细分强特征
+      // Gender x occupation x genre (fine-grained demographic feature)
       val movie_genres_xx_user_gender_xx_user_occupation = new CrossFeature(461, "movie_genres_xx_user_gender_xx_user_occupation", movie_genres, user_gender, user_occupation)
-      // 影片均分 x 热度 x 用户均分 -> 品味匹配核心特征
+      // Movie avg rate x hot rank x user avg rate (taste matching)
       val movie_avg_rate_xx_movie_hot_rank_xx_user_avg_rate = new CrossFeature(463, "movie_avg_rate_xx_movie_hot_rank_xx_user_avg_rate", movie_avg_rate, movie_hot_rank, user_avg_rate)
-      // 影片类型数 x 用户总打分次数 x 用户均分 -> 行为深度+品味
+      // Genre count x total rate count x user avg rate (depth + taste)
       val movie_genre_cnt_xx_user_total_rate_cnt_xx_user_avg_rate = new CrossFeature(465, "movie_genre_cnt_xx_user_total_rate_cnt_xx_user_avg_rate", movie_genre_cnt, user_movie_rate_cnt, user_avg_rate)
-      // 影片类型数 x 热度 x 用户类型均分 -> 类型偏好+热度匹配
+      // Genre count x hot rank x user genre avg rate (genre preference + popularity)
       val movie_genre_cnt_xx_movie_hot_rank_xx_user_genre_avg_rate = new CrossFeature(466, "movie_genre_cnt_xx_movie_hot_rank_xx_user_genre_avg_rate", movie_genre_cnt, movie_hot_rank, user_same_genre_avg_rate)
-      // 影片年份 x 均分 x 用户均分 -> 年代+质量+用户品味
+      // Publish year x avg rate x user avg rate (era + quality + taste)
       val movie_publish_year_xx_movie_avg_rate_xx_user_avg_rate = new CrossFeature(467, "movie_publish_year_xx_movie_avg_rate_xx_user_avg_rate", movie_publish_year, movie_avg_rate, user_avg_rate)
 
       cross_features.append(movie_genres_xx_user_age_xx_user_gender)

@@ -2,7 +2,7 @@
 
 # name: shard zhang
 # date: 2026/6/6 14:42
-# note:
+# note: Encode features and generate TFRecord + Parquet training samples for ML models
 
 cd "$(dirname "$0")"
 

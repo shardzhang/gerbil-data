@@ -25,13 +25,7 @@ import utils.ParquetRecord
 import encoder.vectorizer.FeatureEncoder
 import encoder.vectorizer.FeatureType
 
-/**
- * 特征值统计量:
- *
- *   1. sum:      特征值总和
- *   2. powerSum: 特征值平方和
- *   3. count:    特征值出现次数
- */
+/** Feature value statistics: sum, sum of squares, and count. */
 final class FeatureStat(var sum: Double = 0.0D, var powerSum: Double = 0.0D, var count: Long = 0L) extends Serializable {
   def add(value: Float): FeatureStat = {
     sum += value.toDouble
@@ -48,14 +42,7 @@ final class FeatureStat(var sum: Double = 0.0D, var powerSum: Double = 0.0D, var
   }
 }
 
-/**
- * 特征值编码后的位置信息:
- *
- *   1. pos:      特征值在域内的编码位置
- *   2. sum:      特征值总和
- *   3. powerSum: 特征值平方和
- *   4. count:    特征值出现次数
- */
+/** Encoded position info for a feature value: pos in field, sum, powerSum, count. */
 final case class PosInfo(pos: Int, sum: Double = 0.0D, powerSum: Double = 0.0D, count: Long = 0L) extends Serializable {
   // mean. E(x) = sum / count
   def mean: Double = {
@@ -79,6 +66,7 @@ final case class PosInfo(pos: Int, sum: Double = 0.0D, powerSum: Double = 0.0D, 
   }
 }
 
+/** Abstract driver for loading samples, computing feature statistics, and writing TFRecord/Parquet output. */
 abstract class BaseDataDriver[T: ClassTag] extends Serializable {
   def max_dim: Long
 
@@ -86,58 +74,43 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
 
   var hadoopConf: Configuration = hadoopConf
 
-  /**
-   * 加载并解析训练样本.
-   */
+  /** Load and parse training samples from input directory. */
   def loadTrainingSamples(spark: SparkSession, inputDir: String, parts: Int): RDD[(T, Boolean)]
 
-  /**
-   * 提取样本 target.
-   */
+  /** Extract the target label from a sample. */
   def getSampleTarget(sample: T): Int
 
-  /**
-   * 样本采样判断.
-   * 默认行为沿用旧逻辑: target != 0 的样本全部保留, 否则按 sample_ratio 采样.
-   */
+  /** Decide whether to keep a sample. Keeps all non-zero targets; others sampled by ratio. */
   def keepSample(sample: T, sample_ratio: Double): Boolean = {
     getSampleTarget(sample) != 0 || ThreadLocalRandom.current().nextDouble() <= sample_ratio
   }
 
-  /**
-   * List[(f_name, f_index, f_type, format, hash, value)]
-   */
-  def get_hash_info_from_a_sample(sample: T, encoder: FeatureEncoder[T]): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
+  /** Extract hash info tuples from a single sample: (f_name, f_index, f_type, format, hash, value). */
+  def getHashInfo(sample: T, encoder: FeatureEncoder[T]): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     encoder.get_hash_info(sample, max_dim)
   }
 
-  /**
-   * 解析样本为TFRecord格式
-   */
-  def parse_a_sample_tfrecord(sample: T,
-                              encoder: FeatureEncoder[T],
-                              pos_map: collection.Map[(Int, Long), Int],
-                              target_map: collection.Map[Int, Int]): (Example, Boolean, Boolean) = {
+  /** Parse a sample into TFRecord format using the encoder and position maps. */
+  def parseTfrecord(sample: T,
+                    encoder: FeatureEncoder[T],
+                    pos_map: collection.Map[(Int, Long), Int],
+                    target_map: collection.Map[Int, Int]): (Example, Boolean, Boolean) = {
     val builder = Example.newBuilder()
     val (has_feature, has_target) = encoder.encode(sample, max_dim, builder, pos_map, target_map)
     (builder.build(), has_feature, has_target)
   }
 
-  /**
-   * 解析样本为Parquet格式
-   */
-  def parse_a_sample_parquet(sample: T,
-                             encoder: FeatureEncoder[T],
-                             pos_map: collection.Map[(Int, Long), Int],
-                             target_map: collection.Map[Int, Int]): (ParquetRecord, Boolean, Boolean) = {
+  /** Parse a sample into Parquet format using the encoder and position maps. */
+  def parseParquet(sample: T,
+                   encoder: FeatureEncoder[T],
+                   pos_map: collection.Map[(Int, Long), Int],
+                   target_map: collection.Map[Int, Int]): (ParquetRecord, Boolean, Boolean) = {
     val builder = ParquetRecord.newBuilder()
     val (has_feature, has_target) = encoder.encode(sample, max_dim, builder, pos_map, target_map)
     (builder.build(), has_feature, has_target)
   }
 
-  /**
-   * Parquet格式的Schema
-   */
+  /** Build the Parquet schema: target field + raw/index/value arrays per feature. */
   def parquet_schema: StructType = {
     val fields = new ArrayBuffer[StructField]()
     fields.append(StructField("target", FloatType, nullable = true))
@@ -149,9 +122,7 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
     StructType(fields)
   }
 
-  /**
-   * 从旧版只保存 mean/std 的编码表, 反推新版 PosInfo(sum, powerSum, count).
-   */
+  /** Reconstruct PosInfo from legacy mean/std-only encoding table format. */
   protected def legacyPosInfo(pos: Int, mean: Double, std: Double, count: Long): PosInfo = {
     val safeCount = math.max(count, 1L)
     val variance = math.max(std * std - 0.000001D, 0.0D)
@@ -160,9 +131,7 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
     PosInfo(pos, sum, powerSum, safeCount)
   }
 
-  /**
-   * 读取文本内容.
-   */
+  /** Read the full content of a text file via BufferedReader. */
   protected def readText(reader: BufferedReader): String = {
     val content = new StringBuilder()
     var line = reader.readLine()
@@ -179,18 +148,19 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
   }
 
   /**
+   * Restore pos_map, target_map, and pos_dim_map from a JSON file at the given path.
    *
-   * @param path
-   * @param posMap Map[(f_index, entry.getLong("hash")), posInfo)
-   * @param targetMap Map[target_id, pos]
-   * @param posDimMap Map[(f_name, f_index, f_type), dim]
-   * @return 是否存在对应 json 文件并恢复成功
+   * @param posMap   target map: (f_index, hash) -> PosInfo
+   * @param targetMap target map: target_id -> encoded pos
+   * @param posDimMap dimension map: (f_name, f_index, f_type) -> dim
+   * @return true if the JSON file exists and was restored successfully
    */
   protected def restoreFromJson(path: String,
+                                yesterday: String,
                                 posMap: mutable.HashMap[(Int, Long), PosInfo],
                                 targetMap: mutable.HashMap[Int, Int],
                                 posDimMap: mutable.HashMap[(String, Int, Int), Int]): Boolean = {
-    val jsonPath = s"${path}/pos_map.json"
+    val jsonPath = s"${path}/${yesterday}/pos_map.json"
     val fs = FileSystem.get(URI.create(jsonPath), hadoopConf)
     val file = new Path(jsonPath)
     if (!fs.exists(file)) {
@@ -239,12 +209,11 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
     true
   }
 
-  /**
-   * 恢复 pos_map.txt, 仅恢复特征域维度信息.
-   */
+  /** Restore field dimension info only from a legacy text-format pos_map file. */
   protected def restoreFromText(path: String,
+                                yesterday: String,
                                 posDimMap: mutable.HashMap[(String, Int, Int), Int]): Boolean = {
-    val textPath = s"${path}/pos_map.txt"
+    val textPath = s"${path}/${yesterday}/pos_map.txt"
     val fs = FileSystem.get(URI.create(textPath), hadoopConf)
     val file = new Path(textPath)
     if (!fs.exists(file)) {
@@ -269,9 +238,8 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
   }
 
   /**
-   * 恢复 pos_map.bin.
-   *
-   * 当前主恢复链路默认只依赖 json, 这里保留给兼容或在线场景使用.
+   * Restore from binary format (legacy). Primarily kept for compatibility or online serving.
+   * Default restore path uses JSON.
    */
   protected def restoreFromBin(path: String,
                                yesterday: String,
@@ -322,18 +290,17 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
   }
 
   /**
-   * 恢复编码表:
-   *
-   *   1. pos_map:    Map[(f_index, hash), PosInfo]
-   *   2. target_map: Map[target_id, pos]
-   *   3. pos_dim:    Map[(f_name, f_index, f_type), dim]
+   * Restore all encoding maps from disk:
+   * - pos_map:    (f_index, hash) -> PosInfo
+   * - target_map: target_id -> encoded pos
+   * - pos_dim:    (f_name, f_index, f_type) -> field dimension
    */
-  def restore_pos_map(path: String): (HashMap[(Int, Long), PosInfo], HashMap[Int, Int], HashMap[(String, Int, Int), Int]) = {
+  def restore_pos_map(path: String, yesterday: String): (HashMap[(Int, Long), PosInfo], HashMap[Int, Int], HashMap[(String, Int, Int), Int]) = {
     val pos_dim_map = new mutable.HashMap[(String, Int, Int), Int]()
     val pos_map = new mutable.HashMap[(Int, Long), PosInfo]()
     val target_map = new mutable.HashMap[Int, Int]()
 
-    restoreFromJson(path, pos_map, target_map, pos_dim_map)
+    restoreFromJson(path, yesterday, pos_map, target_map, pos_dim_map)
 
     green_println(s"read pos_map size = ${pos_map.size}")
     green_println(s"read target_map size = ${target_map.size}")
@@ -342,11 +309,10 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
   }
 
   /**
-   * 保存编码表:
-   *
-   *   1. pos_map.json 编码表(用于离线模型训练)
-   *   2. pos_map.txt  文本格式编码表(便于排查)
-   *   3. pos_map.bin  编码表(用于在线模型推理)
+   * Save all encoding maps in three formats:
+   * - pos_map.json: for offline model training
+   * - pos_map.txt:  human-readable text (debugging)
+   * - pos_map.bin:  compact binary for online serving
    */
   def save_pos_map(path: String,
                    yesterday: String,
@@ -362,12 +328,11 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
   }
 
   /**
-   * 通用 run 框架:
-   *
-   *   1. 加载训练样本
-   *   2. 统计 target_map
-   *   3. 统计 pos_map / pos_dim
-   *   4. 输出 parquet / tfrecord
+   * Main pipeline:
+   * 1. Load and filter training samples
+   * 2. Build/update target_map
+   * 3. Build/update pos_map and pos_dim via hash aggregation
+   * 4. Write output in Parquet and TFRecord formats
    */
   def run(spark: org.apache.spark.sql.SparkSession,
           yesterday: String,
@@ -436,7 +401,7 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
         val encoder = feature_encoder
         val pos_hash = new mutable.HashMap[(String, Int, Byte, Long), FeatureStat]()
         for (sample <- samples) {
-          val one_sample_hash_array = get_hash_info_from_a_sample(sample, encoder)
+          val one_sample_hash_array = getHashInfo(sample, encoder)
           for ((f_name, f_index, f_type, _, hash, value) <- one_sample_hash_array) {
             val key = (f_name, f_index, f_type, hash)
             pos_hash.getOrElseUpdate(key, new FeatureStat()).add(value)
@@ -491,12 +456,12 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
         pos_dim.put(fieldKey, math.max(currentDim, pos + 1))
       }
     }
-    green_println(s"ignored_pos_count: ${ignoredPosCount}. 被过滤特征值总个数")
-    green_println(s"reused_history_pos_count: ${reusedHistoryPosCount}. 低频但沿用历史词表的特征值总个数")
-    green_println(s"pos_map_local: ${pos_map_local.size}. 有效特征值总个数")
-    green_println(s"pos_map: ${pos_map.size}. 累加后的特征值总个数")
-    green_println(s"target_map: ${target_map.size}. 累加后的target总个数")
-    green_println(s"pos_dim: ${pos_dim.size}. 累加后的特征域总个数")
+    green_println(s"ignored_pos_count: ${ignoredPosCount}. total filtered feature value count")
+    green_println(s"reused_history_pos_count: ${reusedHistoryPosCount}. low-frequency feature values reusing historical vocabulary")
+    green_println(s"pos_map_local: ${pos_map_local.size}. valid feature value count")
+    green_println(s"pos_map: ${pos_map.size}. accumulated feature value count")
+    green_println(s"target_map: ${target_map.size}. accumulated target count")
+    green_println(s"pos_dim: ${pos_dim.size}. accumulated feature domain count")
 
     val tfRecordPath = s"${output_dir.stripSuffix("/")}/${yesterday}/tfrecord"
     val parquetPath = s"${output_dir.stripSuffix("/")}/${yesterday}/parquet"
@@ -510,7 +475,7 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
       .mapPartitions(samples => {
         val encoder = feature_encoder
         samples.flatMap(sample => {
-          val (record, has_feature, has_target) = parse_a_sample_parquet(sample, encoder, posMapLocalImmutable, targetMapImmutable)
+          val (record, has_feature, has_target) = parseParquet(sample, encoder, posMapLocalImmutable, targetMapImmutable)
           if (has_feature && has_target) {
             Some(Row.fromSeq(record.to_seq(parquetFieldNames)))
           } else {
@@ -529,7 +494,7 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
       .mapPartitions(samples => {
         val encoder = feature_encoder
         samples.flatMap(sample => {
-          val (example, has_feature, has_target) = parse_a_sample_tfrecord(sample, encoder, posMapLocalImmutable, targetMapImmutable)
+          val (example, has_feature, has_target) = parseTfrecord(sample, encoder, posMapLocalImmutable, targetMapImmutable)
           if (has_feature && has_target) {
             Some(example)
           } else {
@@ -547,9 +512,7 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
     (pos_map, target_map, pos_dim)
   }
 
-  /**
-   * 保存 pos_map.bin.
-   */
+  /** Save pos_map and target_map in compact binary format (pos_map.bin). */
   protected def saveToBin(path: String,
                           yesterday: String,
                           pos_map: collection.Map[(Int, Long), PosInfo],
@@ -606,14 +569,12 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
     } while (false)
   }
 
-  /**
-   * 保存 pos_map.txt.
-   */
+  /** Save field dimension info as human-readable CSV (pos_map.txt). */
   protected def saveToText(path: String,
                            yesterday: String,
                            pos_dim: collection.Map[(String, Int, Int), Int]): Unit = {
     do {
-      val textPath = s"${path}/pos_map.txt"
+      val textPath = s"${path}/${yesterday}/pos_map.txt"
       green_println(s"write pos_map.text path = ${textPath}")
       val fs = FileSystem.get(URI.create(textPath), hadoopConf)
       val writer = new BufferedWriter(new OutputStreamWriter(fs.create(new Path(textPath), true), "utf-8"))
@@ -630,28 +591,25 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
     } while (false)
   }
 
-  /**
-   * 保存 pos_map.json.
-   */
+  /** Save full encoding table as JSON (pos_map.json) for offline model training. */
   protected def saveToJson(path: String,
                            yesterday: String,
                            pos_map: collection.Map[(Int, Long), PosInfo],
                            target_map: collection.Map[Int, Int],
                            pos_dim: collection.Map[(String, Int, Int), Int]): Unit = {
     do {
-      val jsonPath = s"${path}/pos_map.json"
+      val jsonPath = s"${path}/${yesterday}/pos_map.json"
       green_println(s"write pos_map.json path = ${jsonPath}")
       val fs = FileSystem.get(URI.create(jsonPath), hadoopConf)
       val writer = new BufferedWriter(new OutputStreamWriter(fs.create(new Path(jsonPath), true), "utf-8"))
 
       try {
         val root = new JSONObject()
-        /** The date */
+        // Record the date stamp
         root.put("yesterday", yesterday)
 
-        /** The features */
         val features = new JSONArray()
-        /** Map(f_index, (f_name, f_type, dim)) */
+        // Map: f_index -> (f_name, f_type, dim)
         val pos_dim_map = new mutable.HashMap[Int, (String, Int, Int)]()
         val iter = pos_dim.iterator
         while (iter.hasNext) {
@@ -659,7 +617,7 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
           pos_dim_map.put(e._1._2, (e._1._1, e._1._3, e._2))
         }
 
-        /** Map((f_index, hash), posInfo) */
+        // Collect all (f_index, hash, PosInfo) entries into an array
         val pos_map_array = new ArrayBuffer[(Int, Long, PosInfo)]()
         val it = pos_map.iterator
         while (it.hasNext) {
@@ -703,12 +661,10 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
           features.put(feature)
         }
         root.put("features", features)
-        /** The feature_size */
         root.put("feature_size", features.length())
-        /** The target_size */
         root.put("target_size", target_map.size)
 
-        /** The target_id, pos */
+        // Save target_id -> encoded_pos mapping
         val targets = new JSONObject()
         target_map.toSeq.sortBy(_._2)
           .foreach { case (target_id, pos) =>

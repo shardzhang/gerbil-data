@@ -6,23 +6,25 @@ import utils.LogUtils.{green_println, setLogLevel}
 /**
  * @author shard zhang
  * @date 2026/5/29 18:18
- * @note ML-1M 用户电影评分序列构造
+ * @note ML-1M user movie rating sequence construction
+ *       Builds per-user movie rating sequences, keeping top-N most recent per user.
  *
- *       DataFrame 负责读原始文本并注册临时表，SQL 负责全部核心业务逻辑
+ *       DataFrames load raw text; SQL handles all transformation logic.
+ *       DataFrames load raw text; SQL handles all transformation logic.
  *
- *       输入:
+ *       Input:
  *       ratings.dat
- *       格式: UserID::MovieID::Rating::Timestamp
+ *       Format: UserID::MovieID::Rating::Timestamp
  *
- *       输出:
+ *       Output:
  *       user_id \t item_id:rating:timestamp,item_id:rating:timestamp,...
  *
- *       逻辑:
- *       1. 读取原始文本并拆分字段
- *       2. 过滤非法数据
- *       3. 对同一 (user_id, item_id) 保留最新一次评分
- *       4. 对每个 user_id 保留最近 200 个 item
- *       5. 聚合成行为序列
+ *       Logic:
+ *       1. Parse raw text and split fields
+ *       2. Filter invalid data
+ *       3. Keep latest rating per (user_id, item_id)
+ *       4. Keep most recent 200 items per user_id
+ *       5. Aggregate into behavior sequence
  */
 object ML1MUserMovieRate {
   private val TOP_N = 200
@@ -48,6 +50,7 @@ object ML1MUserMovieRate {
       // UserID::MovieID::Rating::Timestamp
       spark.read.text(inputPath).createOrReplaceTempView("ratings")
 
+      // Steps: 1) parse raw ratings, 2) keep latest per (user, movie), 3) keep top 200 per user, 4) aggregate into sequence
       val sql =
         s"""
            | WITH parsed AS (
@@ -85,7 +88,7 @@ object ML1MUserMovieRate {
            | )
            | 
            | , topn_per_user_ranked AS (
-           |   SELECT
+           |   SELECT  -- format as "item_id:rating:timestamp" and rank by recency
            |     user_id,
            |     concat(
            |       item_id, ':',
@@ -97,7 +100,7 @@ object ML1MUserMovieRate {
            | )
            | 
            | , topn_per_user AS (
-           |   SELECT
+           |   SELECT  -- keep only top 200 most recent ratings per user
            |     user_id,
            |     feature,
            |     rk

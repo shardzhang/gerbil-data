@@ -7,20 +7,19 @@ import utils.LogUtils.green_println
 import scala.compat.Platform.currentTime
 
 /**
- * @author Shard Zhang
- * @date 2022/11/7 21:27
- * @note trainsample样本检查, 统计field特征覆盖度, 特征维度, 正负样本个数
- *
+ * Training sample checker. Computes feature coverage, field dimension, and positive/negative sample counts.
  */
 object SampleCheck {
-    // \001：^A
-    // \002：^B
+    // \001 = ^A (field separator)
+    // \002 = ^B (group separator)
     val sep1A = "\001"
     val sep3B = "\002\002\002"
     
+    /** Training sample with line_id, label, and (group_id, hash_value) pairs. */
     case class NNTrainSample(line_id: String, label: String, groupIdWithHashValues: Array[(String, String)])
     
-    // group_id + \002\002\002 + hash_value
+    // Format: group_id + \002\002\002 + hash_value
+    /** Parse a slot string into (group_id, hash_value). */
     def parseSlotAndValue(str: String): (String, String) = {
         val group_id = str.split(sep3B)(0)
         val hash_value = str.split(sep3B)(1)
@@ -62,7 +61,7 @@ object SampleCheck {
         val sampleTotalCnt = sampleData.count()
         green_println(s"sampleTotalCnt = ${sampleTotalCnt}")
         
-        // 统计 groupId dim 特征维度
+        // Count distinct (group_id, hash_value) pairs per group_id -> feature dimension
         val groupidDimMap = sampleData
             .flatMap(r => r.groupIdWithHashValues)
             .distinct()
@@ -72,7 +71,7 @@ object SampleCheck {
         green_println(s"groupidDimMap.size = ${groupidDimMap.size}")
         
         
-        // 统计group_id特征覆盖度
+        // Count distinct samples containing each group_id -> feature coverage
         val groupidCntMap = sampleData
             .map(r => r.groupIdWithHashValues)
             .flatMap(r => r.map(_._1).distinct.map(e => (e.toInt, 1)))
@@ -81,7 +80,7 @@ object SampleCheck {
         green_println(s"groupidCntMap.size = ${groupidCntMap.size}")
         
         
-        // 统计正样本group_id特征覆盖度
+        // Positive sample feature coverage
         val groupidPositiveCntMap = sampleData
             .filter(r => r.label == "1")
             .map(r => r.groupIdWithHashValues)
@@ -91,7 +90,7 @@ object SampleCheck {
         green_println(s"groupidPositiveCntMap.size = ${groupidPositiveCntMap.size}")
         
         
-        // 统计负样本group_id特征覆盖度
+        // Negative sample feature coverage
         val groupidNegativeCntMap = sampleData
             .filter(r => r.label == "0")
             .map(r => r.groupIdWithHashValues)

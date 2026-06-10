@@ -13,21 +13,19 @@ import utils.MurmurHash3
 import utils.ParquetRecord.ParquetRecordBuilder
 
 /**
- * @author shard zhang
- * @date 2026/6/1 20:28
- * @note
+ * Feature type constants and base classes for feature encoding.
  *
- *  1. get: 计算位置值
- *  2. 重新编码:
- *    - 类别/交叉特征: 为每一个hash值从0开始分配一个连续的唯一位置
- *    - 连续特征: 保留 feature_list 中提供的局部维度编号, 以维持多值向量的维度顺序
- *  3. add: 再次用与get同样逻辑计算位置值, 然后根据pos_map直接查询重编码后的pos值
+ * Encoding workflow:
+ * 1. get_hash: compute hash for categorical features; use local dim ids for continuous.
+ * 2. re-encode: assign contiguous positions via pos_map or keep local dim ids.
+ * 3. add: re-compute hash, look up re-encoded pos via pos_map.
  */
 object FeatureType {
   val Continuous: Byte = 0
   val Categorical: Byte = 1
 }
 
+/** Base class for raw target labels. Supports TFRecord, and Parquet encoding with optional pos_map re-mapping. */
 abstract class RawTarget[T] {
   var target: Float = 0.0F
 
@@ -72,6 +70,7 @@ abstract class RawTarget[T] {
   }
 }
 
+/** Base class for raw features with hash computation and encoding support. */
 abstract class RawFeature(f_i: Int, f_n: String, f_t: Byte) {
   val f_index: Int = f_i
 
@@ -99,23 +98,15 @@ abstract class RawFeature(f_i: Int, f_n: String, f_t: Byte) {
   def get_hash_info(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)]
 }
 
+/** Continuous feature: keeps local dim IDs as-is (no hashing), supports multi-value semantics. */
 abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureType.Continuous) extends RawFeature(f_i, f_n, f_t) {
 
   def parse(intput: T): RawFeature
 
-  /**
-   * 特征容器: 支持单值特征, 多值特征
-   */
-  // 原始特征值 (明文字符串)
-  var raw_list: ArrayBuffer[String] = new ArrayBuffer[String]()
-
-  // 原始特征值 + 简单分桶或变换 (整型)
-  var feature_list: ArrayBuffer[Long] = new ArrayBuffer[Long]()
-
-  // 原始特征值对应factor (浮点型)
-  // 离散特征: 频次/权重
-  // 连续特征: 自身值
-  var value_list: ArrayBuffer[Float] = new ArrayBuffer[Float]()
+  // Feature containers supporting both single-value and multi-value features
+  var raw_list: ArrayBuffer[String] = new ArrayBuffer[String]()      // raw string value (human-readable)
+  var feature_list: ArrayBuffer[Long] = new ArrayBuffer[Long]()      // encoded int value (bucketized/hashed)
+  var value_list: ArrayBuffer[Float] = new ArrayBuffer[Float]()     // weight for categorical, raw value for continuous
 
   def clear(): Unit = {
     raw_list.clear()
@@ -124,9 +115,9 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
   }
 
   /**
-    * 连续特征直接使用 feature_list 中提供的局部维度编号, 不再额外 hash.
-    * 对多值向量特征, 这个局部维度编号就是语义维度, 重编码时必须保持不变.
-    */
+   * Continuous features use local dim IDs from feature_list directly (no hashing).
+   * For multi-value vectors, these IDs carry semantic meaning and must be preserved.
+   */
   override def get_hash(dim: Long): ArrayBuffer[Long] = {
     val pos_list = new ArrayBuffer[Long]()
     for (fea <- feature_list) {
@@ -158,10 +149,10 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
    * @param builder
    */
   def add(dim: Long, builder: Example.Builder): Unit = {
-    val raw_buf = new ArrayBuffer[String]()      // 原始特征值, for human debug
-    val pos_buf = new ArrayBuffer[Long]()        // 编码后位置, for model
-    val value_buf = new ArrayBuffer[Float]()     // 频次/权重, for model
-    // raw_buf pos_buf value_buf 三者size不等则抛出异常
+    val raw_buf = new ArrayBuffer[String]()      // raw feature value (human-readable)
+    val pos_buf = new ArrayBuffer[Long]()        // encoded position (for model)
+    val value_buf = new ArrayBuffer[Float]()     // frequency/weight (for model)
+    // Throws if raw_buf, pos_buf, and value_buf sizes differ
     if (raw_list.size != feature_list.size || raw_list.size != value_list.size) {
       throw new IllegalArgumentException("raw_buf, pos_buf, value_buf size not equal")
     }
@@ -190,9 +181,9 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
       return feature_list.exists(_ != 0)
     }
 
-    val raw_buf = new ArrayBuffer[String]()      // 原始特征值, for human debug
-    val pos_buf = new ArrayBuffer[Long]()        // 编码后位置, for model
-    val value_buf = new ArrayBuffer[Float]()     // 连续特征值, for model
+    val raw_buf = new ArrayBuffer[String]()      // raw feature value (human-readable)
+    val pos_buf = new ArrayBuffer[Long]()        // encoded position (for model)
+    val value_buf = new ArrayBuffer[Float]()     // continuous feature value (for model)
     raw_buf.append("R:")
     pos_buf.append(0L)
     value_buf.append(1.0F)
@@ -272,27 +263,19 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
   }
 }
 
+/** Categorical feature: hashes values via MurmurHash3 for encoding, supports multi-value. */
 abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureType.Categorical) extends RawFeature(f_i, f_n, f_t) {
 
   def parse(intput: T): RawFeature
 
-  /**
-   * 特征容器: 支持单值特征, 多值特征
-   */
-  // 原始特征值 (明文字符串)
-  var raw_list: ArrayBuffer[String] = new ArrayBuffer[String]()
-
-  // 原始特征值 + 简单分桶或变换 (整型)
-  var feature_list: ArrayBuffer[Long] = new ArrayBuffer[Long]()
-
-  // 原始特征值对应factor (浮点型)
-  // 离散特征: 频次/权重
-  // 连续特征: 自身值
-  var value_list: ArrayBuffer[Float] = new ArrayBuffer[Float]()
+  // Feature containers supporting both single-value and multi-value features
+  var raw_list: ArrayBuffer[String] = new ArrayBuffer[String]()      // raw string value (human-readable)
+  var feature_list: ArrayBuffer[Long] = new ArrayBuffer[Long]()      // encoded int value (bucketized/hashed)
+  var value_list: ArrayBuffer[Float] = new ArrayBuffer[Float]()     // weight for categorical, raw value for continuous
 
   val key_len: Int = 4 + 8
 
-  // ByteBuffer默认BIG_ENDIAN, 二进制存储TFRecord/Protobuf皆为LITTLE_ENDIAN
+  // ByteBuffer is BIG_ENDIAN by default; TFRecord/Protobuf binary storage uses LITTLE_ENDIAN
   val bytebuf: ByteBuffer = ByteBuffer.allocate(key_len).order(ByteOrder.LITTLE_ENDIAN)
 
   def clear(): Unit = {
@@ -356,9 +339,9 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
    * @param builder
    */
   def add(dim: Long, builder: Example.Builder): Unit = {
-    val raw_buf = new ArrayBuffer[String]()      // 原始特征值, for human debug
-    val pos_buf = new ArrayBuffer[Long]()        // 编码后位置, for model
-    val value_buf = new ArrayBuffer[Float]()     // 频次/权重, for model
+    val raw_buf = new ArrayBuffer[String]()      // raw feature value (human-readable)
+    val pos_buf = new ArrayBuffer[Long]()        // encoded position (for model)
+    val value_buf = new ArrayBuffer[Float]()     // frequency/weight (for model)
     if (raw_list.size != feature_list.size || raw_list.size != value_list.size) {
       throw new IllegalArgumentException("raw_buf, pos_buf, value_buf size not equal")
     } 
@@ -391,9 +374,9 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
    * @return has_feature
    */
   def add(dim: Long, builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int]): Boolean = {
-    val raw_buf = new ArrayBuffer[String]()      // 原始特征值, for human debug
-    val pos_buf = new ArrayBuffer[Long]()        // 编码后位置, for model
-    val value_buf = new ArrayBuffer[Float]()     // 频次/权重, for model
+    val raw_buf = new ArrayBuffer[String]()      // raw feature value (human-readable)
+    val pos_buf = new ArrayBuffer[Long]()        // encoded position (for model)
+    val value_buf = new ArrayBuffer[Float]()     // frequency/weight (for model)
     if (raw_list.size != feature_list.size || raw_list.size != value_list.size) {
       throw new IllegalArgumentException("raw_buf, pos_buf, value_buf size not equal")
     } 
@@ -497,6 +480,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
   }
 }
 
+/** Cross feature: Cartesian product of multiple categorical features, hashed together. */
 class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) extends RawFeature(f_i, f_n, f_t = FeatureType.Categorical) {
   val indexes: Array[Int] = new Array[Int](rnfs.length)
 
@@ -520,9 +504,9 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
     hash
   }
 
-  // body: => Unit（by-name parameter, 每次循环都重新执行 body）
+  // body is a by-name parameter, re-evaluated each iteration
   def foreachCombination(body: => Unit): Unit = {
-    // https://zhuanlan.zhihu.com/p/661834313
+    // Cartesian product iteration: https://zhuanlan.zhihu.com/p/661834313
 
     for (i <- 0 until rnfs.length) {
       indexes(i) = 0
@@ -609,10 +593,10 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
    * @param builder
    */
   def add(dim: Long, builder: Example.Builder): Unit = {
-    // https://zhuanlan.zhihu.com/p/661834313
-    val raw_buf = new ArrayBuffer[String]()      // 原始特征值, for human debug
-    val pos_buf = new ArrayBuffer[Long]()        // 编码后位置, for model
-    val value_buf = new ArrayBuffer[Float]()     // 频次/权重, for model
+    // Cartesian product iteration: https://zhuanlan.zhihu.com/p/661834313
+    val raw_buf = new ArrayBuffer[String]()      // raw feature value (human-readable)
+    val pos_buf = new ArrayBuffer[Long]()        // encoded position (for model)
+    val value_buf = new ArrayBuffer[Float]()     // frequency/weight (for model)
     raw_buf.append("R:")
     pos_buf.append(0L)
     value_buf.append(1.0F)
@@ -660,10 +644,10 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
    * @return
    */
   def add(dim: Long, builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int]): Boolean = {
-    // https://zhuanlan.zhihu.com/p/661834313
-    val raw_buf = new ArrayBuffer[String]()      // 原始特征值, for human debug
-    val pos_buf = new ArrayBuffer[Long]()        // 编码后位置, for model
-    val value_buf = new ArrayBuffer[Float]()     // 频次/权重, for model
+    // Cartesian product iteration: https://zhuanlan.zhihu.com/p/661834313
+    val raw_buf = new ArrayBuffer[String]()      // raw feature value (human-readable)
+    val pos_buf = new ArrayBuffer[Long]()        // encoded position (for model)
+    val value_buf = new ArrayBuffer[Float]()     // frequency/weight (for model)
     raw_buf.append("R:")
     pos_buf.append(0L)
     value_buf.append(1.0F)

@@ -15,14 +15,15 @@ import utils.LogUtils.green_println
  * @date 2026/5/29 18:02
  * @note
  *
- *  ML-1M 训练样本, 包含用户特征, 物品特征, 用户行为序列特征, 标签
+ *  ML-1M training sample, including user features, item features, user behavior sequence features, label
+ *  Training sample with user/item/context features, behavior sequences, and target label.
  *
- *       标签: rating
- *       物品特征: movie_title, movie_genres, movie_publish_year, movie_rate_count, movie_avg_rate
- *       用户特征: gender, age, occupation, zip_code
- *       用户统计特征： user_rate_count, user_avg_rate
- *       上下文特征: time_hour, time_area, week_day
- *       用户行为序列特征: user_movie_rate, user_movie_rate_1days, user_movie_rate_3days, user_movie_rate_7days, user_movie_rate_15days
+ *       Label: rating
+ *       Item features: movie_title, movie_genres, movie_publish_year, movie_rate_count, movie_avg_rate
+ *       User features: gender, age, occupation, zip_code
+ *       User statistical features: user_rate_count, user_avg_rate
+ *       Context features: time_hour, time_area, week_day
+ *       User behavior sequence features: user_movie_rate, user_movie_rate_1days, user_movie_rate_3days, user_movie_rate_7days, user_movie_rate_15days
  */
 class ML1MTrainSample extends Serializable {
   override def toString: String = {
@@ -75,108 +76,108 @@ class ML1MTrainSample extends Serializable {
   // 50 → 50-55
   var age: String = ""
 
-  // 0 → 其他 / 未说明
-  // 1 → 学术 / 教育工作者
-  // 2 → 艺术家
-  // 3 → 文书 / 行政
-  // 4 → 大学生 / 研究生
-  // 5 → 客户服务
-  // 6 → 医生 / 医疗保健
-  // 7 → 高管 / 管理
-  // 8 → 农民
-  // 9 → 家庭主妇
-  // 10 → K-12 学生
-  // 11 → 律师
-  // 12 → 程序员
-  // 13 → 退休
-  // 14 → 销售 / 营销
-  // 15 → 科学家
-  // 16 → 自雇
-  // 17 → 技术人员 / 工程师
-  // 18 → 工匠 / 技工
-  // 19 → 失业
-  // 20 → 作家
+  // 0 → Other / Not specified
+  // 1 → Academic / Educator
+  // 2 → Artist
+  // 3 → Clerical / Administrative
+  // 4 → College / Graduate student
+  // 5 → Customer service
+  // 6 → Doctor / Healthcare
+  // 7 → Executive / Management
+  // 8 → Farmer
+  // 9 → Homemaker
+  // 10 → K-12 student
+  // 11 → Lawyer
+  // 12 → Programmer
+  // 13 → Retired
+  // 14 → Sales / Marketing
+  // 15 → Scientist
+  // 16 → Self-employed
+  // 17 → Technician / Engineer
+  // 18 → Craftsman / Mechanic
+  // 19 → Unemployed
+  // 20 → Writer
   var occupation: String = ""
-  // 邮政编码
+  // Zip code
   var zip_code: String = ""
 
   /** ***************************** item *********************************** */
   // 1-3952
   var item_id: String = ""
-  // 电影标题
+  // Movie title
   var movie_title: String = ""
-  // 电影发布年份
+  // Movie publish year
   var movie_publish_year: Int = 0
-  // 电影类型. Action、Adventure、Animation、Children's、Comedy、Crime、Documentary、Drama、Fantasy、Film-Noir、Horror、Musical、Mystery、Romance、Sci-Fi、Thriller、War、Western
+  // Movie genres. Action, Adventure, Animation, Children's, Comedy, Crime, Documentary, Drama, Fantasy, Film-Noir, Horror, Musical, Mystery, Romance, Sci-Fi, Thriller, War, Western
   var movie_genres: ArrayBuffer[String] = ArrayBuffer.empty[String]
 
   // item Statistical
-  // 电影评分人数
+  // Number of movie raters
   var movie_rate_count: Long = 0
-  // 电影均分
+  // Average movie rating
   var movie_avg_rate: Double = 0
-  // 电影热度排名
+  // Movie popularity rank
   var movie_hot_rank: Int = 99999
-  // 电影类型数量
+  // Movie genre count
   var movie_genre_cnt: Int = 0
 
   /** ***************************** user behavior *********************************** */
-  // 用户对电影评分序列 (电影ID, 评分)
+  // User rating sequence for movies (movie ID, rating)
   var user_movie_rates: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
   var user_movie_rate_1days: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
   var user_movie_rate_3days: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
   var user_movie_rate_7days: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
   var user_movie_rate_15days: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
 
-  // 用户评分次数总次数
+  // Total user rating count
   var user_rate_cnt: Int = 0
-  // 用户评分次数7day
+  // User rating count 7-day
   var user_rate_7day_cnt: Int = 0
-  // 用户评分次数15day
+  // User rating count 15-day
   var user_rate_15day_cnt: Int = 0
-  // 用户评分次数30day
+  // User rating count 30-day
   var user_rate_30day_cnt: Int = 0
 
-  // 用户打分方差
+  // User rating variance
   var user_rate_std: Float = 0.0F
-  // 用户打分方差7天
+  // User rating variance 7-day
   var user_rate_std_7day: Float = 0.0F
-  // 用户打分方差15天
+  // User rating variance 15-day
   var user_rate_std_15day: Float = 0.0F
-  // 用户打分方差30天
+  // User rating variance 30-day
   var user_rate_std_30day: Float = 0.0F
 
-  // 用户平均评分. 低分用户 (＜3)、中庸3、高分偏好 (≥4)
+  // User average rating. Low-score users (<3), neutral 3, high-score preference (≥4)
   var user_avg_rate: Float = 3.0F
   var user_avg_rate_7day: Float = 3.0F
   var user_avg_rate_15day: Float = 3.0F
   var user_avg_rate_30day: Float = 3.0F
 
-  // 用户对电影类型评分序列 (电影类型, 给类型下所有电影的平均评分)
+  // User rating sequence by movie genre (genre, average rating of all movies in that genre)
   var user_genres_rates: ArrayBuffer[(String, Float)] = ArrayBuffer.empty[(String, Float)]
   var user_genres_rate_1days: ArrayBuffer[(String, Float)] = ArrayBuffer.empty[(String, Float)]
   var user_genres_rate_3days: ArrayBuffer[(String, Float)] = ArrayBuffer.empty[(String, Float)]
   var user_genres_rate_7days: ArrayBuffer[(String, Float)] = ArrayBuffer.empty[(String, Float)]
   var user_genres_rate_15days: ArrayBuffer[(String, Float)] = ArrayBuffer.empty[(String, Float)]
 
-  // 用户对电影类型评分次数序列 (电影类型, 给类型下所有电影评分总次数)
+  // User rating count sequence by movie genre (genre, total rating count for all movies in that genre)
   var user_genres_rate_cnts: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
   var user_genres_rate_cnt_1days: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
   var user_genres_rate_cnt_3days: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
   var user_genres_rate_cnt_7days: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
   var user_genres_rate_cnt_15days: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
 
-  // 用户历史最爱top3电影类型和对应评分次数
+  // User's historical top 3 favorite movie genres and corresponding rating counts
   var user_top3_genres: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
 
-  // liftcycle生命周期
-  // 用户活跃天数 (累计有评分的去重天数)
+  // Lifecycle period
+  // User active days (cumulative distinct days with ratings)
   var user_active_day: Int = 0
-  // 用户注册至今天数（生命周期）
+  // Days since user registration (lifecycle)
   var user_reg_day: Int = 0
-  // 最后一次行为距今天数（沉默天数）
+  // Days since last behavior (silent days)
   var user_last_behavior_day: Int = 0
-  // 电影发布距今天数/年份差
+  // Days/years since movie release
   var item_publish_day: Int = 0
 
 
@@ -189,11 +190,11 @@ class ML1MTrainSample extends Serializable {
   var time_area: Int = 0
 
   /** ***************************** target *********************************** */
-  // 多分类. item_id.
+  // Multi-class classification. item_id.
   var target: Int = 0
-  // 二分类. 0/1
+  // Binary classification. 0/1
   var label: Int = 0
-  // 相关性回归. 1-5
+  // Relevance regression. 1-5
   var rating: Float = 0.0F
 }
 
@@ -203,6 +204,7 @@ object ML1MTrainSample {
 
   private val formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
 
+  /** Parse timestamp: auto-detect unix seconds (<=10 digits) vs milliseconds vs formatted string (yyyyMMddHHmmss). */
   private def parseTimestampMillis(raw: String): Long = {
     val trimmed = raw.trim
     if (trimmed.forall(_.isDigit)) {
@@ -213,6 +215,7 @@ object ML1MTrainSample {
     }
   }
 
+  /** Compute average rating from a sequence of (movieId, rating) pairs. Returns 3.0 if empty. */
   private def parseUserAvgRate(user_movie_rates: ArrayBuffer[(Int, Int)]): Float = {
     if (user_movie_rates.isEmpty) {
       return 3.0F
@@ -222,6 +225,7 @@ object ML1MTrainSample {
     total_rate * 1.0F / total_cnt
   }
 
+  /** Compute rating standard deviation. Returns 0.0 if empty. */
   private def parseUserRateStd(user_movie_rates: ArrayBuffer[(Int, Int)]): Float = {
     if (user_movie_rates.isEmpty) {
       return 0.0F
@@ -237,11 +241,13 @@ object ML1MTrainSample {
   }
 
   /**
-   * Parse join_sample
+   * Parse a join_sample row into ML1MTrainSample with all feature groups.
+   * Handles JSON parsing for user_profile, item_feature, and user_behavior fields.
+   * Computes derived features: label, context (hour/weekday), genre-level aggregates, duration windows.
    *
    * @param row        ("user_id", "item_id", "time_stamp", "rating", "day", "user_profile", "item_feature", "user_behavior"))
    * @param movie_info Map[movie_id, (title, genres)]
-   * @return
+   * @return (ML1MTrainSample, successFlag)
    */
   def parseSample(row: Row, movie_info: collection.Map[Int, (String, Array[String])]): (ML1MTrainSample, Boolean) = {
     val train_sample = new ML1MTrainSample()
@@ -370,14 +376,14 @@ object ML1MTrainSample {
             }
             val dur = try {
               val ts = parseTimestampMillis(timestamp)
-              (sample_timestamp - ts) / 1000.0 / 3600.0 / 24.0
+              (sample_timestamp - ts) / 1000.0 / 3600.0 / 24.0  // days between current rating and historical rating
             } catch {
               case e: Exception =>
                 green_println("Parse user_movie_rate: " + e.toString + " " + item)
                 ret = false
                 -1.0
             }
-            if (dur > 0) {
+            if (dur > 0) {  // include only strictly historical ratings
               train_sample.user_movie_rates.append((item_id, rate))
               train_sample.user_rate_cnt += 1
             }

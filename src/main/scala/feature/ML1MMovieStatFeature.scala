@@ -7,7 +7,7 @@ import utils.LogUtils.setLogLevel
 /**
  * @author shard zhang
  * @date 2026/6/4 11:42
- * @note
+ * @note Computes movie statistical features: average rating, rating count, genre count, and hot rank.
  */
 object ML1MMovieStatFeature {
   private val TOP_N = 200
@@ -39,6 +39,7 @@ object ML1MMovieStatFeature {
         .toDF("user_id", "item_id", "rating", "time_stamp", "day")
         .createOrReplaceTempView("clean_sample")
 
+    // movie_t: parse movie metadata; stat: compute per-movie rating stats; then join and rank by popularity
     val sql = s"""
            | with movie_t as (
            |   SELECT
@@ -60,13 +61,13 @@ object ML1MMovieStatFeature {
            |)
            |
            | select
-           |   stat.item_id as movie_id,        --电影ID
-           |   title as movie_title,            --电影标题
-           |   genres as movie_genres,          --电影类型
-           |   movie_genre_cnt, --电影类型数
-           |   movie_rate_count,                --电影评分数
-           |   movie_avg_rate,                  --电影平均评分
-           |   row_number() over (order by movie_rate_count desc) as movie_hot_rank --电影热门排名
+    |   stat.item_id as movie_id,        --movie ID
+    |   title as movie_title,            --movie title
+    |   genres as movie_genres,          --movie genres
+    |   movie_genre_cnt, --movie genre count
+    |   movie_rate_count,                --movie rating count
+    |   movie_avg_rate,                  --movie average rating
+    |   row_number() over (order by movie_rate_count desc) as movie_hot_rank --movie hot rank
            | from stat inner join movie_t 
            | on stat.item_id = movie_t.item_id
     """.stripMargin

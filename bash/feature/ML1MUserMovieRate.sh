@@ -2,7 +2,7 @@
 
 # name: shard zhang
 # date: 2026/5/29 21:47
-# note:  
+# note: Build per-user movie rating sequences (time-windowed) for behavior features
 
 cd $(dirname $0)
 

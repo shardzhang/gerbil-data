@@ -2,7 +2,7 @@
 
 # name: shard zhang
 # date: 2026/6/5 10:55
-# note:
+# note: Compute movie-level statistics: avg rating, rating count, genre count, hot rank
 
 cd $(dirname $0)
 

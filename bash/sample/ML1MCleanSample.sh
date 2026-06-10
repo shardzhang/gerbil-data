@@ -2,7 +2,7 @@
 
 # name: shard zhang
 # date: 2026/5/28 17:54
-# note:
+# note: Clean raw ML-1M ratings (dedup, filter invalid), output CSV with day field
 
 cd "$(dirname "$0")"
 

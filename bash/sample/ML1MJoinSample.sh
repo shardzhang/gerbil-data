@@ -2,7 +2,7 @@
 
 # name: shard zhang
 # date: 2026/5/29 12:09
-# note:
+# note: Join cleaned samples with user profiles, item features, and behavior sequences
 
 cd "$(dirname "$0")"
 

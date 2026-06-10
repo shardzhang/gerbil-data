@@ -9,40 +9,45 @@ import scala.jdk.CollectionConverters._
  * @date 2026/6/3 14:15
  * @note ParquetRecord
  */
+/** A serializable record backed by a mutable map of column name -> value. */
 case class ParquetRecord(columns: mutable.Map[String, Any]) extends Serializable {
+  /** Extracts column values in the order given by `column_names`. */
   def to_seq(column_names: Seq[String]): Seq[Any] = {
     column_names.map(name => columns.getOrElse(name, null))
   }
 }
 
+/** Builder and converter for ParquetRecord. */
 object ParquetRecord {
   def newBuilder(): ParquetRecordBuilder = new ParquetRecordBuilder()
 
-  // Builder内部类，链式set，最终build生成实例
+  /** Builder with chainable `put`/`putAll` and terminal `build`. */
   class ParquetRecordBuilder private[ParquetRecord]() {
     private val innerMap = mutable.Map.empty[String, Any]
 
-    // 链式添加字段
+    /** Sets a single field. */
     def put(k: String, v: Any): ParquetRecordBuilder = {
       innerMap.put(k, v)
       this
     }
 
-    // 批量导入map
+    /** Bulk-imports all entries from a map. */
     def putAll(map: mutable.Map[String, Any]): ParquetRecordBuilder = {
       innerMap ++= map
       this
     }
 
-    // 最终build生成ParquetRecord
+    /** Produces the final ParquetRecord. */
     def build(): ParquetRecord = ParquetRecord(innerMap)
 
+    /** Clears all accumulated fields and resets the builder. */
     def clear(): ParquetRecordBuilder = {
       innerMap.clear()
       this
     }
   }
 
+  /** Converts a TensorFlow Example proto into a ParquetRecord. */
   def from_example(example: Example): ParquetRecord = {
     val columns = new mutable.HashMap[String, Any]()
     for ((name, feature) <- example.getFeatures.getFeatureMap.asScala) {

@@ -6,10 +6,11 @@ import org.apache.spark.sql.DataFrame
 /**
  * @author Shard Zhang
  * @date 2021/3/18 09:37
- * @note 在Spark shell控制台, 彩色打印
+ * @note Color printing in Spark shell console
  *       https://stackoverflow.com/questions/287871/how-to-print-colored-text-to-the-terminal
  */
 
+/** ANSI escape codes for terminal color output. */
 case object PrintStyle {
   val HEADER = "\033[95m"
   val OKBLUE = "\033[94m"
@@ -22,10 +23,12 @@ case object PrintStyle {
   val UNDERLINE = "\033[4m"
 }
 
+/** Color-printing utilities for Spark-shell console output. */
 object LogUtils {
 
+  /** Sets root logger to WARN to suppress verbose Spark logs. */
   def setLogLevel(): Unit = {
-    Logger.getRootLogger.setLevel(Level.WARN) // 全局根日志器
+    Logger.getRootLogger.setLevel(Level.WARN)
     // Logger.getLogger("org").setLevel(Level.WARN)
     // Logger.getLogger("org.apache.hadoop").setLevel(Level.WARN)
     // Logger.getLogger("org.apache.spark").setLevel(Level.WARN)
@@ -49,46 +52,47 @@ object LogUtils {
     PrintStyle.BOLD + str + PrintStyle.BOLD
   }
 
+  /** Wraps string in red ANSI codes for terminal output. */
   def red(str: String): String = {
     "\u001B[31m " + str + "\u001B[0m"
   }
 
-  // Green
+  /** Wraps string in green ANSI codes. */
   def green(str: String): String = {
     "\u001B[32m " + str + "\u001B[0m"
   }
 
-  // Yellow
+  /** Wraps string in yellow ANSI codes. */
   def yellow(str: String): String = {
     "\u001B[33m " + str + "\u001B[0m"
   }
 
-  // Cyan
+  /** Wraps string in cyan ANSI codes. */
   def cyan(str: String): String = {
     "\u001B[36m " + str + "\u001B[0m"
   }
 
-  // Red
+  /** Prints `str` in red prefixed with ">>> Transformed | ". */
   def red_println(str: String): Unit = {
-    //System.out.println("\u001B[31m>>>>\u001B[0m\u001B[31m" + str + "\u001B[0m")
     System.out.println(red(s">>> Transformed | ${str}"))
   }
 
-  // Green
+  /** Prints `str` in green prefixed with ">>> Transformed | ". */
   def green_println(str: String): Unit = {
     System.out.println(green(s">>> Transformed | ${str}"))
   }
 
-  // Yellow
+  /** Prints `str` in yellow prefixed with ">>> Transformed | ". */
   def yellow_println(str: String): Unit = {
     System.out.println(yellow(s">>> Transformed | ${str}"))
   }
 
-  // Bold
+  /** Prints `str` in bold prefixed with ">>> Transformed | ". */
   def bold_println(str: String): Unit = {
     System.out.println(bold(s">>> Transformed | ${str}"))
   }
 
+  /** Prints the first `limit` values of a DataFrame column to console. */
   def printFieldInfo(dfData: DataFrame, colName: String, limit: Int): Unit = {
     dfData
       .select(colName)

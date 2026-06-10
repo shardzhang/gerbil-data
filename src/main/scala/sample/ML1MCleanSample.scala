@@ -7,20 +7,22 @@ import utils.LogUtils.{green_println, setLogLevel}
 /**
  * @author shard zhang
  * @date 2026/5/28 17:45
- * @note ML-1M 处理 ml-1m 原始评分数据, 清洗并输出 CSV
+ * @note ML-1M processes raw ml-1m rating data, cleans and outputs CSV
+ *       Cleans raw ML-1M ratings into deduplicated CSV with day field.
  *
- *       DataFrame 负责读原始文本并注册临时表，SQL 负责全部核心业务逻辑
+ *       DataFrames load raw text; SQL handles all transformation logic.
+ *       DataFrames load raw text; SQL handles all transformation logic.
  *
- *       输入:
+ *       Input:
  *       ratings.dat
- *       格式: UserID::MovieID::Rating::Timestamp
+ *       Format: UserID::MovieID::Rating::Timestamp
  *
- *       输出:
+ *       Output:
  *       user_id \t item_id \t rating \t time_stamp \t day
  *
- *       逻辑:
- *       1. 读取原始文本并拆分字段
- *          2. 过滤非法数据
+ *       Logic:
+ *       1. Parse raw text and split fields
+ *          2. Filter invalid data
  */
 object ML1MCleanSample {
   private val RAW_SEP = "::"
@@ -44,6 +46,7 @@ object ML1MCleanSample {
       // user_id::movie_id::rating::timestamp
       spark.read.text(s"$path/ratings.dat").createOrReplaceTempView("ratings_raw")
 
+      // Deduplicate: for identical (user, item, rating, timestamp), keep only the latest record
       val sql =
         s"""
            | with clean as (
@@ -53,7 +56,7 @@ object ML1MCleanSample {
            |     rating,
            |     time_stamp,
            |     day,
-           |     row_number() over (partition by user_id, item_id, rating, time_stamp order by time_stamp desc) as rn
+           |     row_number() over (partition by user_id, item_id, rating, time_stamp order by time_stamp desc) as rn  -- dedup identical rows
            |   from (
            |     SELECT
            |       trim(split(value, '${RAW_SEP}')[0]) AS user_id,
@@ -85,7 +88,7 @@ object ML1MCleanSample {
       cleanSample.show()
       cleanSample.printSchema()
 
-      // 4. 输出
+      // 4. Output
       cleanSample
         .selectExpr("user_id", "item_id", "rating", "time_stamp", "day")
         .write
