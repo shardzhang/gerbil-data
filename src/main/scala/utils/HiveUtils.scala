@@ -139,25 +139,16 @@ object HiveUtils {
   }
 
 
-  // 取数据源最近的分区
   def getRecentPartition(spark: SparkSession, table: String, today: String): String = {
-    val sql =
-      s"""
-         | select day
-         | from $table
-         | where day <= '$today'
-         | order by day desc
-         | limit 1
-         |""".stripMargin
-    green_println(s"sql = ${sql}")
-    spark.sql(sql).rdd.map { x => x.getString(0) }.take(1)(0)
+    val rows = spark.sql(
+      s"select day from $table where day <= cast('$today' as string) order by day desc limit 1"
+    ).rdd.map { x => x.getString(0) }.take(1)
+    if (rows.isEmpty) "" else rows(0)
   }
 
   // 如何写一个接口? 实现复用?
 
-  /** 获取数据的最近分区 */
   def getLatestPartition(hiveContext: SparkSession, table: String): String = {
-    // dt=2022-05-09
     val partitions: Array[String] = hiveContext
       .sql(s"show partitions $table")
       .rdd
@@ -166,25 +157,16 @@ object HiveUtils {
 
     if (partitions.isEmpty) return ""
 
-    val part = try {
-      val cmp = new Ordering[String] {
-        override def compare(x: String, y: String): Int = {
-          x.compare(y)
-        }
-      }
-
+    try {
       partitions
-        .max(cmp)
+        .max
         .split("/")(0)
         .split("=")(1)
     } catch {
-      case _: Throwable => ""
+      case _: Exception => ""
     }
-
-    part
   }
 
-  /** 获取距离dayCurrent最近的分区 */
   def getOrNearestPartition(spark: SparkSession,
                             table: String,
                             dayCurrent: String): String = {
@@ -195,15 +177,11 @@ object HiveUtils {
       .collect()
     if (partitions.isEmpty) return dayCurrent
 
-    val nearestPartition = try {
-      partitions
-        .map(r => r.split("=")(1))
-        .filter(_ <= dayCurrent)
-        .max
+    try {
+      val days = partitions.map(r => r.split("=")(1)).filter(_ <= dayCurrent)
+      if (days.isEmpty) dayCurrent else days.max
     } catch {
-      case _: Throwable => dayCurrent
+      case _: Exception => dayCurrent
     }
-
-    return nearestPartition
   }
 }

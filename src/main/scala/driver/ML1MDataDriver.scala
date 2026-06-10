@@ -103,32 +103,37 @@ object ML1MDataDriver extends BaseDataDriver[ML1MTrainSample] {
       .appName(this.getClass.getSimpleName.stripSuffix("$"))
       .getOrCreate()
 
-    setLogLevel()
-    val sc = spark.sparkContext
-    sc.setLogLevel("WARN")
-    green_println("Hadoop config mapred.output.compress = " + sc.hadoopConfiguration.get("mapred.output.compress"))
-    sc.hadoopConfiguration.setBoolean("mapred.output.compress", false)
-    green_println("Hadoop config mapred.output.compress = " + sc.hadoopConfiguration.get("mapred.output.compress"))
-    for (p <- sc.getConf.getAll) {
-      green_println(s"Spark Conf ${p._1} = ${p._2}")
-    }
+    try {
+      setLogLevel()
+      val sc = spark.sparkContext
+      sc.setLogLevel("WARN")
+      hadoopConf = sc.hadoopConfiguration
+      green_println("Hadoop config mapred.output.compress = " + hadoopConf.get("mapred.output.compress"))
+      hadoopConf.setBoolean("mapred.output.compress", false)
+      green_println("Hadoop config mapred.output.compress = " + hadoopConf.get("mapred.output.compress"))
+      for (p <- sc.getConf.getAll) {
+        green_println(s"Spark Conf ${p._1} = ${p._2}")
+      }
 
-    val outputPath = new Path(output_dir + "/" + yesterday)
-    val fs = FileSystem.get(outputPath.toUri, new Configuration())
-    if (fs.exists(outputPath)) {
-      green_println(outputPath.toString + " exists and delete.")
-      fs.delete(outputPath, true)
+      val outputPath = new Path(output_dir + "/" + yesterday)
+      val fs = FileSystem.get(outputPath.toUri, hadoopConf)
+      if (fs.exists(outputPath)) {
+        green_println(outputPath.toString + " exists and delete.")
+        fs.delete(outputPath, true)
+      }
+      val (pos_map_before, target_map_before, pos_dim_before) = restore_pos_map(output_dir)
+      val (pos_map_after, target_map_after, pos_dim_after) = run(
+        spark, yesterday, feature_threshold, target_threshold, sample_ratio,
+        pos_map_before, target_map_before, pos_dim_before, input_dir, output_dir, parts
+      )
+      save_pos_map(output_dir, yesterday, pos_map_after, target_map_after, pos_dim_after)
+      val successPath = new Path(s"${outputPath.toString}/_SUCCESS")
+      if (fs.exists(successPath)) {
+        fs.delete(successPath, true)
+      }
+      fs.create(successPath).close()
+    } finally {
+      spark.stop()
     }
-    val (pos_map_before, target_map_before, pos_dim_before) = restore_pos_map(output_dir)
-    val (pos_map_after, target_map_after, pos_dim_after) = run(
-      spark, yesterday, feature_threshold, target_threshold, sample_ratio,
-      pos_map_before, target_map_before, pos_dim_before, input_dir, output_dir, parts
-    )
-    save_pos_map(output_dir, yesterday, pos_map_after, target_map_after, pos_dim_after)
-    val successPath = new Path(s"${outputPath.toString}/_SUCCESS")
-    if (fs.exists(successPath)) {
-      fs.delete(successPath, true)
-    }
-    fs.create(successPath).close()
   }
 }

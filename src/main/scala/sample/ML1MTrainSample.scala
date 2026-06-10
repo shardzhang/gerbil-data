@@ -364,12 +364,9 @@ object ML1MTrainSample {
             val item_id = parts(0).toInt
             val rate = parts(1).toInt
             val timestamp = parts(2)
-            var has_movie_info = true
-            val (title, genres) = movie_info.get(parts(0).toInt) match {
+            val (_, genres) = movie_info.get(parts(0).toInt) match {
               case Some(tg) => tg
-              case None =>
-                has_movie_info = false
-                ("", Array.empty[String])
+              case None => ("", Array.empty[String])
             }
             val dur = try {
               val ts = parseTimestampMillis(timestamp)

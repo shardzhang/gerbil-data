@@ -84,6 +84,8 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
 
   def feature_encoder: FeatureEncoder[T]
 
+  var hadoopConf: Configuration = hadoopConf
+
   /**
    * 加载并解析训练样本.
    */
@@ -189,7 +191,7 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
                                 targetMap: mutable.HashMap[Int, Int],
                                 posDimMap: mutable.HashMap[(String, Int, Int), Int]): Boolean = {
     val jsonPath = s"${path}/pos_map.json"
-    val fs = FileSystem.get(URI.create(jsonPath), new Configuration())
+    val fs = FileSystem.get(URI.create(jsonPath), hadoopConf)
     val file = new Path(jsonPath)
     if (!fs.exists(file)) {
       return false
@@ -243,7 +245,7 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
   protected def restoreFromText(path: String,
                                 posDimMap: mutable.HashMap[(String, Int, Int), Int]): Boolean = {
     val textPath = s"${path}/pos_map.txt"
-    val fs = FileSystem.get(URI.create(textPath), new Configuration())
+    val fs = FileSystem.get(URI.create(textPath), hadoopConf)
     val file = new Path(textPath)
     if (!fs.exists(file)) {
       return false
@@ -278,7 +280,7 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
                                posDimMap: mutable.HashMap[(String, Int, Int), Int]): Unit = {
     val binPath = s"${path}/${yesterday}/pos_map.bin"
     try {
-      val fs = FileSystem.get(URI.create(binPath), new Configuration())
+      val fs = FileSystem.get(URI.create(binPath), hadoopConf)
       val reader = new LittleEndianDataInputStream(new BufferedInputStream(fs.open(new Path(binPath))))
       try {
         val timestamp = reader.readLong()
@@ -554,9 +556,9 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
                           target_map: collection.Map[Int, Int],
                           pos_dim: collection.Map[(String, Int, Int), Int]): Unit = {
     do {
-      val binPath = s"${path}/pos_map.bin"
+      val binPath = s"${path}/${yesterday}/pos_map.bin"
       green_println(s"write pos_map.bin path = ${binPath}")
-      val fs = FileSystem.get(URI.create(binPath), new Configuration())
+      val fs = FileSystem.get(URI.create(binPath), hadoopConf)
       val writer = new LittleEndianDataOutputStream(new BufferedOutputStream(fs.create(new Path(binPath), true)))
 
       val pos_dim_map = new mutable.HashMap[Int, (String, Int, Int)]()
@@ -613,7 +615,7 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
     do {
       val textPath = s"${path}/pos_map.txt"
       green_println(s"write pos_map.text path = ${textPath}")
-      val fs = FileSystem.get(URI.create(textPath), new Configuration())
+      val fs = FileSystem.get(URI.create(textPath), hadoopConf)
       val writer = new BufferedWriter(new OutputStreamWriter(fs.create(new Path(textPath), true), "utf-8"))
       try {
         writer.write("field_name,field_index,field_type,dim\n")
@@ -639,7 +641,7 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
     do {
       val jsonPath = s"${path}/pos_map.json"
       green_println(s"write pos_map.json path = ${jsonPath}")
-      val fs = FileSystem.get(URI.create(jsonPath), new Configuration())
+      val fs = FileSystem.get(URI.create(jsonPath), hadoopConf)
       val writer = new BufferedWriter(new OutputStreamWriter(fs.create(new Path(jsonPath), true), "utf-8"))
 
       try {
