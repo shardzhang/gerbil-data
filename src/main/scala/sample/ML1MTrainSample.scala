@@ -1,11 +1,8 @@
 package sample
 
-
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, ZoneId}
-import scala.collection
 import scala.collection.mutable
-import scala.collection.immutable
 import scala.collection.mutable.ArrayBuffer
 
 import org.apache.spark.sql.Row
@@ -16,10 +13,10 @@ import utils.LogUtils.green_println
 /**
  * @author shard zhang
  * @date 2026/5/29 18:02
- * @note 
- *  
+ * @note
+ *
  *  ML-1M 训练样本, 包含用户特征, 物品特征, 用户行为序列特征, 标签
- * 
+ *
  *       标签: rating
  *       物品特征: movie_title, movie_genres, movie_publish_year, movie_rate_count, movie_avg_rate
  *       用户特征: gender, age, occupation, zip_code
@@ -383,8 +380,6 @@ object ML1MTrainSample {
             if (dur > 0) {
               train_sample.user_movie_rates.append((item_id, rate))
               train_sample.user_rate_cnt += 1
-              train_sample.user_avg_rate = parseUserAvgRate(train_sample.user_movie_rates)
-              train_sample.user_rate_std = parseUserRateStd(train_sample.user_movie_rates)
             }
             if (dur > 0 && dur <= 1) {
               train_sample.user_movie_rate_1days.append((item_id, rate))
@@ -395,20 +390,14 @@ object ML1MTrainSample {
             if (dur > 0 && dur <= 7) {
               train_sample.user_movie_rate_7days.append((item_id, rate))
               train_sample.user_rate_7day_cnt += 1
-              train_sample.user_avg_rate_7day = parseUserAvgRate(train_sample.user_movie_rate_7days)
-              train_sample.user_rate_std_7day = parseUserRateStd(train_sample.user_movie_rate_7days)
             }
             if (dur > 0 && dur <= 15) {
               train_sample.user_movie_rate_15days.append((item_id, rate))
               train_sample.user_rate_15day_cnt += 1
-              train_sample.user_avg_rate_15day = parseUserAvgRate(train_sample.user_movie_rate_15days)
-              train_sample.user_rate_std_15day = parseUserRateStd(train_sample.user_movie_rate_15days)
             }
             if (dur > 0 && dur <= 30) {
               userMovieRate30Days.append((item_id, rate))
               train_sample.user_rate_30day_cnt += 1
-              train_sample.user_avg_rate_30day = parseUserAvgRate(userMovieRate30Days)
-              train_sample.user_rate_std_30day = parseUserRateStd(userMovieRate30Days)
             }
 
             for (g <- genres) {
@@ -436,6 +425,16 @@ object ML1MTrainSample {
             }
           }
         }
+
+        train_sample.user_avg_rate = parseUserAvgRate(train_sample.user_movie_rates)
+        train_sample.user_rate_std = parseUserRateStd(train_sample.user_movie_rates)
+        train_sample.user_avg_rate_7day = parseUserAvgRate(train_sample.user_movie_rate_7days)
+        train_sample.user_rate_std_7day = parseUserRateStd(train_sample.user_movie_rate_7days)
+        train_sample.user_avg_rate_15day = parseUserAvgRate(train_sample.user_movie_rate_15days)
+        train_sample.user_rate_std_15day = parseUserRateStd(train_sample.user_movie_rate_15days)
+        train_sample.user_avg_rate_30day = parseUserAvgRate(userMovieRate30Days)
+        train_sample.user_rate_std_30day = parseUserRateStd(userMovieRate30Days)
+
         for ((gen, total_rate) <- user_genres_rate_map) {
           val total_cnt = user_genres_rate_cnt_map(gen)
           train_sample.user_genres_rates.append((gen, total_rate / total_cnt))

@@ -563,7 +563,7 @@ abstract class BaseDataDriver[T: ClassTag] extends Serializable {
         pos_dim_map.put(e._1._2, (e._1._1, e._1._3, e._2))
       }
 
-      writer.writeLong(yesterday.toLong)
+      writer.writeLong(yesterday.replaceAll("-", "").toLong)
       writer.writeInt(pos_map.size)
 
       /** Map((f_index, hash), (pos, mean, std)) */

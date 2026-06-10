@@ -10,7 +10,6 @@ import tfrecords.serde.BytesListFeatureEncoder
 import tfrecords.serde.{FloatListFeatureEncoder, Int64ListFeatureEncoder}
 import utils.MurmurHash3.LongPair
 import utils.MurmurHash3
-import utils.ParquetRecord
 import utils.ParquetRecord.ParquetRecordBuilder
 
 /**
@@ -53,8 +52,20 @@ abstract class RawTarget[T] {
     }
     if (target_map.contains(target.toInt)) {
       builder.getFeaturesBuilder.putFeature(
-        "target", FloatListFeatureEncoder.encode(Seq(target_map(target.toInt)))
+        "target", FloatListFeatureEncoder.encode(Seq(target_map(target.toInt).toFloat))
       )
+      return true
+    }
+    false
+  }
+
+  def add(map: mutable.Map[String, Any], target_map: collection.Map[Int, Int]): Boolean = {
+    if (target_map == null) {
+      map.put("target", target)
+      return true
+    }
+    if (target_map.contains(target.toInt)) {
+      map.put("target", target_map(target.toInt).toFloat)
       return true
     }
     false
@@ -270,6 +281,29 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
     }
     has_feature
   }
+
+  def add(dim: Long, pos_map: collection.Map[(Int, Long), Int], columns: mutable.Map[String, Any]): Boolean = {
+    val raw_buf = new ArrayBuffer[String]()
+    val pos_buf = new ArrayBuffer[Long]()
+    val value_buf = new ArrayBuffer[Float]()
+    raw_buf.append("R:")
+    pos_buf.append(0L)
+    value_buf.append(1.0F)
+    for (i <- feature_list.indices) {
+      val raw_fea = raw_list(i)
+      val fea = feature_list(i)
+      val value = value_list(i)
+      if (fea != 0 && pos_map.contains((f_index, fea))) {
+        raw_buf.append(raw_fea)
+        pos_buf.append(pos_map((f_index, fea)).toLong)
+        value_buf.append(value)
+      }
+    }
+    columns.put(f_name + "_raw", raw_buf.map(_.getBytes(UTF_8)))
+    columns.put(f_name + "_index", pos_buf)
+    columns.put(f_name + "_value", value_buf)
+    pos_buf.length > 1
+  }
 }
 
 abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureType.Categorical) extends RawFeature(f_i, f_n, f_t) {
@@ -468,6 +502,32 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
       }
     }
     has_feature
+  }
+
+  def add(dim: Long, pos_map: collection.Map[(Int, Long), Int], columns: mutable.Map[String, Any]): Boolean = {
+    val raw_buf = new ArrayBuffer[String]()
+    val pos_buf = new ArrayBuffer[Long]()
+    val value_buf = new ArrayBuffer[Float]()
+    raw_buf.append("R:")
+    pos_buf.append(0L)
+    value_buf.append(1.0F)
+    for (i <- feature_list.indices) {
+      val raw_fea = raw_list(i)
+      val fea = feature_list(i)
+      val value = value_list(i)
+      if (fea != 0) {
+        val hash = computeHash(fea, dim)
+        if (pos_map.contains((f_index, hash))) {
+          raw_buf.append(raw_fea)
+          pos_buf.append(pos_map((f_index, hash)).toLong)
+          value_buf.append(value)
+        }
+      }
+    }
+    columns.put(f_name + "_raw", raw_buf.toSeq.map(_.getBytes(UTF_8)))
+    columns.put(f_name + "_index", pos_buf.toSeq)
+    columns.put(f_name + "_value", value_buf.toSeq)
+    pos_buf.length > 1
   }
 }
 
@@ -710,6 +770,32 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
     }
     has_feature
   }
+
+  def add(dim: Long, pos_map: collection.Map[(Int, Long), Int], columns: mutable.Map[String, Any]): Boolean = {
+    val raw_buf = new ArrayBuffer[String]()
+    val pos_buf = new ArrayBuffer[Long]()
+    val value_buf = new ArrayBuffer[Float]()
+    raw_buf.append("R:")
+    pos_buf.append(0L)
+    value_buf.append(1.0F)
+    foreachCombination {
+      var fmt: String = ""
+      for (i <- 0 until rnfs.length) {
+        fmt += rnfs(i).f_index.toString + ":" + rnfs(i).raw_list(indexes(i))
+        if (i < rnfs.length - 1) fmt += "__xx__"
+      }
+      val hash = computeHash(dim)
+      if (pos_map.contains((f_index, hash))) {
+        raw_buf.append(fmt)
+        pos_buf.append(pos_map((f_index, hash)).toLong)
+        value_buf.append(1.0F)
+      }
+    }
+    columns.put(f_name + "_raw", raw_buf.toSeq.map(_.getBytes(UTF_8)))
+    columns.put(f_name + "_index", pos_buf.toSeq)
+    columns.put(f_name + "_value", value_buf.toSeq)
+    pos_buf.length > 1
+  }
 }
 
 abstract class FeatureEncoder[T] {
@@ -939,10 +1025,38 @@ abstract class FeatureEncoder[T] {
    * @return
    */
   def encode(input: T, dim: Long, parquet_builder: ParquetRecordBuilder, pos_map: collection.Map[(Int, Long), Int], target_map: collection.Map[Int, Int]): (Boolean, Boolean) = {
-    val example_builder = Example.newBuilder()
-    val (has_feature, has_target) = encode(input, dim, example_builder, pos_map, target_map)
+    for (raw_f <- raw_cate_features) {
+      raw_f.clear();
+      raw_f.parse(input)
+    }
+    for (raw_f <- raw_conti_features) {
+      raw_f.clear();
+      raw_f.parse(input)
+    }
+
+    val columns = new mutable.HashMap[String, Any]()
+    val has_target = target
+      .parse(input)
+      .add(columns, target_map)
+
+    var has_feature = false
+    for (raw_f <- raw_cate_features) {
+      if (raw_f.add(dim, pos_map, columns)) {
+        has_feature = true
+      }
+    }
+    for (raw_f <- raw_conti_features) {
+      if (raw_f.add(dim, pos_map, columns)) {
+        has_feature = true
+      }
+    }
+    for (cross_f <- cross_features) {
+      if (cross_f.add(dim, pos_map, columns)) {
+        has_feature = true
+      }
+    }
     parquet_builder.clear()
-    parquet_builder.putAll(ParquetRecord.from_example(example_builder.build()).columns)
+    parquet_builder.putAll(columns)
     (has_feature, has_target)
   }
 }

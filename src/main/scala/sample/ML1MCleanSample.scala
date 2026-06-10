@@ -64,8 +64,8 @@ object ML1MCleanSample {
            |     FROM ratings_raw
            |     WHERE size(split(value, '${RAW_SEP}')) = 4
            |   ) t
-           |   where user_id is not null and user_id >= 0
-           |   and item_id is not null and item_id >= 0
+           |   where user_id is not null and cast(user_id as bigint) >= 0
+           |   and item_id is not null and cast(item_id as bigint) >= 0
            |   and rating is not null
            |   and time_stamp is not null
            |   and rating >= 1 and rating <= 5

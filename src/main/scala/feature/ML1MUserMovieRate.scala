@@ -1,6 +1,5 @@
 package feature
 
-import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.SparkSession
 import utils.LogUtils.{green_println, setLogLevel}
 

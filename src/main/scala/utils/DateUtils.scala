@@ -37,7 +37,7 @@ object DateUtils {
   }
 
   /** 从unix timestamp转换为Java时间 */
-  def getDateFromUnixTimestamp(timestamp: String, pattern: String = "yyyMMdd"): String = {
+  def getDateFromUnixTimestamp(timestamp: String, pattern: String = "yyyyMMdd"): String = {
     val sdf = new SimpleDateFormat(pattern)
     sdf.format(new Date(timestamp.toLong * 1000L))
   }

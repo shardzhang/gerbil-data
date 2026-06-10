@@ -39,7 +39,6 @@ object ML1MJoinSample {
 
     val spark = SparkSession.builder()
       .appName(this.getClass.getSimpleName.stripSuffix("$"))
-      .enableHiveSupport()
       .getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
     println("Spark Version: " + spark.version)
@@ -71,26 +70,21 @@ object ML1MJoinSample {
       val sql =
         s"""
            |WITH user_profile AS (
-           |  select user_id, feature
-           |  from
-           |  (
-           |    SELECT
-           |        user_id,
-           |        to_json(struct(user_id, gender, age, occupation, zip_code)) AS feature,
-           |        row_number() OVER (PARTITION BY user_id, gender, age, occupation, zip_code ORDER BY user_id DESC) AS rn
-           |    FROM (
-           |        SELECT
-           |            split(value, '$RAW_SEP')[0] AS user_id,
-           |            split(value, '$RAW_SEP')[1] AS gender,
-           |            split(value, '$RAW_SEP')[2] AS age,
-           |            split(value, '$RAW_SEP')[3] AS occupation,
-           |            split(value, '$RAW_SEP')[4] AS zip_code
-           |        FROM users
-           |        WHERE size(split(value, '$RAW_SEP')) = 5
-           |    ) t
-           |    WHERE user_id IS NOT NULL AND user_id != ''
-           |  ) clean
-           |  where rn = 1
+           | SELECT
+           |     user_id,
+           |     to_json(struct(user_id, gender, age, occupation, zip_code)) AS feature
+           | FROM
+           | (
+           |  SELECT
+           |      split(value, '$RAW_SEP')[0] AS user_id,
+           |      split(value, '$RAW_SEP')[1] AS gender,
+           |      split(value, '$RAW_SEP')[2] AS age,
+           |      split(value, '$RAW_SEP')[3] AS occupation,
+           |      split(value, '$RAW_SEP')[4] AS zip_code
+           |  FROM users
+           | WHERE size(split(value, '$RAW_SEP')) = 5
+           | ) t
+           | WHERE user_id IS NOT NULL AND user_id != ''
            |)
            |
            |, item_feature as (
