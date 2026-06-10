@@ -13,7 +13,9 @@ import utils.LogUtils.green_println
 import featurizer.core.FeatureType
 import pipeline.stats.PosInfo
 
+/** Persists and restores feature position maps, target maps, and field dimension maps in JSON, text, and binary formats. */
 class PosMapSerDe(val hadoopConf: Configuration) {
+  /** Reconstructs a PosInfo from legacy mean/std representation (used when restoring older binary format). */
   def legacyPosInfo(pos: Int, mean: Double, std: Double, count: Long): PosInfo = {
     val safeCount = math.max(count, 1L)
     val variance = math.max(std * std - 0.000001D, 0.0D)
@@ -22,6 +24,7 @@ class PosMapSerDe(val hadoopConf: Configuration) {
     PosInfo(pos, sum, powerSum, safeCount)
   }
 
+  /** Reads all lines from a BufferedReader into a single string. */
   def readText(reader: BufferedReader): String = {
     val content = new StringBuilder()
     var line = reader.readLine()
@@ -37,6 +40,7 @@ class PosMapSerDe(val hadoopConf: Configuration) {
     content.toString()
   }
 
+  /** Restores pos-map, target-map, and dim-map from a JSON file. Returns false if file does not exist. */
   def restoreFromJson(path: String,
                       yesterday: String,
                       posMap: mutable.HashMap[(Int, Long), PosInfo],
@@ -91,6 +95,7 @@ class PosMapSerDe(val hadoopConf: Configuration) {
     true
   }
 
+  /** Restores the dimension-map from a CSV text file. Returns false if file does not exist. */
   def restoreFromText(path: String,
                       yesterday: String,
                       posDimMap: mutable.HashMap[(String, Int, Int), Int]): Boolean = {
@@ -118,6 +123,7 @@ class PosMapSerDe(val hadoopConf: Configuration) {
     true
   }
 
+  /** Restores pos-map, target-map, and dim-map from the legacy binary format. */
   def restoreFromBin(path: String,
                      yesterday: String,
                      posMap: mutable.HashMap[(Int, Long), PosInfo],
@@ -166,6 +172,7 @@ class PosMapSerDe(val hadoopConf: Configuration) {
     }
   }
 
+  /** Restores all maps (pos, target, dim) from JSON (primary). Falls back gracefully if files are missing. */
   def restore(path: String, yesterday: String): (mutable.HashMap[(Int, Long), PosInfo], mutable.HashMap[Int, Int], mutable.HashMap[(String, Int, Int), Int]) = {
     val pos_dim_map = new mutable.HashMap[(String, Int, Int), Int]()
     val pos_map = new mutable.HashMap[(Int, Long), PosInfo]()
@@ -179,6 +186,7 @@ class PosMapSerDe(val hadoopConf: Configuration) {
     (pos_map, target_map, pos_dim_map)
   }
 
+  /** Saves all maps in all three formats (JSON, text, binary). */
   def save(path: String,
            yesterday: String,
            pos_map: collection.Map[(Int, Long), PosInfo],
@@ -192,6 +200,7 @@ class PosMapSerDe(val hadoopConf: Configuration) {
     green_println(s"write pos_dim size: ${pos_dim.size}")
   }
 
+  /** Saves pos-map, target-map, and dim-map in compact binary format (used for online inference). */
   def saveToBin(path: String,
                 yesterday: String,
                 pos_map: collection.Map[(Int, Long), PosInfo],
@@ -244,6 +253,7 @@ class PosMapSerDe(val hadoopConf: Configuration) {
     writer.close()
   }
 
+  /** Saves field dimension map as human-readable CSV. */
   def saveToText(path: String,
                  yesterday: String,
                  pos_dim: collection.Map[(String, Int, Int), Int]): Unit = {
@@ -263,6 +273,7 @@ class PosMapSerDe(val hadoopConf: Configuration) {
     }
   }
 
+  /** Saves pos-map, target-map, and dim-map as a structured JSON file (primary readable format). */
   def saveToJson(path: String,
                  yesterday: String,
                  pos_map: collection.Map[(Int, Long), PosInfo],

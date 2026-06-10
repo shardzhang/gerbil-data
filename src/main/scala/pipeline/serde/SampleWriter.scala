@@ -12,8 +12,10 @@ import scala.reflect.ClassTag
 import featurizer.core.Featurizer
 import pipeline.stats.PosInfo
 
+/** Serializes training samples into TFRecord (TensorFlow Example) or Parquet format. */
 class SampleWriter[T: ClassTag](feature_encoder: Featurizer[T], max_dim: Long) extends Serializable {
 
+  /** Encodes samples into Parquet columnar format and writes to `parquetPath`. */
   def writeParquet(trainingSample: RDD[(T, Boolean)],
                    spark: SparkSession,
                    parquetSchema: StructType,
@@ -42,6 +44,7 @@ class SampleWriter[T: ClassTag](feature_encoder: Featurizer[T], max_dim: Long) e
       .parquet(parquetPath)
   }
 
+  /** Encodes samples into TensorFlow Example protobuf and writes TFRecord to `tfRecordPath`. */
   def writeTfrecord(trainingSample: RDD[(T, Boolean)],
                     posMapLocalImmutable: collection.Map[(Int, Long), Int],
                     targetMapImmutable: collection.Map[Int, Int],
@@ -68,6 +71,7 @@ class SampleWriter[T: ClassTag](feature_encoder: Featurizer[T], max_dim: Long) e
       .saveAsNewAPIHadoopFile[TFRecordFileOutputFormat](tfRecordPath)
   }
 
+  /** Encodes a single sample into a TensorFlow Example. Returns (example, has_feature, has_target). */
   private def parseTfrecord(sample: T,
                             encoder: Featurizer[T],
                             pos_map: collection.Map[(Int, Long), Int],
@@ -77,6 +81,7 @@ class SampleWriter[T: ClassTag](feature_encoder: Featurizer[T], max_dim: Long) e
     (builder.build(), has_feature, has_target)
   }
 
+  /** Encodes a single sample into a ParquetRecord. Returns (record, has_feature, has_target). */
   private def parseParquet(sample: T,
                            encoder: Featurizer[T],
                            pos_map: collection.Map[(Int, Long), Int],

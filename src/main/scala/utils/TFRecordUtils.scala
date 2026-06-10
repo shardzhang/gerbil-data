@@ -11,21 +11,22 @@ import java.nio.charset.StandardCharsets
  * @date 2026/6/2 14:55
  * @note Custom TFRecord encoding method
  *
- *    TFRecordUtils.floatFeature(target)
+ *       TFRecordUtils.floatFeature(target)
  *
- *    builder.getFeaturesBuilder
- *      .putFeature(f_name + "_raw", TFRecordUtils.bytesVectorFeature(raw_buf.toArray))
- *      .putFeature(f_name + "_index", TFRecordUtils.int64VectorFeature(pos_buf.toArray))
- *      .putFeature(f_name + "_value", TFRecordUtils.floatVectorFeature(value_buf.toArray))
+ *       builder.getFeaturesBuilder
+ *       .putFeature(f_name + "_raw", TFRecordUtils.bytesVectorFeature(raw_buf.toArray))
+ *       .putFeature(f_name + "_index", TFRecordUtils.int64VectorFeature(pos_buf.toArray))
+ *       .putFeature(f_name + "_value", TFRecordUtils.floatVectorFeature(value_buf.toArray))
  *
- * Equivalent to:
- *    FloatListFeatureEncoder.encode(Seq(target))
+ *       Equivalent to:
+ *       FloatListFeatureEncoder.encode(Seq(target))
  *
- *    builder.getFeaturesBuilder
- *      .putFeature(f_name + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
- *        .putFeature(f_name + "_index", Int64ListFeatureEncoder.encode(pos_buf))
- *        .putFeature(f_name + "_value", FloatListFeatureEncoder.encode(value_buf))
+ *       builder.getFeaturesBuilder
+ *       .putFeature(f_name + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
+ *       .putFeature(f_name + "_index", Int64ListFeatureEncoder.encode(pos_buf))
+ *       .putFeature(f_name + "_value", FloatListFeatureEncoder.encode(value_buf))
  */
+
 /** Helper to construct TensorFlow Feature protos (float, int64, bytes) for TFRecord writing. */
 object TFRecordUtils {
   /** Single float value feature (e.g. rating, target). */
@@ -33,6 +34,7 @@ object TFRecordUtils {
     val floatList = FloatList.newBuilder().addValue(value).build()
     Feature.newBuilder().setFloatList(floatList).build()
   }
+
   /** Multi-value float feature (e.g. weight sequence in behavior). */
   def floatVectorFeature(values: Array[Float]): Feature = {
     val builder = FloatList.newBuilder
@@ -47,6 +49,7 @@ object TFRecordUtils {
     val int64List = Int64List.newBuilder().addValue(value).build()
     Feature.newBuilder().setInt64List(int64List).build()
   }
+
   /** Multi-value int64 feature (e.g. ID sequence in behavior). */
   def int64VectorFeature(values: Array[Long]): Feature = {
     val builder = Int64List.newBuilder
@@ -61,6 +64,7 @@ object TFRecordUtils {
     val bytesList = BytesList.newBuilder().addValue(ByteString.copyFrom(value)).build()
     Feature.newBuilder().setBytesList(bytesList).build()
   }
+
   /** Multi-value bytes feature (e.g. label sequence). */
   def bytesVectorFeature(values: Array[Array[Byte]]): Feature = {
     val builder = BytesList.newBuilder
@@ -74,6 +78,7 @@ object TFRecordUtils {
   def bytesFeature(value: String): Feature = {
     bytesFeature(value.getBytes(StandardCharsets.UTF_8))
   }
+
   /** Convenience: string array encoded as multi-value bytes feature. */
   def bytesVectorFeature(values: Array[String]): Feature = {
     val res = new Array[Array[Byte]](values.length)

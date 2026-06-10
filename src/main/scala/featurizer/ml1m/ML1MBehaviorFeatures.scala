@@ -4,6 +4,7 @@ import utils.MurmurHash3
 import featurizer.ml1m.ML1MSample
 import featurizer.core.{CategoricalFeature, RawFeature}
 
+/** User behavior sequence features: movie rating sequences and genre rating sequences with configurable time windows (all-time, 1d, 3d, 7d, 15d). */
 class UserMovieRate(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
   override def parse(sample: ML1MSample): RawFeature = {
     for (i <- 0 until Math.min(200, sample.user_movie_rates.size)) {

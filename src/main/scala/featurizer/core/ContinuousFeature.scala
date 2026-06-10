@@ -10,12 +10,17 @@ import scala.collection.mutable.ArrayBuffer
 /** This continuous featurizer encodes numerical value into an embedding-compatible index. */
 abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureType.Continuous) extends RawFeature(f_i, f_n, f_t) {
 
+  /** Parses the sample and populates raw/feature/value buffers. */
   def parse(sample: T): RawFeature
 
+  /** Raw string values for each occurrence. */
   var raw_list: ArrayBuffer[String] = new ArrayBuffer[String]()
+  /** Position markers (typically 1L for single-valued continuous features). */
   var feature_list: ArrayBuffer[Long] = new ArrayBuffer[Long]()
+  /** Numerical values. */
   var value_list: ArrayBuffer[Float] = new ArrayBuffer[Float]()
 
+  /** Clears all parsed buffers for reuse across samples. */
   def clear(): Unit = {
     raw_list.clear()
     feature_list.clear()
@@ -46,6 +51,7 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
     pos_info_list
   }
 
+  /** Adds raw/feature/value tensors to a TF Example (no pos-map lookup). */
   def add(builder: Example.Builder): Unit = {
     val raw_buf = new ArrayBuffer[String]()
     val pos_buf = new ArrayBuffer[Long]()
@@ -72,6 +78,7 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
       .putFeature(f_name + "_value", FloatListFeatureEncoder.encode(value_buf))
   }
 
+  /** Adds raw/feature/value tensors to a TF Example with pos-map lookup. Returns true if any feature survived filtering. */
   def add(builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     if (pos_map == null) {
       add(builder)
@@ -104,6 +111,7 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
     has_feature
   }
 
+  /** Adds feature indices to an encoded map (no pos-map lookup). */
   def add(encoded_map: mutable.HashMap[String, ArrayBuffer[Long]]): Unit = {
     val pos_buf = new ArrayBuffer[Long]()
     for (fea <- feature_list) {
@@ -116,6 +124,7 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
     }
   }
 
+  /** Adds feature indices to an encoded map with pos-map lookup. Returns true if any feature survived filtering. */
   def add(encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     if (pos_map == null) {
       add(encoded_map)
@@ -136,6 +145,7 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
     has_feature
   }
 
+  /** Adds raw/position/value arrays to a Parquet columns map with pos-map lookup. Returns true if any feature survived filtering. */
   def add(pos_map: collection.Map[(Int, Long), Int], columns: mutable.Map[String, Any]): Boolean = {
     val raw_buf = new ArrayBuffer[String]()
     val pos_buf = new ArrayBuffer[Long]()

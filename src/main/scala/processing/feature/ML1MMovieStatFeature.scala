@@ -10,10 +10,14 @@ import utils.LogUtils.setLogLevel
  * @note Computes movie statistical features: average rating, rating count, genre count, and hot rank.
  */
 object ML1MMovieStatFeature {
+  /** Top-N threshold for hot rank computation. */
   private val TOP_N = 200
+  /** Raw data separator in ML-1M movies.dat (double colon). */
   private val RAW_SEP = "::"
+  /** Output field separator (tab). */
   private val SEP = "\t"
 
+  /** CLI entry point: computes per-movie statistics (avg rating, count, genre count, hot rank). */
   def main(args: Array[String]): Unit = {
     require(args.length >= 1, "Usage: ML1MUserMovieRate <input_base_path>")
     val basePath = args(0)

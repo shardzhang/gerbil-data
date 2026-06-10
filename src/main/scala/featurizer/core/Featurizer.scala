@@ -7,13 +7,19 @@ import scala.collection.mutable.ArrayBuffer
 
 /** We use a featurizer to convert raw samples into featurized vectors. */
 abstract class Featurizer[T] extends Serializable {
+  /** Registered categorical (discrete) features. */
   val raw_cate_features: ArrayBuffer[CategoricalFeature[T]] = new ArrayBuffer[CategoricalFeature[T]]()
+  /** Registered continuous (numerical) features. */
   val raw_conti_features: ArrayBuffer[ContinuousFeature[T]] = new ArrayBuffer[ContinuousFeature[T]]()
+  /** Registered cross (feature-combination) features. */
   val cross_features: ArrayBuffer[CrossFeature[T]] = new ArrayBuffer[CrossFeature[T]]()
+  /** The prediction target extractor. */
   var target: RawTarget[T] = _
 
+  /** Initializes and registers all feature extractors. Must be called before encoding. */
   def setup(): Featurizer[T]
 
+  /** Returns (field_name, field_index) pairs for all registered features. */
   def getFieldInfo(): ArrayBuffer[(String, Int)] = {
     val buff = new ArrayBuffer[(String, Int)]()
     for (raw_f <- raw_cate_features) {
@@ -28,6 +34,7 @@ abstract class Featurizer[T] extends Serializable {
     buff
   }
 
+  /** Returns the full list of Parquet column names (target + all feature fields). */
   def get_parquet_column_names(): ArrayBuffer[String] = {
     val buff = new ArrayBuffer[String]()
     buff.append("target")
@@ -37,6 +44,7 @@ abstract class Featurizer[T] extends Serializable {
     buff
   }
 
+  /** Computes raw hash values for all features (used for debugging / hash-based vocabulary). */
   def get_hash(input: T, dim: Long): ArrayBuffer[Long] = {
     val buf = ArrayBuffer[Long]()
     for (raw_f <- raw_cate_features) {
@@ -62,6 +70,7 @@ abstract class Featurizer[T] extends Serializable {
     buf
   }
 
+  /** Computes detailed hash info (field name, index, type, raw value, hash, value) for vocabulary building. */
   def get_hash_info(input: T, dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     val buf = new ArrayBuffer[(String, Int, Byte, String, Long, Float)]
     for (raw_f <- raw_cate_features) {
@@ -87,6 +96,7 @@ abstract class Featurizer[T] extends Serializable {
     buf
   }
 
+  /** Encodes a sample into a TF Example builder using raw hashing (no pos-map lookup). */
   def encode(input: T, dim: Long, builder: Example.Builder): Unit = {
     for (raw_f <- raw_cate_features) {
       raw_f.clear()
@@ -109,6 +119,7 @@ abstract class Featurizer[T] extends Serializable {
     }
   }
 
+  /** Encodes a sample into a TF Example builder with pos-map lookup. Returns (has_feature, has_target). */
   def encode(input: T, dim: Long, builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int], target_map: collection.Map[Int, Int]): (Boolean, Boolean) = {
     for (raw_f <- raw_cate_features) {
       raw_f.clear()
@@ -143,6 +154,7 @@ abstract class Featurizer[T] extends Serializable {
     (has_feature, has_target)
   }
 
+  /** Encodes a sample into a delimited string format (for debugging or text-based output). */
   def encode(input: T, dim: Long, Sep1: String, Sep2: String): String = {
     val encoded_map: mutable.HashMap[String, ArrayBuffer[Long]] = new mutable.HashMap[String, ArrayBuffer[Long]]()
 
@@ -176,6 +188,7 @@ abstract class Featurizer[T] extends Serializable {
     buff.map(t => t._1 + Sep2 + t._2).mkString(Sep1)
   }
 
+  /** Encodes a sample into a ParquetRecord builder by filling a columns map. Returns (has_feature, has_target). */
   def encode(input: T, dim: Long, parquet_builder: ParquetRecordBuilder, pos_map: collection.Map[(Int, Long), Int], target_map: collection.Map[Int, Int]): (Boolean, Boolean) = {
     for (raw_f <- raw_cate_features) {
       raw_f.clear();

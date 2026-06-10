@@ -8,6 +8,7 @@ import utils.LogUtils.green_println
  * @date 2022/4/20 16:47
  * @note
  */
+
 /** Hive table I/O utilities: save DataFrames to partitioned tables and print samples. */
 object HiveUtils {
   /** Saves `data` to a Hive table and prints a sample of `logNumber` rows. */

@@ -15,27 +15,37 @@ import featurizer.core.{FeatureType, Featurizer}
 import pipeline.serde.{PosMapSerDe, SampleWriter}
 import pipeline.stats.{PosInfo, RunningValueStats}
 
+/** Orchestrates the end-to-end training sample generation pipeline: load samples, build vocabulary (pos-map/target-map), and encode features into TFRecord/Parquet. */
 abstract class Pipeline[T: ClassTag] extends Serializable {
   @transient var hadoopConf: Configuration = new Configuration()
+  /** Persists/restores position-map and target-map across runs. */
   @transient val posMapSerDe: PosMapSerDe = new PosMapSerDe(hadoopConf)
+  /** Serializes featurized samples to TFRecord or Parquet. */
   @transient lazy val writer: SampleWriter[T] = new SampleWriter[T](feature_encoder, max_dim)
 
+  /** Maximum hash dimension (typically 2^60 for 64-bit embedding space). */
   def max_dim: Long
 
+  /** The featurizer that converts raw samples into encoded features. */
   def feature_encoder: Featurizer[T]
 
+  /** Loads and parses raw training samples from the given input directory. */
   def loadTrainingSamples(spark: SparkSession, inputDir: String, parts: Int): RDD[(T, Boolean)]
 
+  /** Extracts the target label (as Int) from a sample for threshold statistics. */
   def getSampleTarget(sample: T): Int
 
+  /** Down-samples negative samples (target == 0) by `sample_ratio`. Positive samples are always kept. */
   def keepSample(sample: T, sample_ratio: Double): Boolean = {
     getSampleTarget(sample) != 0 || ThreadLocalRandom.current().nextDouble() <= sample_ratio
   }
 
+  /** Computes hash info (field name, index, type, raw value, hash, value) for vocabulary building. */
   def getHashInfo(sample: T, encoder: Featurizer[T]): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     encoder.get_hash_info(sample, max_dim)
   }
 
+  /** Builds the Parquet schema with (target, *_raw, *_index, *_value) columns for each feature. */
   def parquet_schema: StructType = {
     val fields = new ArrayBuffer[StructField]()
     fields.append(StructField("target", FloatType, nullable = true))
@@ -47,10 +57,14 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     StructType(fields)
   }
 
+  /** Runs the full pipeline: load samples, build target-map, build pos-map (vocabulary), and write encoded output. */
   def run(spark: SparkSession,
           yesterday: String,
+          /** Minimum occurrence count for a feature value to be included in vocabulary. */
           feature_threshold: Int,
+          /** Minimum occurrence count for a target value to be included in target-map. */
           target_threshold: Int,
+          /** Down-sampling ratio for negative samples (0.0 = keep none, 1.0 = keep all). */
           sample_ratio: Double,
           pos_map: HashMap[(Int, Long), PosInfo],
           target_map: HashMap[Int, Int],
@@ -67,6 +81,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
       }
       .persist(StorageLevel.MEMORY_AND_DISK_SER)
 
+    // Count positive vs. down-sampled negative samples
     val ret_counts = trainingSample
       .map(s => (s._2, 1))
       .reduceByKey(_ + _)
@@ -76,6 +91,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
       green_println(s"ret_counts ${ret._1} ${ret._2}")
     }
 
+    // Aggregate sample counts per target value
     val sample_num: Array[(Int, Int)] = trainingSample
       .map { case (sample, _) => sample }
       .map(sample => (getSampleTarget(sample), 1))
@@ -83,6 +99,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
       .collect()
       .sortWith((a, b) => a._2 > b._2)
 
+    // Build target-map: assign a sequential index to each target value meeting the threshold
     var index = if (target_map.isEmpty) {
       0
     } else {
@@ -110,6 +127,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     green_println(s"targets below threshold: ${ignoredTargetCount}")
     green_println(s"total target number: ${total_number}")
 
+    // Collect hash statistics across all samples: aggregates sum/powerSum/count per (field, hash) key
     val train_sample_hash_arr = trainingSample
       .map { case (sample, _) => sample }
       .mapPartitions(samples => {
@@ -128,6 +146,8 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
       .collect()
     green_println(s"pos_arr.size = ${train_sample_hash_arr.length}")
 
+    // Build position-map: assign embedding indices to frequent feature values;
+    // low-frequency values reuse historical positions or are dropped
     var ignoredPosCount = 0
     var reusedHistoryPosCount = 0
     val pos_map_local = new HashMap[(Int, Long), Int]

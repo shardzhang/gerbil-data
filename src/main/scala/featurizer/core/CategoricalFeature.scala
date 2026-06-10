@@ -13,20 +13,27 @@ import scala.collection.mutable.ArrayBuffer
 /** This categorical featurizer encodes discrete id into embedding index. */
 abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureType.Categorical) extends RawFeature(f_i, f_n, f_t) {
 
+  /** Parses the sample and populates raw/feature/value buffers. */
   def parse(sample: T): RawFeature
 
+  /** Raw string values for each occurrence. */
   var raw_list: ArrayBuffer[String] = new ArrayBuffer[String]()
+  /** Numeric IDs for each occurrence (used as input to hash). */
   var feature_list: ArrayBuffer[Long] = new ArrayBuffer[Long]()
+  /** Weights/values for each occurrence. */
   var value_list: ArrayBuffer[Float] = new ArrayBuffer[Float]()
 
+  /** Byte length of the hash key: 4 (index) + 8 (feature). */
   val key_len: Int = 4 + 8
 
+  /** Clears all parsed buffers for reuse across samples. */
   def clear(): Unit = {
     raw_list.clear()
     feature_list.clear()
     value_list.clear()
   }
 
+  /** Computes the hash of a feature value using MurmurHash3 with (f_index || fea) as the key. */
   def computeHash(fea: Long, dim: Long): Long = {
     if (dim <= 0) return fea % math.max(dim, 1L)
     val bb = ByteBuffer.allocate(key_len).order(ByteOrder.LITTLE_ENDIAN)
@@ -66,6 +73,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
     pos_info_list
   }
 
+  /** Adds raw/feature/value tensors to a TF Example (no pos-map lookup). */
   def add(dim: Long, builder: Example.Builder): Unit = {
     val raw_buf = new ArrayBuffer[String]()
     val pos_buf = new ArrayBuffer[Long]()
@@ -93,6 +101,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
       .putFeature(f_name + "_value", FloatListFeatureEncoder.encode(value_buf))
   }
 
+  /** Adds raw/feature/value tensors to a TF Example with pos-map lookup. Returns true if any feature survived filtering. */
   def add(dim: Long, builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     val raw_buf = new ArrayBuffer[String]()
     val pos_buf = new ArrayBuffer[Long]()
@@ -127,6 +136,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
     has_feature
   }
 
+  /** Adds hashed positions to an encoded map (no pos-map lookup). */
   def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]]): Unit = {
     for (fea <- feature_list) {
       if (fea != 0) {
@@ -140,6 +150,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
     }
   }
 
+  /** Adds positions to an encoded map with pos-map lookup. Returns true if any feature survived filtering. */
   def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     var has_feature = false
     for (fea <- feature_list) {
@@ -159,6 +170,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
     has_feature
   }
 
+  /** Adds raw/position/value arrays to a Parquet columns map with pos-map lookup. Returns true if any feature survived filtering. */
   def add(dim: Long, pos_map: collection.Map[(Int, Long), Int], columns: mutable.Map[String, Any]): Boolean = {
     val raw_buf = new ArrayBuffer[String]()
     val pos_buf = new ArrayBuffer[Long]()

@@ -25,9 +25,12 @@ import utils.LogUtils.{green_println, setLogLevel}
  *          2. Filter invalid data
  */
 object ML1MCleanSample {
+  /** Raw data separator in ML-1M ratings.dat (double colon). */
   private val RAW_SEP = "::"
+  /** Output field separator (tab). */
   private val SEP = "\t"
 
+  /** CLI entry point: parses and deduplicates raw ratings, writes CSV output. */
   def main(args: Array[String]): Unit = {
     require(args.length >= 1, "Usage: ML1MCleanSample <path>")
     val path = args(0)
