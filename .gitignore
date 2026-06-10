@@ -24,6 +24,5 @@ bash/driver/tmp/
 .factorypath
 .project
 .settings
-.DS_Store
+bash/conf/env.sh
 .vscode/settings.json
-.mvn-local-settings.xml

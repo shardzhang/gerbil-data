@@ -8,7 +8,10 @@ import utils.LogUtils.green_println
  * @date 2022/4/20 16:47
  * @note
  */
+
+/** Hive table I/O utilities: save DataFrames to partitioned tables and print samples. */
 object HiveUtils {
+  /** Saves `data` to a Hive table and prints a sample of `logNumber` rows. */
   def saveAndPrint(data: DataFrame,
                    table: String,
                    day: String,
@@ -19,6 +22,7 @@ object HiveUtils {
     printHiveInfo(table, day, logNumber, spark)
   }
 
+  /** Saves `data` with a custom partition key/value and prints a sample. */
   def saveAndPrintWithPartitionName(data: DataFrame,
                                     table: String,
                                     day: String,
@@ -31,6 +35,7 @@ object HiveUtils {
     printHiveInfoWithPartitionName(table, day, partitionName, partitionValue, logNumber, spark)
   }
 
+  /** Overwrites the Hive table partition `day` with the contents of `data`. */
   def saveToHive(data: DataFrame,
                  table: String,
                  day: String,
@@ -50,6 +55,7 @@ object HiveUtils {
     spark.sql(query)
   }
 
+  /** Prints a sample of `logNumber` rows from the given Hive table partition. */
   def printHiveInfo(table: String,
                     day: String,
                     logNumber: Int,
@@ -71,6 +77,7 @@ object HiveUtils {
   }
 
 
+  /** Overwrites a Hive partition with both `day` and a custom partition key/value. */
   def saveToHiveWithPartitionName(data: DataFrame,
                                   table: String,
                                   day: String,
@@ -92,6 +99,7 @@ object HiveUtils {
     spark.sql(query)
   }
 
+  /** Prints a sample from a table filtered by both `day` and a custom partition key. */
   def printHiveInfoWithPartitionName(table: String,
                                      day: String,
                                      partitionName: String,
@@ -115,6 +123,7 @@ object HiveUtils {
     }
   }
 
+  /** Overloaded: prints sample using a custom partition key (without saving). */
   def printHiveInfo(table: String,
                     day: String,
                     partitionName: String,
@@ -139,25 +148,17 @@ object HiveUtils {
   }
 
 
-  // 取数据源最近的分区
+  /** Returns the most recent `day` partition value <= `today`. */
   def getRecentPartition(spark: SparkSession, table: String, today: String): String = {
-    val sql =
-      s"""
-         | select day
-         | from $table
-         | where day <= '$today'
-         | order by day desc
-         | limit 1
-         |""".stripMargin
-    green_println(s"sql = ${sql}")
-    spark.sql(sql).rdd.map { x => x.getString(0) }.take(1)(0)
+    val rows = spark.sql(
+      s"select day from $table where day <= cast('$today' as string) order by day desc limit 1"
+    ).rdd.map { x => x.getString(0) }.take(1)
+    if (rows.isEmpty) "" else rows(0)
   }
 
-  // 如何写一个接口? 实现复用?
 
-  /** 获取数据的最近分区 */
+  /** Returns the latest partition value (lexicographic max) for the given table. */
   def getLatestPartition(hiveContext: SparkSession, table: String): String = {
-    // dt=2022-05-09
     val partitions: Array[String] = hiveContext
       .sql(s"show partitions $table")
       .rdd
@@ -166,25 +167,17 @@ object HiveUtils {
 
     if (partitions.isEmpty) return ""
 
-    val part = try {
-      val cmp = new Ordering[String] {
-        override def compare(x: String, y: String): Int = {
-          x.compare(y)
-        }
-      }
-
+    try {
       partitions
-        .max(cmp)
+        .max
         .split("/")(0)
         .split("=")(1)
     } catch {
-      case _: Throwable => ""
+      case _: Exception => ""
     }
-
-    part
   }
 
-  /** 获取距离dayCurrent最近的分区 */
+  /** Returns `dayCurrent` or the nearest partition <= `dayCurrent` that exists. */
   def getOrNearestPartition(spark: SparkSession,
                             table: String,
                             dayCurrent: String): String = {
@@ -195,15 +188,11 @@ object HiveUtils {
       .collect()
     if (partitions.isEmpty) return dayCurrent
 
-    val nearestPartition = try {
-      partitions
-        .map(r => r.split("=")(1))
-        .filter(_ <= dayCurrent)
-        .max
+    try {
+      val days = partitions.map(r => r.split("=")(1)).filter(_ <= dayCurrent)
+      if (days.isEmpty) dayCurrent else days.max
     } catch {
-      case _: Throwable => dayCurrent
+      case _: Exception => dayCurrent
     }
-
-    return nearestPartition
   }
 }

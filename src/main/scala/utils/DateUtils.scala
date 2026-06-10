@@ -8,14 +8,9 @@ import java.util.{Calendar, Date}
  * @date 2022/4/28 17:33
  * @note
  */
+/** Date arithmetic and formatting utilities. */
 object DateUtils {
-  /**
-   * 获取date的前后n天的日期, 且输出和输入的日期格式一致
-   *
-   * @param diff >0 表示未来, <0表示过去
-   * @param date
-   * @param pattern
-   */
+  /** Returns the date `diff` days before/after `date`. @param diff >0 = future, <0 = past */
   def getDay(diff: Long,
              date: String,
              pattern: String = "yyyy-MM-dd"): String = {
@@ -23,12 +18,7 @@ object DateUtils {
     sdf.format(sdf.parse(date).getTime + diff * 24 * 60 * 60 * 1000L)
   }
 
-  /**
-   * 从当前天add diff
-   *
-   * @param diff
-   * @return
-   */
+  /** Returns today's date offset by `diff` days in "yyyy-MM-dd" format. */
   def getDate(diff: Int): String = {
     val sdf = new java.text.SimpleDateFormat("yyyy-MM-dd")
     val calendar = Calendar.getInstance;
@@ -36,7 +26,7 @@ object DateUtils {
     sdf.format(calendar.getTime)
   }
 
-  /** 从unix timestamp转换为Java时间 */
+  /** Converts a Unix timestamp (seconds) into a formatted date string. */
   def getDateFromUnixTimestamp(timestamp: String, pattern: String = "yyyyMMdd"): String = {
     val sdf = new SimpleDateFormat(pattern)
     sdf.format(new Date(timestamp.toLong * 1000L))

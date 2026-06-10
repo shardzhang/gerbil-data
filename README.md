@@ -24,8 +24,13 @@ Currently supports the [MovieLens 1M (ML-1M)](https://grouplens.org/datasets/mov
 gerbil-data/
 ├── bash/                       # Shell scripts for running pipeline steps
 │   ├── conf/                   # Environment configuration
-│   ├── sample/                 # Sample generation scripts
-│   └── feature/                # Feature extraction scripts
+│   ├── pipeline/               # Training sample generation scripts
+│   ├── processing/             # Data preprocessing scripts
+│   │   ├── clean/              #   Data cleaning
+│   │   ├── feature/            #   Feature extraction
+│   │   └── join/               #   Feature joining
+│   ├── proto/                  # Protobuf compilation
+│   └── tools/                  # Utility scripts
 ├── docs/                       # Documentation
 ├── proto/                      # TensorFlow Example protobuf definitions
 ├── sql/                        # Hive/Spark SQL scripts
@@ -33,14 +38,19 @@ gerbil-data/
 │   └── main/
 │       ├── java/               # Java utilities (TensorFlow Hadoop I/O)
 │       └── scala/
-│           ├── driver/         # Pipeline driver (coordinator)
-│           ├── encoder/        # Feature encoders
-│           │   └── vectorizer/ # Base feature vectorization framework
-│           ├── feature/        # Feature extraction modules
-│           ├── sample/         # Sample cleaning & joining
-│           ├── tfrecords/      # TFRecord data source for Spark SQL
-│           │   ├── serde/      # Serialization/deserialization
-│           │   └── udf/        # User-defined functions
+│           ├── processing/     # ETL: raw data → flat intermediate tables
+│           │   ├── clean/      #   Data cleaning & validation
+│           │   ├── feature/    #   Feature derivation (stats, sequences)
+│           │   └── join/       #   Multi-table feature joining
+│           ├── featurizer/     # ML encoding: features → embedding indices
+│           │   ├── core/       #   Abstract featurization framework
+│           │   └── ml1m/       #   ML-1M concrete implementations
+│           ├── pipeline/       # Orchestration & training sample generation
+│           │   ├── serde/      #   Serialization (TFRecord, Parquet, pos-map)
+│           │   └── stats/      #   Online statistics (running value, pos info)
+│           ├── tfrecords/      # Custom Spark SQL TFRecord data source
+│           │   ├── serde/      #   Serialization/deserialization
+│           │   └── udf/        #   User-defined functions
 │           └── utils/          # Utility functions
 ├── pom.xml                     # Maven build configuration
 └── requirements.txt            # Python dependencies
@@ -49,32 +59,52 @@ gerbil-data/
 ### Pipeline Overview
 
 ```
-Raw Data (ratings.dat)
-       │
-       ▼
-┌──────────────────┐
-│  ML1MCleanSample │  Clean & validate raw ratings
-└────────┬─────────┘
-         │
-         ├──────────────────────────────┐
-         ▼                              ▼
-┌──────────────────┐     ┌─────────────────────────┐
-│ML1MUserMovieRate │     │ ML1MMovieStatFeature    │
-│Behavior sequences│     │ Movie statistics (count,│
-│(time-windowed)   │     │ avg rating, hot rank)   │
-└────────┬─────────┘     └──────────┬──────────────┘
-         │                          │
-         └──────────┬───────────────┘
-                    ▼
-         ┌──────────────────┐
-         │  ML1MJoinSample  │  Join user + item + behavior features
-         └────────┬─────────┘
-                  │
-                  ▼
-         ┌──────────────────┐
-         │  ML1MDataDriver  │  Encode features & generate
-         │                  │  TFRecord / Parquet samples
-         └──────────────────┘
+                         ┌─────────────────────────────┐
+                         │       Raw Data Sources       │
+                         │  ratings.dat  users.dat      │
+                         │  movies.dat                  │
+                         └──────────────┬───────────────┘
+                                        │
+                                        ▼
+                         ┌─────────────────────────────┐
+                         │       ML1MCleanSample       │
+                         │  Filter · Dedup · Validate  │
+                         │  Output: clean_sample/      │
+                         └──────────────┬───────────────┘
+                                        │
+                    ┌───────────────────┼───────────────────┐
+                    ▼                   ▼                   ▼
+ ┌─────────────────────────────┐ ┌─────────────────────┐ ┌──────────────────┐
+ │  ML1MUserMovieRateSequence  │ │ML1MMovieStatFeature │ │ (users.dat)      │
+ │  Behavior sequences by user │ │Movie stats: count,  │ │ User profile     │
+ │  (1d / 3d / 7d / 15d / all)│ │avg rate, hot rank   │ │ parsing          │
+ │  Output: user_movie_rate/   │ │Output: item_feature/│ └────────┬─────────┘
+ └──────────────┬──────────────┘ └──────────┬──────────┘          │
+                │                           │                    │
+                └───────────────┬───────────┴────────────────────┘
+                                │
+                                ▼
+                 ┌─────────────────────────────┐
+                 │       ML1MJoinSample        │
+                 │  Join user + item + context │
+                 │  + behavior sequences       │
+                 │  Output: join_sample/       │
+                 └──────────────┬──────────────┘
+                                │
+                                ▼
+                 ┌─────────────────────────────┐
+                 │        ML1MPipeline         │
+                 │  Feature encoding · Hash →  │
+                 │  embedding index            │
+                 │  Vocabulary management      │
+                 ├─────────────────────────────┤
+                 │  Output:                    │
+                 │  ├── tfrecord/              │
+                 │  ├── parquet/               │
+                 │  ├── pos_map.json           │
+                 │  ├── pos_map.bin            │
+                 │  └── pos_map.txt            │
+                 └─────────────────────────────┘
 ```
 
 ## Prerequisites
@@ -104,55 +134,56 @@ unzip ml-1m.zip
 
 #### Step 1: Clean raw data
 ```bash
-spark-submit --class sample.ML1MCleanSample \
+spark-submit --class processing.clean.ML1MCleanSample \
   target/gerbil-data-1.0-SNAPSHOT-jar-with-dependencies.jar \
   /path/to/ml-1m
 ```
 
 #### Step 2: Extract user behavior sequences
 ```bash
-spark-submit --class feature.ML1MUserMovieRate \
+spark-submit --class processing.feature.ML1MUserMovieRateSequence \
   target/gerbil-data-1.0-SNAPSHOT-jar-with-dependencies.jar \
   /path/to/ml-1m
 ```
 
 #### Step 3: Compute movie statistics
 ```bash
-spark-submit --class feature.ML1MMovieStatFeature \
+spark-submit --class processing.feature.ML1MMovieStatFeature \
   target/gerbil-data-1.0-SNAPSHOT-jar-with-dependencies.jar \
   /path/to/ml-1m
 ```
 
 #### Step 4: Join all features
 ```bash
-spark-submit --class sample.ML1MJoinSample \
+spark-submit --class processing.join.ML1MJoinSample \
   target/gerbil-data-1.0-SNAPSHOT-jar-with-dependencies.jar \
   /path/to/ml-1m
 ```
 
 #### Step 5: Generate TFRecord / Parquet samples
 ```bash
-spark-submit --class driver.ML1MDataDriver \
+spark-submit --class pipeline.ML1MPipeline \
   --conf spark.serializer=org.apache.spark.serializer.JavaSerializer \
   target/gerbil-data-1.0-SNAPSHOT-jar-with-dependencies.jar \
   --yesterday <date> \
-  --window <window_size> \
   --parts <num_partitions> \
   --feature_threshold <threshold> \
   --target_threshold <threshold> \
   --sample_ratio <ratio> \
   --input_dir /path/to/ml-1m \
-  --output_dir /path/to/output
+  --output_dir /path/to/output \
+  --output_format tfrecord
 ```
 
 ### Or run with shell scripts
 
 ```bash
 # Edit bash/conf/env.sh with your paths
-bash bash/sample/ML1MCleanSample.sh
-bash bash/sample/ML1MJoinSample.sh
-bash bash/feature/ML1MMovieStatFeature.sh
-bash bash/feature/ML1MUserMovieRate.sh
+bash bash/processing/clean/ML1MCleanSample.sh
+bash bash/processing/feature/ML1MMovieStatFeature.sh
+bash bash/processing/feature/ML1MUserMovieRateSequence.sh
+bash bash/processing/join/ML1MJoinSample.sh
+bash bash/pipeline/ML1MPipeline.sh
 ```
 
 ## Feature Types
@@ -186,17 +217,17 @@ Binary protobuf records in TensorFlow Example format, optimized for TensorFlow m
 Columnar storage format compatible with Spark and many big data tools.
 
 ### Vocabulary Files
-- `nn_pos_map.json` — Human-readable structured feature position mapping
-- `nn_pos_map.bin` — Binary feature mapping with mean/std for online normalization
+- `pos_map.json` — Human-readable structured feature position mapping
+- `pos_map.bin` — Binary feature mapping with mean/std for online normalization
+- `pos_map.txt` — Field dimension summary in plain text
 
 ## Project Modules
 
 | Module | Description |
 |--------|-------------|
-| `sample` | Data cleaning, feature joining, training sample definition |
-| `feature` | Feature extraction (behavior sequences, item statistics) |
-| `encoder` | Feature encoding pipeline and vectorization framework |
-| `driver` | Pipeline orchestrator and output generation |
+| `processing` | ETL pipeline: data cleaning, feature derivation, multi-table joining |
+| `featurizer` | ML feature encoding: categorical/continuous/cross featurizers, hash-based embedding index |
+| `pipeline` | Orchestration: sample generation, vocabulary management, TFRecord/Parquet output |
 | `tfrecords` | Custom Spark SQL data source for TFRecord format |
 | `utils` | Logging, date utilities, protobuf helpers |
 

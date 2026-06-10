@@ -1,4 +1,5 @@
 
+# note: Pretty-print pos_map.txt with aligned columns for manual inspection
 cat nn_pos_map.txt | awk -F ',' '{printf "%-30s %10s %10s %20s\n", $1, $2, $3, $4}' | sort -k2n
 # user_id                                 1          0                 6041
 # user_age                                2          0                    8

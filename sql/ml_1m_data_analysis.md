@@ -23,13 +23,15 @@ LIMIT 20;
 
 -- 3、每个用户包含的平均item个数
 
--- 4、评分最多/少的Top10电影
+-- 4、评分最多/少的Top10电影(movie_id, title, genres, rate: min/max/avg/count)
 
--- 5、评分最高/低的Top10电影
+-- 5、评分最高/低的Top10电影(movie_id, title, genres, rate: min/max/avg/count)
 
 -- 6、 各个职业、年龄段的电影评分个数
 
 -- 7、 各个职业、年龄段的电影平均评分
 
--- 6、评分的最早/最晚日期
+-- 8、评分的日期分布(day, movie_cnt, user_cnt, )
+
+--
 
