@@ -8,6 +8,7 @@ import org.apache.spark.sql.SparkSession
 import featurizer.ml1m.ML1MSample
 import featurizer.ml1m.ML1MFeaturizer
 import featurizer.core.Featurizer
+import config.FeatureConfigLoader
 import utils.LogUtils.green_println
 import utils.LogUtils.setLogLevel
 
@@ -15,7 +16,7 @@ import utils.LogUtils.setLogLevel
  * ML1M dataset data driver. Generates TFRecord samples plus encoding maps (json/bin).
  */
 object ML1MPipeline extends Pipeline[ML1MSample] {
-  override val max_dim: Long = 1L << 60
+  override val max_dim: Long = FeatureConfigLoader.loadFromResource().hash_dim
 
   override def feature_encoder: Featurizer[ML1MSample] = {
     new ML1MFeaturizer().setup()
