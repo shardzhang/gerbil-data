@@ -1,5 +1,6 @@
 package processing.sampling
 
+import org.apache.commons.cli.{DefaultParser, Options}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Row, SparkSession}
 import utils.LogUtils.{green_println, setLogLevel}
@@ -172,16 +173,18 @@ class ML1MNegativeSampler(spark: SparkSession, inputDir: String, val strategy: S
 object ML1MNegativeSampler {
 
   def main(args: Array[String]): Unit = {
-    require(args.length >= 2, "Usage: ML1MNegativeSampler <path> <neg_ratio> [--strategy random|popular|mixed]")
-    val path = args(0)
-    val negRatio = args(1).toInt
+    val opts = new Options()
+    opts.addOption(null, "input", true, "Input directory")
+    opts.addOption(null, "output", true, "Output directory (default: <path>/neg_sample)")
+    opts.addOption(null, "strategy", true, "Sampling strategy: random, popular (default), mixed")
+    opts.addOption(null, "neg_ratio", true, "neg_ratio: default 0. neg_ratio=5表示1个正样本对应5个负样本")
 
-    val strategy = if (args.contains("--strategy")) {
-      val idx = args.indexOf("--strategy")
-      if (idx + 1 < args.length) args(idx + 1) else "popular"
-    } else "popular"
-
-    val outputPath = s"$path/neg_sample"
+    val parser = new DefaultParser()
+    val cl = parser.parse(opts, args)
+    val path = cl.getOptionValue("input")
+    val outputPath = Option(cl.getOptionValue("output")).getOrElse(s"$path/neg_sample")
+    val strategy = Option(cl.getOptionValue("strategy")).getOrElse("popular")
+    val negRatio = Option(cl.getOptionValue("neg_ratio")).getOrElse("5").toInt
     green_println(s"path = $path, negRatio = $negRatio, strategy = $strategy, outputPath = $outputPath")
 
     setLogLevel()

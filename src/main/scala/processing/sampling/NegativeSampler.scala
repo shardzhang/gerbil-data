@@ -57,7 +57,7 @@ object NegativeSampler {
 
     strategy match {
       case "random" =>
-        rand.shuffle(candidates.toSeq).take(numNeg)
+        rand.shuffle(candidates.toSeq).distinct.take(numNeg)
 
       case "mixed" =>
         val half = numNeg / 2
@@ -70,16 +70,22 @@ object NegativeSampler {
     }
   }
 
+  // 轮盘赌加权随机采样，按物品权重高低做概率抽取
   private def rouletteSample[T](candidates: Array[T], popCounts: Map[T, Int], numNeg: Int, rand: Random): Seq[T] = {
     val weighted = candidates.map { id =>
       (id, math.pow(popCounts.getOrElse(id, 1).toDouble, 0.75))
     }
-    (1 to numNeg).map { _ =>
-      var r = rand.nextDouble() * weighted.map(_._2).sum
-      weighted.find { case (_, w) => r -= w; r <= 0 } match {
-        case Some((id, _)) => id
-        case None => weighted.last._1
-      }
-    }.distinct
+    (1 to numNeg)
+      .map { _ =>
+        var r = rand.nextDouble() * weighted.map(_._2).sum
+        weighted.find {
+          case (_, w) =>
+            r -= w
+            r <= 0
+        } match {
+          case Some((id, _)) => id
+          case None => weighted.last._1
+        }
+      }.distinct
   }
 }
