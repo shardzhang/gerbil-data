@@ -1,6 +1,7 @@
 package processing.feature
 
 import org.apache.spark.sql.SparkSession
+import processing.stats.DataQualityChecker
 import utils.LogUtils.{green_println, setLogLevel}
 
 /**
@@ -128,6 +129,7 @@ object ML1MUserMovieRateSequence {
 
       val result = spark.sql(sql).cache()
       println(s"result.count() = ${result.count()}")
+      DataQualityChecker.check(result, "user_movie_rate", outputPath)
       result.show()
       result.printSchema()
       

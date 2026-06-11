@@ -24,7 +24,7 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
   /** Load ML1M join_sample CSV, parse with movie info, and return RDD of samples. */
   override def loadTrainingSamples(spark: SparkSession, inputDir: String, parts: Int): RDD[(ML1MSample, Boolean)] = {
     val movie_info = getMovieInfo(spark, inputDir)
-    green_println(s"movie_info: ${movie_info.size}")
+    green_println(s"movie_info.size: ${movie_info.size}")
 
     spark.read
       .option("sep", "\t")

@@ -1,6 +1,7 @@
 package processing.join
 
 import org.apache.spark.sql.SparkSession
+import processing.stats.DataQualityChecker
 import utils.LogUtils.{green_println, setLogLevel}
 
 /**
@@ -123,6 +124,7 @@ object ML1MJoinSample {
            |""".stripMargin
       val joinSample = spark.sql(sql).cache()
       green_println(f"joinSample.count(): ${joinSample.count()}")
+      DataQualityChecker.check(joinSample, "join_sample", savePath)
       joinSample.show()
       joinSample.printSchema()
 

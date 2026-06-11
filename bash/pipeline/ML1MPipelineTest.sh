@@ -25,7 +25,6 @@ PY
 
 source "../conf/env.sh" && "${SPARK_HOME}/bin/spark-submit" \
 --master "local[1]" \
---conf spark.log.level=WARN \
 --class pipeline.ML1MPipeline \
 --conf spark.ui.enabled=false \
 --conf spark.driver.maxResultSize=1g \

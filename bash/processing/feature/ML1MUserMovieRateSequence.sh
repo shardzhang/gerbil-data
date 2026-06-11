@@ -12,7 +12,6 @@ path=${ML_1M_PATH}
 
 "${SPARK_HOME}/bin/spark-submit" \
 --master 'local[*]' \
---conf spark.log.level=WARN \
 --class processing.feature.ML1MUserMovieRateSequence \
 --conf spark.ui.port=8688 \
 --conf spark.driver.maxResultSize=10g \

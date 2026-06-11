@@ -1,6 +1,7 @@
 package processing.feature
 
 import org.apache.spark.sql.SparkSession
+import processing.stats.DataQualityChecker
 import utils.LogUtils.green_println
 import utils.LogUtils.setLogLevel
 
@@ -10,8 +11,6 @@ import utils.LogUtils.setLogLevel
  * @note Computes movie statistical features: average rating, rating count, genre count, and hot rank.
  */
 object ML1MMovieStatFeature {
-  /** Top-N threshold for hot rank computation. */
-  private val TOP_N = 200
   /** Raw data separator in ML-1M movies.dat (double colon). */
   private val RAW_SEP = "::"
   /** Output field separator (tab). */
@@ -43,8 +42,9 @@ object ML1MMovieStatFeature {
         .toDF("user_id", "item_id", "rating", "time_stamp", "day")
         .createOrReplaceTempView("clean_sample")
 
-    // movie_t: parse movie metadata; stat: compute per-movie rating stats; then join and rank by popularity
-    val sql = s"""
+      // movie_t: parse movie metadata; stat: compute per-movie rating stats; then join and rank by popularity
+      val sql =
+        s"""
            | with movie_t as (
            |   SELECT
            |     split(value, '$RAW_SEP')[0] AS item_id,
@@ -65,28 +65,29 @@ object ML1MMovieStatFeature {
            |)
            |
            | select
-    |   stat.item_id as movie_id,        --movie ID
-    |   title as movie_title,            --movie title
-    |   genres as movie_genres,          --movie genres
-    |   movie_genre_cnt, --movie genre count
-    |   movie_rate_count,                --movie rating count
-    |   movie_avg_rate,                  --movie average rating
-    |   row_number() over (order by movie_rate_count desc) as movie_hot_rank --movie hot rank
+           |   stat.item_id as movie_id,        --movie ID
+           |   title as movie_title,            --movie title
+           |   genres as movie_genres,          --movie genres
+           |   movie_genre_cnt, --movie genre count
+           |   movie_rate_count,                --movie rating count
+           |   movie_avg_rate,                  --movie average rating
+           |   row_number() over (order by movie_rate_count desc) as movie_hot_rank --movie hot rank
            | from stat inner join movie_t 
            | on stat.item_id = movie_t.item_id
     """.stripMargin
 
       val result = spark.sql(sql).cache()
       println(s"result.count() = ${result.count()}")
+      DataQualityChecker.check(result, "item_feature", outputPath)
       result.show()
       result.printSchema()
 
       result
-      .select("movie_id", "movie_title", "movie_genres", "movie_genre_cnt", "movie_rate_count", "movie_avg_rate", "movie_hot_rank")
-      .write
-      .mode("overwrite")
-      .option("sep", SEP)
-      .csv(outputPath)
+        .select("movie_id", "movie_title", "movie_genres", "movie_genre_cnt", "movie_rate_count", "movie_avg_rate", "movie_hot_rank")
+        .write
+        .mode("overwrite")
+        .option("sep", SEP)
+        .csv(outputPath)
       result.unpersist()
     } finally {
       spark.stop()

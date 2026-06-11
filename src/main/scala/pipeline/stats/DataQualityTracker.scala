@@ -22,7 +22,7 @@ class DataQualityTracker {
     reports += StageQuality(stage, totalCount, Some(validCount), targetDistribution)
   }
 
-  /** Records a stage with count only (e.g. val/test splits where detailed stats aren't computed). */
+  /** Records a stage with count only (e.g. val/test splits where detailed stats are not computed). */
   def recordCounts(stage: String, totalCount: Long): Unit = {
     reports += StageQuality(stage, totalCount, None)
   }
@@ -32,17 +32,21 @@ class DataQualityTracker {
     println("\n" + "=" * 80)
     println("DATA QUALITY REPORT")
     println("=" * 80)
-    reports.foreach { r =>
+    for (r <- reports) {
       println("─" * 40)
-      println(s"Stage: ${r.stage}")
-      println(f"  Total:      ${r.totalCount}%,d")
-      r.validCount.foreach { v =>
-        println(f"  Valid:      ${v}%,d (${v * 100.0 / r.totalCount}%.2f%%)")
+      println("Stage: " + r.stage)
+      println("  Total:      " + r.totalCount)
+      if (r.validCount.isDefined) {
+        val v = r.validCount.get
+        val pct = v * 100.0 / r.totalCount
+        println("  Valid:      " + v + " (" + "%.2f".format(pct) + "%)")
       }
       if (r.targetDistribution.nonEmpty) {
-        println(s"  Targets:    ${r.targetDistribution.size} distinct")
-        val top5 = r.targetDistribution.sortBy(-_._2).take(5)
-        println(s"  Top-5:      ${top5.map { case (k, v) => s"$k=$v" }.mkString(", ")}")
+        println("  Targets:    " + r.targetDistribution.size + " distinct")
+        val sortedTargets = r.targetDistribution.sortWith((a, b) => a._2 > b._2)
+        val top5 = sortedTargets.take(5)
+        val top5Str = top5.map(t => t._1 + "=" + t._2).mkString(", ")
+        println("  Top-5:      " + top5Str)
       }
     }
     println("=" * 80)

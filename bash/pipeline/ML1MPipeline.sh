@@ -14,7 +14,6 @@ output_path=${input_path}/train_sample
 
 "${SPARK_HOME}/bin/spark-submit" \
 --master 'local[*]' \
---conf spark.log.level=WARN \
 --class pipeline.ML1MPipeline \
 --conf spark.ui.port=8688 \
 --conf spark.driver.maxResultSize=10g \

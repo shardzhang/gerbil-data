@@ -3,6 +3,7 @@ package processing.sampling
 import org.apache.commons.cli.{DefaultParser, Options}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Row, SparkSession}
+import processing.stats.DataQualityChecker
 import utils.LogUtils.{green_println, setLogLevel}
 
 import scala.util.Random
@@ -160,6 +161,7 @@ class ML1MNegativeSampler(spark: SparkSession, inputDir: String, val strategy: S
 
     val df = spark.createDataFrame(result.map(_._1), spark.table("join_sample").schema)
     green_println(s"[NegativeSampler] total samples: ${df.count()}")
+    DataQualityChecker.check(df, "neg_sample", outputDir)
 
     df.write
       .mode("overwrite")

@@ -2,6 +2,7 @@ package processing.clean
 
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.SparkSession
+import processing.stats.DataQualityChecker
 import utils.LogUtils.{green_println, setLogLevel}
 
 /**
@@ -88,6 +89,7 @@ object ML1MCleanSample {
            |""".stripMargin
       val cleanSample = spark.sql(sql).cache()
       green_println(s"cleanSample.count() = ${cleanSample.count()}")
+      DataQualityChecker.check(cleanSample, "clean_sample", outputPath)
       cleanSample.show()
       cleanSample.printSchema()
 
