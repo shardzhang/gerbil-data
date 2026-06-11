@@ -86,6 +86,8 @@ class PipelineTest extends WordSpec with Matchers {
 
     override def getSampleTarget(sample: String): Int = sample.hashCode
 
+    override def getSampleTimestamp(sample: String): Long = 0L
+
     // Expose persistence methods for testing
     def testReadText(reader: BufferedReader): String = posMapSerDe.readText(reader)
     def testLegacyPosInfo(pos: Int, mean: Double, std: Double, count: Long): PosInfo = posMapSerDe.legacyPosInfo(pos, mean, std, count)

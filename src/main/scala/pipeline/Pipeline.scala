@@ -13,7 +13,7 @@ import scala.reflect.ClassTag
 import utils.LogUtils.green_println
 import featurizer.core.{FeatureType, Featurizer}
 import pipeline.serde.{PosMapSerDe, SampleWriter}
-import pipeline.stats.{PosInfo, RunningValueStats}
+import pipeline.stats.{DataQualityTracker, PosInfo, RunningValueStats}
 
 /** Orchestrates the end-to-end training sample generation pipeline: load samples, build vocabulary (pos-map/target-map), and encode features into TFRecord/Parquet. */
 abstract class Pipeline[T: ClassTag] extends Serializable {
@@ -22,6 +22,9 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
   @transient val posMapSerDe: PosMapSerDe = new PosMapSerDe(hadoopConf)
   /** Serializes featurized samples to TFRecord or Parquet. */
   @transient lazy val writer: SampleWriter[T] = new SampleWriter[T](feature_encoder, max_dim)
+
+  /** Tracks record counts, parse success rates, and target distributions at each ETL stage. */
+  @transient lazy val qualityTracker: DataQualityTracker = new DataQualityTracker()
 
   /** Maximum hash dimension (typically 2^60 for 64-bit embedding space). */
   def max_dim: Long
@@ -106,19 +109,28 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
       indexed.unpersist()
       allSamples.unpersist()
 
+      val trainCount = train.count()
+      val valCount = valid.count()
+      val testCount = test.count()
       green_println(s"train/val/test split: ${total} total, " +
-        s"train=${train.count()} (${train_ratio*100}%), " +
-        s"val=${valid.count()} (${val_ratio*100}%), " +
-        s"test=${test.count()} (${(1.0-train_ratio-val_ratio)*100}%)")
+        s"train=${trainCount} (${train_ratio*100}%), " +
+        s"val=${valCount} (${val_ratio*100}%), " +
+        s"test=${testCount} (${(1.0-train_ratio-val_ratio)*100}%)")
+      // Record split counts to quality tracker
+      qualityTracker.recordCounts("train_split", trainCount)
+      qualityTracker.recordCounts("val_split", valCount)
+      qualityTracker.recordCounts("test_split", testCount)
       (train, valid, test)
     }
 
-    // Count positive vs. down-sampled negative samples
+    // Count parse success vs. failure
     val ret_counts = trainingSample
       .map(s => (s._2, 1))
       .reduceByKey(_ + _)
       .collect()
 
+    val totalCount = ret_counts.map(_._2).sum
+    val validCount = ret_counts.find(_._1).map(_._2.toLong).getOrElse(0L)  // count of successfully parsed samples
     for (ret <- ret_counts) {
       green_println(s"ret_counts ${ret._1} ${ret._2}")
     }
@@ -130,6 +142,9 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
       .reduceByKey(_ + _)
       .collect()
       .sortWith((a, b) => a._2 > b._2)
+
+    // Record train quality: total, parse success, target distribution
+    qualityTracker.record("train_stats", totalCount, validCount, sample_num.toSeq)
 
     // Build target-map: assign a sequential index to each target value meeting the threshold
     var index = if (target_map.isEmpty) {
@@ -251,6 +266,9 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
         writer.writeTfrecord(data, posMapLocalImmutable, targetMapImmutable, s"${basePath}${subdir}/tfrecord")
       }
     }
+
+    // Print consolidated quality report before returning
+    qualityTracker.printReport()
 
     (pos_map, target_map, pos_dim)
   }
