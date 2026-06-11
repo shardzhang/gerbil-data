@@ -35,6 +35,9 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
   /** Extracts the target label (as Int) from a sample for threshold statistics. */
   def getSampleTarget(sample: T): Int
 
+  /** Extracts the timestamp (millis) from a sample for time-based split. */
+  def getSampleTimestamp(sample: T): Long
+
   /** Down-samples negative samples (target == 0) by `sample_ratio`. Positive samples are always kept. */
   def keepSample(sample: T, sample_ratio: Double): Boolean = {
     getSampleTarget(sample) != 0 || ThreadLocalRandom.current().nextDouble() <= sample_ratio
@@ -57,7 +60,11 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     StructType(fields)
   }
 
-  /** Runs the full pipeline: load samples, build target-map, build pos-map (vocabulary), and write encoded output. */
+  /** Runs the full pipeline: load samples, build target-map, build pos-map (vocabulary), and write encoded output.
+    *
+    * @param train_ratio Fraction of data for training (default 1.0 = no split)
+    * @param val_ratio   Fraction of data for validation (default 0.0). Test ratio = 1.0 - train_ratio - val_ratio
+    */
   def run(spark: SparkSession,
           yesterday: String,
           /** Minimum occurrence count for a feature value to be included in vocabulary. */
@@ -72,14 +79,39 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
           input_dir: String,
           output_dir: String,
           parts: Int,
-          output_format: String = "tfrecord"
+          output_format: String = "tfrecord",
+          train_ratio: Double = 1.0,
+          val_ratio: Double = 0.0
          ): (HashMap[(Int, Long), PosInfo], HashMap[Int, Int], HashMap[(String, Int, Int), Int]) = {
 
-    val trainingSample: RDD[(T, Boolean)] = loadTrainingSamples(spark, input_dir, parts)
+    val allSamples: RDD[(T, Boolean)] = loadTrainingSamples(spark, input_dir, parts)
       .filter {
         case (sample, _) => keepSample(sample, sample_ratio)
       }
       .persist(StorageLevel.MEMORY_AND_DISK_SER)
+
+    // Time-based split into train/val/test
+    val (trainingSample, valSample, testSample) = if (train_ratio >= 1.0) {
+      (allSamples, null, null)
+    } else {
+      val sorted = allSamples.sortBy { case (sample, _) => getSampleTimestamp(sample) }
+      val indexed = sorted.zipWithIndex().persist(StorageLevel.MEMORY_AND_DISK_SER)
+      val total = indexed.count()
+      val trainEnd = (total * train_ratio).toLong
+      val valEnd = trainEnd + (total * val_ratio).toLong
+
+      val train = indexed.filter { case (_, idx) => idx < trainEnd }.map(_._1).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      val valid = indexed.filter { case (_, idx) => idx >= trainEnd && idx < valEnd }.map(_._1).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      val test = indexed.filter { case (_, idx) => idx >= valEnd }.map(_._1).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      indexed.unpersist()
+      allSamples.unpersist()
+
+      green_println(s"train/val/test split: ${total} total, " +
+        s"train=${train.count()} (${train_ratio*100}%), " +
+        s"val=${valid.count()} (${val_ratio*100}%), " +
+        s"test=${test.count()} (${(1.0-train_ratio-val_ratio)*100}%)")
+      (train, valid, test)
+    }
 
     // Count positive vs. down-sampled negative samples
     val ret_counts = trainingSample
@@ -198,19 +230,26 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     green_println(s"target_map: ${target_map.size}. accumulated target count")
     green_println(s"pos_dim: ${pos_dim.size}. accumulated feature domain count")
 
-    val tfRecordPath = s"${output_dir.stripSuffix("/")}/${yesterday}/tfrecord"
-    val parquetPath = s"${output_dir.stripSuffix("/")}/${yesterday}/parquet"
+    val basePath = s"${output_dir.stripSuffix("/")}/${yesterday}"
     val parquetSchema = parquet_schema
     val parquetFieldNames = parquetSchema.fieldNames.toSeq
     val posMapLocalImmutable: collection.Map[(Int, Long), Int] = pos_map_local
     val targetMapImmutable: collection.Map[Int, Int] = target_map
 
-    if (output_format == "parquet" || output_format == "both") {
-      writer.writeParquet(trainingSample, spark, parquetSchema, parquetFieldNames, posMapLocalImmutable, targetMapImmutable, parquetPath)
+    val splitsToWrite = if (valSample != null) {
+      Seq(("train", trainingSample), ("val", valSample), ("test", testSample))
+    } else {
+      Seq(("", trainingSample))
     }
 
-    if (output_format == "tfrecord" || output_format == "both") {
-      writer.writeTfrecord(trainingSample, posMapLocalImmutable, targetMapImmutable, tfRecordPath)
+    for ((suffix, data) <- splitsToWrite) {
+      val subdir = if (suffix.isEmpty) "" else s"/${suffix}"
+      if (output_format == "parquet" || output_format == "both") {
+        writer.writeParquet(data, spark, parquetSchema, parquetFieldNames, posMapLocalImmutable, targetMapImmutable, s"${basePath}${subdir}/parquet")
+      }
+      if (output_format == "tfrecord" || output_format == "both") {
+        writer.writeTfrecord(data, posMapLocalImmutable, targetMapImmutable, s"${basePath}${subdir}/tfrecord")
+      }
     }
 
     (pos_map, target_map, pos_dim)

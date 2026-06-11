@@ -37,4 +37,6 @@ ${JAR_PATH} \
 --output_dir ${output_path} \
 --yesterday ${day} \
 --parts 10 \
---output_format tfrecord
+--output_format tfrecord \
+--train_ratio 0.8 \
+--val_ratio 0.1

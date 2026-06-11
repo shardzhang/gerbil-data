@@ -43,4 +43,6 @@ source "../conf/env.sh" && "${SPARK_HOME}/bin/spark-submit" \
 --output_dir ./tmp/ml-1m-mini-output \
 --yesterday "20260601" \
 --parts 1 \
---output_format tfrecord
+--output_format tfrecord \
+--train_ratio 0.8 \
+--val_ratio 0.1

@@ -41,6 +41,9 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
   /** Extract target label from the sample's target field. */
   override def getSampleTarget(sample: ML1MSample): Int = sample.target
 
+  /** Extract timestamp (millis) from sample for time-based split. */
+  override def getSampleTimestamp(sample: ML1MSample): Long = sample.time_stamp
+
   /** Load movie metadata (title, genres) from item_feature CSV, keyed by movie_id. */
   def getMovieInfo(spark: SparkSession, path: String): collection.Map[Int, (String, Array[String])] = {
     // item_feature.csv
@@ -79,6 +82,8 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
     opts.addOption(null, "parts", true, "The TrainingNumPartitions")
     opts.addOption(null, "yesterday", true, "The date")
     opts.addOption(null, "output_format", true, "Output format: tfrecord, parquet, both (default: tfrecord)")
+    opts.addOption(null, "train_ratio", true, "Fraction of data for training (default: 0.8)")
+    opts.addOption(null, "val_ratio", true, "Fraction of data for validation (default: 0.1)")
 
     val parser = new DefaultParser()
     val cl = parser.parse(opts, args)
@@ -90,6 +95,8 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
     val parts = cl.getOptionValue("parts").toInt
     val yesterday = cl.getOptionValue("yesterday")
     val output_format = Option(cl.getOptionValue("output_format")).getOrElse("tfrecord")
+    val train_ratio = Option(cl.getOptionValue("train_ratio")).map(_.toDouble).getOrElse(0.8)
+    val val_ratio = Option(cl.getOptionValue("val_ratio")).map(_.toDouble).getOrElse(0.1)
 
     setLogLevel()
 
@@ -107,7 +114,8 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
       val (pos_map_before, target_map_before, pos_dim_before) = posMapSerDe.restore(output_dir, yesterday)
       val (pos_map_after, target_map_after, pos_dim_after) = run(
         spark, yesterday, feature_threshold, target_threshold, sample_ratio,
-        pos_map_before, target_map_before, pos_dim_before, input_dir, output_dir, parts, output_format
+        pos_map_before, target_map_before, pos_dim_before, input_dir, output_dir, parts, output_format,
+        train_ratio, val_ratio
       )
       posMapSerDe.save(output_dir, yesterday, pos_map_after, target_map_after, pos_dim_after)
       val successPath = new Path(s"${outputPath.toString}/_SUCCESS")

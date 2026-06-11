@@ -188,6 +188,8 @@ class ML1MSample extends Serializable {
   var time_hour: Int = 0
   // 0-5
   var time_area: Int = 0
+  // Unix timestamp in milliseconds (for time-based split)
+  var time_stamp: Long = 0L
 
   /** ***************************** target *********************************** */
   // Multi-class classification. item_id.
@@ -308,6 +310,7 @@ object ML1MSample {
       train_sample.time_area = dt.getHour / 4
       train_sample.week_day = dt.getDayOfWeek.getValue
       sample_timestamp = ts
+      train_sample.time_stamp = ts
     } catch {
       case e: Exception => {
         green_println("train_sample.time_hour: " + e.toString + " " + row.toSeq.toString())
