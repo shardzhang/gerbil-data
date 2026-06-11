@@ -94,3 +94,44 @@ object ML1MMovieStatFeature {
     }
   }
 }
+
+/**
+================================================================================
+DATA QUALITY CHECK: item_feature
+================================================================================
+  Total records:  3706
+   ─ movie_id (string)
+     NULL:       0 (0.00%)
+     Cardinality: 3706
+   ─ movie_title (string)
+     NULL:       0 (0.00%)
+     Cardinality: 3706
+   ─ movie_genres (string)
+     NULL:       0 (0.00%)
+     Cardinality: 301
+   ─ movie_genre_cnt (int)
+     NULL:       0 (0.00%)
+     Min:        1.0
+     Max:        6.0
+     Mean:       1.6708
+     Stddev:     0.8113
+   ─ movie_rate_count (bigint)
+     NULL:       0 (0.00%)
+     Min:        1.0
+     Max:        3428.0
+     Mean:       269.8891
+     Stddev:     384.0478
+   ─ movie_avg_rate (double)
+     NULL:       0 (0.00%)
+     Min:        1.0
+     Max:        5.0
+     Mean:       3.2390
+     Stddev:     0.6729
+   ─ movie_hot_rank (int)
+     NULL:       0 (0.00%)
+     Min:        1.0
+     Max:        3706.0
+     Mean:       1853.5000
+     Stddev:     1069.9744
+================================================================================
+ */

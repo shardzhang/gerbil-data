@@ -193,12 +193,14 @@ object DataQualityChecker {
       // Build rows: one per column, with all stats as flat fields
       val rows = scala.collection.mutable.ListBuffer.empty[Row]
       for (c <- report.columns) {
-        val minVal  = if (c.numericStats.isDefined && c.numericStats.get.min.isDefined)    { c.numericStats.get.min.get.toString } else { "null" }
-        val maxVal  = if (c.numericStats.isDefined && c.numericStats.get.max.isDefined)    { c.numericStats.get.max.get.toString } else { "null" }
-        val meanVal = if (c.numericStats.isDefined && c.numericStats.get.mean.isDefined)   { c.numericStats.get.mean.get.toString } else { "null" }
-        val stdVal  = if (c.numericStats.isDefined && c.numericStats.get.stddev.isDefined) { c.numericStats.get.stddev.get.toString } else { "null" }
-        rows += Row(report.stage, report.totalCount, c.name, c.dataType,
-          c.nullCount, c.nullRatio, c.cardinality.getOrElse(0L),
+        val minVal: String  = if (c.numericStats.isDefined && c.numericStats.get.min.isDefined)    { c.numericStats.get.min.get.toString } else { null }
+        val maxVal: String  = if (c.numericStats.isDefined && c.numericStats.get.max.isDefined)    { c.numericStats.get.max.get.toString } else { null }
+        val meanVal: String = if (c.numericStats.isDefined && c.numericStats.get.mean.isDefined)   { c.numericStats.get.mean.get.toString } else { null }
+        val stdVal: String  = if (c.numericStats.isDefined && c.numericStats.get.stddev.isDefined) { c.numericStats.get.stddev.get.toString } else { null }
+        val cardVal: java.lang.Long = if (c.cardinality.isDefined) { c.cardinality.get } else { null }
+        rows += Row(
+          report.stage, report.totalCount, c.name, c.dataType,
+          c.nullCount, c.nullRatio, cardVal,
           minVal, maxVal, meanVal, stdVal)
       }
 
@@ -288,7 +290,7 @@ object DataQualityChecker {
         // Check numeric mean drift
         if (c.numericStats.isDefined && c.numericStats.get.mean.isDefined) {
           val currMean = c.numericStats.get.mean.get
-          if (prevMeanStr != "null" && prevMeanStr != "") {
+          if (prevMeanStr != null && prevMeanStr != "") {
             val prevMean = prevMeanStr.toDouble
             if (prevMean != 0 && math.abs((currMean - prevMean) / prevMean) > 0.5) {
               green_println("[Drift WARN] " + curr.stage + "." + c.name + " mean: " + prevMean + " -> " + currMean)

@@ -106,3 +106,32 @@ object ML1MCleanSample {
     }
   }
 }
+
+/**
+================================================================================
+DATA QUALITY CHECK: clean_sample
+================================================================================
+  Total records:  1000209
+   ─ user_id (string)
+     NULL:       0 (0.00%)
+     Cardinality: 6040
+     ─ item_id (string)
+     NULL:       0 (0.00%)
+     Cardinality: 3706
+  ─ rating (int)
+     NULL:       0 (0.00%)
+     Min:        1.0
+     Max:        5.0
+     Mean:       3.5816
+     Stddev:     1.1171
+   ─ time_stamp (bigint)
+     NULL:       0 (0.00%)
+     Min:        9.56703932E8
+     Max:        1.04645459E9
+     Mean:       972243695.4047
+     Stddev:     12152558.9399
+   ─ day (string)
+     NULL:       0 (0.00%)
+     Cardinality: 1037
+================================================================================
+ */
