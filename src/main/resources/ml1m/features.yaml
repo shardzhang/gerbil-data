@@ -1,0 +1,118 @@
+# ML1M dataset feature configuration.
+# type: 1 = categorical, 0 = continuous
+# class: Scala feature implementation class name (appended to pkg prefix)
+# enabled: whether the feature is active; false to skip registration
+
+pkg: featurizer.ml1m
+features:
+  # ── User demographics ──
+  - {name: user_age, index: 2, type: 1, class: UserAge, enabled: true}  # age bucket (1/18/25/35/45/50/56)
+  - {name: user_gender, index: 3, type: 1, class: UserGender, enabled: true}  # gender (M/F)
+  - {name: user_occupation, index: 4, type: 1, class: UserOccupation, enabled: true}  # occupation code (0-20)
+
+  # ── User rating stddev (bucketed) ──
+  - {name: user_rate_std, index: 6, type: 1, class: UserRateStd, enabled: true}
+  - {name: user_rate_std_7day, index: 7, type: 1, class: UserRateStd7Day, enabled: true}
+  - {name: user_rate_std_15day, index: 8, type: 1, class: UserRateStd15Day, enabled: true}
+  - {name: user_rate_std_30day, index: 9, type: 1, class: UserRateStd30Day, enabled: true}
+
+  # ── User rating stddev (continuous) ──
+  - {name: user_rate_std_continue, index: 18, type: 0, class: UserRateStdContinue, enabled: true}
+  - {name: user_rate_std_7day_continue, index: 19, type: 0, class: UserRateStd7DayContinue, enabled: true}
+  - {name: user_rate_std_15day_continue, index: 21, type: 0, class: UserRateStd15DayContinue, enabled: true}
+  - {name: user_rate_std_30day_continue, index: 22, type: 0, class: UserRateStd30DayContinue, enabled: true}
+
+  # ── User rating count (bucketed) ──
+  - {name: user_movie_rate_cnt, index: 10, type: 1, class: UserMovieRateCnt, enabled: true}
+  - {name: user_movie_rate_cnt_7day, index: 11, type: 1, class: UserMovieRateCnt7Day, enabled: true}
+  - {name: user_movie_rate_cnt_15day, index: 12, type: 1, class: UserMovieRateCnt15Day, enabled: true}
+  - {name: user_movie_rate_cnt_30day, index: 13, type: 1, class: UserMovieRateCnt30Day, enabled: true}
+
+  # ── User avg rating (bucketed) ──
+  - {name: user_avg_rate, index: 14, type: 1, class: UserAvgRate, enabled: true}
+  - {name: user_avg_rate_7day, index: 15, type: 1, class: UserAvgRate7Day, enabled: true}
+  - {name: user_avg_rate_15day, index: 16, type: 1, class: UserAvgRate15Day, enabled: true}
+  - {name: user_avg_rate_30day, index: 17, type: 1, class: UserAvgRate30Day, enabled: true}
+
+  # ── User avg rating (continuous) ──
+  - {name: user_avg_rate_continue, index: 23, type: 0, class: UserAvgRateContinue, enabled: true}
+  - {name: user_avg_rate_7day_continue, index: 24, type: 0, class: UserAvgRate7DayContinue, enabled: true}
+  - {name: user_avg_rate_15day_continue, index: 25, type: 0, class: UserAvgRate15DayContinue, enabled: true}
+  - {name: user_avg_rate_30day_continue, index: 26, type: 0, class: UserAvgRate30DayContinue, enabled: true}
+
+  # ── Item features ──
+  - {name: movie_title, index: 102, type: 1, class: MovieTitle, enabled: true}  # tokenized title (multi-value)
+  - {name: movie_genres, index: 103, type: 1, class: MovieGenres, enabled: true}  # genre list (multi-value)
+  - {name: movie_rate_count, index: 104, type: 1, class: MovieRateCount, enabled: true}  # total ratings (bucketed)
+  - {name: movie_avg_rate, index: 105, type: 1, class: MovieAvgRate, enabled: true}  # average rating (bucketed)
+  - {name: movie_genre_cnt, index: 106, type: 1, class: MovieGenreCnt, enabled: true}  # number of genres
+  - {name: item_hot_rank, index: 107, type: 1, class: MovieHotRank, enabled: true}  # popularity rank (bucketed)
+  - {name: movie_publish_year, index: 108, type: 1, class: MoviePublishYear, enabled: true}  # release year (bucketed)
+  - {name: movie_avg_rate_continue, index: 109, type: 0, class: MovieAvgRateContinue, enabled: true}  # average rating (continuous)
+
+  # ── Context features ──
+  - {name: context_time_hour, index: 201, type: 1, class: ContextTimeHour, enabled: true}  # hour of day (0-23)
+  - {name: context_time_area, index: 202, type: 1, class: ContextTimeArea, enabled: true}  # time period (dawn/morning/afternoon/evening)
+  - {name: context_time_week, index: 203, type: 1, class: ContextTimeWeek, enabled: true}  # day of week (1-7)
+  - {name: context_is_weekend, index: 204, type: 1, class: IsWeekend, enabled: true}  # whether it is weekend
+
+  # ── User behavior: recent movie rating sequences ──
+  - {name: user_movie_rate, index: 301, type: 1, class: UserMovieRate, enabled: true}
+  - {name: user_movie_rate_1day, index: 302, type: 1, class: UserMovieRate1Day, enabled: true}
+  - {name: user_movie_rate_3day, index: 303, type: 1, class: UserMovieRate3Day, enabled: true}
+  - {name: user_movie_rate_7day, index: 304, type: 1, class: UserMovieRate7Day, enabled: true}
+  - {name: user_movie_rate_15day, index: 305, type: 1, class: UserMovieRate15Day, enabled: true}
+
+  # ── User behavior: recent genre rating sequences ──
+  - {name: user_genres_rate, index: 306, type: 1, class: UserGenresRate, enabled: true}
+  - {name: user_genres_rate_1day, index: 307, type: 1, class: UserGenresRate1Day, enabled: true}
+  - {name: user_genres_rate_3day, index: 308, type: 1, class: UserGenresRate3Day, enabled: true}
+  - {name: user_genres_rate_7day, index: 309, type: 1, class: UserGenresRate7Day, enabled: true}
+  - {name: user_genres_rate_15day, index: 310, type: 1, class: UserGenresRate15Day, enabled: true}
+
+  # ── User behavior: recent genre rating counts ──
+  - {name: user_genres_rate_cnts, index: 312, type: 1, class: UserGenresRateCnts, enabled: true}
+  - {name: user_genres_rate_cnt_1days, index: 313, type: 1, class: UserGenresRateCnt1Days, enabled: true}
+  - {name: user_genres_rate_cnt_3days, index: 314, type: 1, class: UserGenresRateCnt3Days, enabled: true}
+  - {name: user_genres_rate_cnt_7days, index: 315, type: 1, class: UserGenresRateCnt7Days, enabled: true}
+  - {name: user_genres_rate_cnt_15days, index: 316, type: 1, class: UserGenresRateCnt15Days, enabled: true}
+
+  # ── User top genres ──
+  - {name: user_top3_genres, index: 317, type: 1, class: UserTop3Genres, enabled: true}  # top-3 genres by rating frequency
+
+  # ── Same-genre watch sequences ──
+  - {name: user_watch_same_genre, index: 351, type: 1, class: UserWatchSameGenre, enabled: true}
+  - {name: user_watch_same_genre_1day, index: 352, type: 1, class: UserWatchSameGenre1Day, enabled: true}
+  - {name: user_watch_same_genre_3day, index: 353, type: 1, class: UserWatchSameGenre3Day, enabled: true}
+  - {name: user_watch_same_genre_7day, index: 354, type: 1, class: UserWatchSameGenre7Day, enabled: true}
+  - {name: user_watch_same_genre_15day, index: 355, type: 1, class: UserWatchSameGenre15Day, enabled: true}
+
+  # ── Same-genre average rating ──
+  - {name: user_same_genre_avg_rate, index: 356, type: 1, class: UserSameGenreAvgRate, enabled: true}  # bucketed
+  - {name: user_same_genre_avg_rate_continue, index: 357, type: 0, class: UserSameGenreAvgRateContinue, enabled: true}  # continuous
+
+# Cross features (all disabled by default; enable as needed)
+# depends: list of categorical feature names that must all be enabled
+cross_features:
+  - {name: movie_genres_xx_user_genres_rate, index: 401, depends: [movie_genres, user_genres_rate], enabled: false}
+  - {name: movie_genres_xx_user_genres_rate_1day, index: 402, depends: [movie_genres, user_genres_rate_1day], enabled: false}
+  - {name: movie_publish_year_xx_user_age, index: 406, depends: [movie_publish_year, user_age], enabled: false}
+  - {name: movie_rate_count_xx_user_rate_std, index: 410, depends: [movie_rate_count, user_rate_std], enabled: false}
+  - {name: movie_hot_rank_xx_user_avg_rate, index: 411, depends: [item_hot_rank, user_avg_rate], enabled: false}
+  - {name: movie_publish_year_xx_user_avg_rate, index: 412, depends: [movie_publish_year, user_avg_rate], enabled: false}
+  - {name: movie_genre_cnt_xx_user_avg_rate, index: 413, depends: [movie_genre_cnt, user_avg_rate], enabled: false}
+  - {name: movie_hot_rank_xx_user_genre_avg_rate, index: 414, depends: [item_hot_rank, user_same_genre_avg_rate], enabled: false}
+  - {name: movie_genres_xx_user_gender, index: 417, depends: [movie_genres, user_gender], enabled: false}
+  - {name: movie_genres_xx_user_occupation, index: 418, depends: [movie_genres, user_occupation], enabled: false}
+  - {name: movie_genres_xx_user_age, index: 419, depends: [movie_genres, user_age], enabled: false}
+  - {name: movie_genres_xx_is_weekend, index: 450, depends: [movie_genres, context_is_weekend], enabled: false}
+  - {name: movie_hot_rank_xx_is_weekend, index: 451, depends: [item_hot_rank, context_is_weekend], enabled: false}
+  - {name: user_age_xx_is_weekend, index: 452, depends: [user_age, context_is_weekend], enabled: false}
+  - {name: user_gender_xx_context_time_hour, index: 453, depends: [user_gender, context_time_hour], enabled: false}
+  - {name: movie_genres_xx_user_age_xx_user_gender, index: 460, depends: [movie_genres, user_age, user_gender], enabled: false}
+  - {name: movie_genres_xx_user_gender_xx_user_occupation, index: 461, depends: [movie_genres, user_gender, user_occupation], enabled: false}
+  - {name: movie_publish_year_xx_user_age_xx_user_occupation, index: 462, depends: [movie_publish_year, user_age, user_occupation], enabled: false}
+  - {name: movie_avg_rate_xx_movie_hot_rank_xx_user_avg_rate, index: 463, depends: [movie_avg_rate, item_hot_rank, user_avg_rate], enabled: false}
+  - {name: movie_genre_cnt_xx_user_total_rate_cnt_xx_user_avg_rate, index: 465, depends: [movie_genre_cnt, user_movie_rate_cnt, user_avg_rate], enabled: false}
+  - {name: movie_genre_cnt_xx_movie_hot_rank_xx_user_genre_avg_rate, index: 466, depends: [movie_genre_cnt, item_hot_rank, user_same_genre_avg_rate], enabled: false}
+  - {name: movie_publish_year_xx_movie_avg_rate_xx_user_avg_rate, index: 467, depends: [movie_publish_year, movie_avg_rate, user_avg_rate], enabled: false}

@@ -1,210 +1,80 @@
 package featurizer.ml1m
 
-import featurizer.ml1m.ML1MSample
-import featurizer.core.{CrossFeature, Featurizer, RawTarget}
+import featurizer.core.{CategoricalFeature, ContinuousFeature, CrossFeature, Featurizer, RawTarget}
+import config.{FeatureConfig, FeatureConfigLoader, FeatureDef}
+import utils.LogUtils.green_println
 
-/** Featurizes each ML1M sample before feeding to the model. */
-class ML1MFeaturizer extends Featurizer[ML1MSample] {
+import scala.collection.mutable
+
+/** Featurizes each ML1M sample before feeding to the model.
+ * Reads feature registry from features.yaml; all parse() logic stays in Scala classes.
+ */
+class ML1MFeaturizer(configPath: Option[String] = None) extends Featurizer[ML1MSample] {
+
+  private lazy val config: FeatureConfig = configPath match {
+    case Some(path) => FeatureConfigLoader.loadFromFile(path)
+    case None => FeatureConfigLoader.loadFromResource("/ml1m/features.yaml")
+  }
+
+  private def instantiate(featureDef: FeatureDef): Any = {
+    try {
+      val clazz = Class.forName(featureDef.className)
+      val ctor = clazz.getConstructor(classOf[Int], classOf[String])
+      ctor.newInstance(featureDef.index.asInstanceOf[AnyRef], featureDef.name)
+    } catch {
+      case e: ClassNotFoundException =>
+        System.err.println("[Featurizer] ERROR: class not found for feature '" + featureDef.name +
+          "' (index=" + featureDef.index + "): " + featureDef.className)
+        sys.exit(1)
+        throw e // unreachable, but keeps compiler happy
+      case e: NoSuchMethodException =>
+        System.err.println("[Featurizer] ERROR: missing (Int, String) constructor for feature '" +
+          featureDef.name + "' (index=" + featureDef.index + "): " + featureDef.className)
+        sys.exit(1)
+        throw e
+    }
+  }
+
   override def setup(): Featurizer[ML1MSample] = {
     raw_cate_features.clear()
     raw_conti_features.clear()
     cross_features.clear()
-
     target = new Target()
 
-    // ============================== user ==============================
-    val user_age = new UserAge(2, "user_age")
-    val user_gender = new UserGender(3, "user_gender")
-    val user_occupation = new UserOccupation(4, "user_occupation")
-    raw_cate_features.append(user_age)
-    raw_cate_features.append(user_gender)
-    raw_cate_features.append(user_occupation)
-
-    val user_rate_std = new UserRateStd(6, "user_rate_std")
-    val user_rate_std_7day = new UserRateStd7Day(7, "user_rate_std_7day")
-    val user_rate_std_15day = new UserRateStd15Day(8, "user_rate_std_15day")
-    val user_rate_std_30day = new UserRateStd30Day(9, "user_rate_std_30day")
-    raw_cate_features.append(user_rate_std)
-    raw_cate_features.append(user_rate_std_7day)
-    raw_cate_features.append(user_rate_std_15day)
-    raw_cate_features.append(user_rate_std_30day)
-
-    val user_rate_std_continue = new UserRateStdContinue(18, "user_rate_std_continue")
-    val user_rate_std_7day_continue = new UserRateStd7DayContinue(19, "user_rate_std_7day_continue")
-    val user_rate_std_15day_continue = new UserRateStd15DayContinue(21, "user_rate_std_15day_continue")
-    val user_rate_std_30day_continue = new UserRateStd30DayContinue(22, "user_rate_std_30day_continue")
-    raw_conti_features.append(user_rate_std_continue)
-    raw_conti_features.append(user_rate_std_7day_continue)
-    raw_conti_features.append(user_rate_std_15day_continue)
-    raw_conti_features.append(user_rate_std_30day_continue)
-
-    val user_movie_rate_cnt = new UserMovieRateCnt(10, "user_movie_rate_cnt")
-    val user_movie_rate_cnt_7day = new UserMovieRateCnt7Day(11, "user_movie_rate_cnt_7day")
-    val user_movie_rate_cnt_15day = new UserMovieRateCnt15Day(12, "user_movie_rate_cnt_15day")
-    val user_movie_rate_cnt_30day = new UserMovieRateCnt30Day(13, "user_movie_rate_cnt_30day")
-    raw_cate_features.append(user_movie_rate_cnt)
-    raw_cate_features.append(user_movie_rate_cnt_7day)
-    raw_cate_features.append(user_movie_rate_cnt_15day)
-    raw_cate_features.append(user_movie_rate_cnt_30day)
-
-    val user_avg_rate = new UserAvgRate(14, "user_avg_rate")
-    val user_avg_rate_7day = new UserAvgRate7Day(15, "user_avg_rate_7day")
-    val user_avg_rate_15day = new UserAvgRate15Day(16, "user_avg_rate_15day")
-    val user_avg_rate_30day = new UserAvgRate30Day(17, "user_avg_rate_30day")
-    raw_cate_features.append(user_avg_rate)
-    raw_cate_features.append(user_avg_rate_7day)
-    raw_cate_features.append(user_avg_rate_15day)
-    raw_cate_features.append(user_avg_rate_30day)
-
-    val user_avg_rate_continue = new UserAvgRateContinue(23, "user_avg_rate_continue")
-    val user_avg_rate_7day_continue = new UserAvgRate7DayContinue(24, "user_avg_rate_7day_continue")
-    val user_avg_rate_15day_continue = new UserAvgRate15DayContinue(25, "user_avg_rate_15day_continue")
-    val user_avg_rate_30day_continue = new UserAvgRate30DayContinue(26, "user_avg_rate_30day_continue")
-    raw_conti_features.append(user_avg_rate_continue)
-    raw_conti_features.append(user_avg_rate_7day_continue)
-    raw_conti_features.append(user_avg_rate_15day_continue)
-    raw_conti_features.append(user_avg_rate_30day_continue)
-
-    // ============================== item ==============================
-    val movie_title = new MovieTitle(102, "movie_title")
-    val movie_genres = new MovieGenres(103, "movie_genres")
-    raw_cate_features.append(movie_title)
-    raw_cate_features.append(movie_genres)
-
-    val movie_rate_count = new MovieRateCount(104, "movie_rate_count")
-    val movie_avg_rate = new MovieAvgRate(105, "movie_avg_rate")
-    val movie_genre_cnt = new MovieGenreCnt(106, "movie_genre_cnt")
-    val movie_hot_rank = new MovieHotRank(107, "item_hot_rank")
-    val movie_publish_year = new MoviePublishYear(108, "movie_publish_year")
-    val movie_avg_rate_continue = new MovieAvgRateContinue(109, "movie_avg_rate_continue")
-    raw_cate_features.append(movie_rate_count)
-    raw_cate_features.append(movie_avg_rate)
-    raw_cate_features.append(movie_genre_cnt)
-    raw_cate_features.append(movie_hot_rank)
-    raw_cate_features.append(movie_publish_year)
-    raw_conti_features.append(movie_avg_rate_continue)
-
-    // ============================== context ==============================
-    val context_time_hour = new ContextTimeHour(201, "context_time_hour")
-    val context_time_area = new ContextTimeArea(202, "context_time_area")
-    val context_time_week = new ContextTimeWeek(203, "context_time_week")
-    val context_is_weekend = new IsWeekend(204, "context_is_weekend")
-    raw_cate_features.append(context_time_hour)
-    raw_cate_features.append(context_time_area)
-    raw_cate_features.append(context_time_week)
-    raw_cate_features.append(context_is_weekend)
-
-    // ============================== user behavior ==============================
-    val user_movie_rate = new UserMovieRate(301, "user_movie_rate")
-    val user_movie_rate_1day = new UserMovieRate1Day(302, "user_movie_rate_1day")
-    val user_movie_rate_3day = new UserMovieRate3Day(303, "user_movie_rate_3day")
-    val user_movie_rate_7day = new UserMovieRate7Day(304, "user_movie_rate_7day")
-    val user_movie_rate_15day = new UserMovieRate15Day(305, "user_movie_rate_15day")
-    raw_cate_features.append(user_movie_rate)
-    raw_cate_features.append(user_movie_rate_1day)
-    raw_cate_features.append(user_movie_rate_3day)
-    raw_cate_features.append(user_movie_rate_7day)
-    raw_cate_features.append(user_movie_rate_15day)
-
-    val user_genres_rate = new UserGenresRate(306, "user_genres_rate")
-    val user_genres_rate_1day = new UserGenresRate1Day(307, "user_genres_rate_1day")
-    val user_genres_rate_3day = new UserGenresRate3Day(308, "user_genres_rate_3day")
-    val user_genres_rate_7day = new UserGenresRate7Day(309, "user_genres_rate_7day")
-    val user_genres_rate_15day = new UserGenresRate15Day(310, "user_genres_rate_15day")
-    raw_cate_features.append(user_genres_rate)
-    raw_cate_features.append(user_genres_rate_1day)
-    raw_cate_features.append(user_genres_rate_3day)
-    raw_cate_features.append(user_genres_rate_7day)
-    raw_cate_features.append(user_genres_rate_15day)
-
-    val user_genres_rate_cnts = new UserGenresRateCnts(312, "user_genres_rate_cnts")
-    val user_genres_rate_cnt_1days = new UserGenresRateCnt1Days(313, "user_genres_rate_cnt_1days")
-    val user_genres_rate_cnt_3days = new UserGenresRateCnt3Days(314, "user_genres_rate_cnt_3days")
-    val user_genres_rate_cnt_7days = new UserGenresRateCnt7Days(315, "user_genres_rate_cnt_7days")
-    val user_genres_rate_cnt_15days = new UserGenresRateCnt15Days(316, "user_genres_rate_cnt_15days")
-    raw_cate_features.append(user_genres_rate_cnts)
-    raw_cate_features.append(user_genres_rate_cnt_1days)
-    raw_cate_features.append(user_genres_rate_cnt_3days)
-    raw_cate_features.append(user_genres_rate_cnt_7days)
-    raw_cate_features.append(user_genres_rate_cnt_15days)
-
-    val user_top3_genres = new UserTop3Genres(317, "user_top3_genres")
-    raw_cate_features.append(user_top3_genres)
-
-    val user_watch_same_genre = new UserWatchSameGenre(351, "user_watch_same_genre")
-    val user_watch_same_genre_1day = new UserWatchSameGenre1Day(352, "user_watch_same_genre_1day")
-    val user_watch_same_genre_3day = new UserWatchSameGenre3Day(353, "user_watch_same_genre_3day")
-    val user_watch_same_genre_7day = new UserWatchSameGenre7Day(354, "user_watch_same_genre_7day")
-    val user_watch_same_genre_15day = new UserWatchSameGenre15Day(355, "user_watch_same_genre_15day")
-    val user_same_genre_avg_rate = new UserSameGenreAvgRate(356, "user_same_genre_avg_rate")
-    val user_same_genre_avg_rate_continue = new UserSameGenreAvgRateContinue(357, "user_same_genre_avg_rate_continue")
-    raw_cate_features.append(user_watch_same_genre)
-    raw_cate_features.append(user_watch_same_genre_1day)
-    raw_cate_features.append(user_watch_same_genre_3day)
-    raw_cate_features.append(user_watch_same_genre_7day)
-    raw_cate_features.append(user_watch_same_genre_15day)
-    raw_cate_features.append(user_same_genre_avg_rate)
-    raw_conti_features.append(user_same_genre_avg_rate_continue)
-
-    val enableCrossFeatures = false
-    if (enableCrossFeatures) {
-      val movie_genres_xx_user_genres_rate = new CrossFeature(401, "movie_genres_xx_user_genres_rate", movie_genres, user_genres_rate)
-      val movie_genres_xx_user_genres_rate_1day = new CrossFeature(402, "movie_genres_xx_user_genres_rate_1day", movie_genres, user_genres_rate_1day)
-      val movie_genres_xx_user_genres_rate_3day = new CrossFeature(403, "movie_genres_xx_user_genres_rate_3day", movie_genres, user_genres_rate_3day)
-      val movie_genres_xx_user_genres_rate_7day = new CrossFeature(404, "movie_genres_xx_user_genres_rate_7day", movie_genres, user_genres_rate_7day)
-      val movie_genres_xx_user_genres_rate_15day = new CrossFeature(405, "movie_genres_xx_user_genres_rate_15day", movie_genres, user_genres_rate_15day)
-      cross_features.append(movie_genres_xx_user_genres_rate)
-      cross_features.append(movie_genres_xx_user_genres_rate_1day)
-      cross_features.append(movie_genres_xx_user_genres_rate_3day)
-      cross_features.append(movie_genres_xx_user_genres_rate_7day)
-      cross_features.append(movie_genres_xx_user_genres_rate_15day)
-
-      val movie_publish_year_xx_user_age = new CrossFeature(406, "movie_publish_year_xx_user_age", movie_publish_year, user_age)
-      cross_features.append(movie_publish_year_xx_user_age)
-
-      val movie_rate_count_xx_user_rate_std = new CrossFeature(410, "movie_rate_count_xx_user_rate_std", movie_rate_count, user_rate_std)
-      val movie_hot_rank_xx_user_avg_rate = new CrossFeature(411, "movie_hot_rank_xx_user_avg_rate", movie_hot_rank, user_avg_rate)
-      val movie_publish_year_xx_user_avg_rate = new CrossFeature(412, "movie_publish_year_xx_user_avg_rate", movie_publish_year, user_avg_rate)
-      val movie_genre_cnt_xx_user_avg_rate = new CrossFeature(413, "movie_genre_cnt_xx_user_avg_rate", movie_genre_cnt, user_avg_rate)
-      val movie_hot_rank_xx_user_genre_avg_rate = new CrossFeature(414, "movie_hot_rank_xx_user_genre_avg_rate", movie_hot_rank, user_same_genre_avg_rate)
-      cross_features.append(movie_rate_count_xx_user_rate_std)
-      cross_features.append(movie_hot_rank_xx_user_avg_rate)
-      cross_features.append(movie_publish_year_xx_user_avg_rate)
-      cross_features.append(movie_genre_cnt_xx_user_avg_rate)
-      cross_features.append(movie_hot_rank_xx_user_genre_avg_rate)
-
-      val movie_genres_xx_user_gender = new CrossFeature(417, "movie_genres_xx_user_gender", movie_genres, user_gender)
-      val movie_genres_xx_user_occupation = new CrossFeature(418, "movie_genres_xx_user_occupation", movie_genres, user_occupation)
-      val movie_genres_xx_user_age = new CrossFeature(419, "movie_genres_xx_user_age", movie_genres, user_age)
-      cross_features.append(movie_genres_xx_user_gender)
-      cross_features.append(movie_genres_xx_user_occupation)
-      cross_features.append(movie_genres_xx_user_age)
-
-      val movie_genres_xx_is_weekend = new CrossFeature(450, "movie_genres_xx_is_weekend", movie_genres, context_is_weekend)
-      val movie_hot_rank_xx_is_weekend = new CrossFeature(451, "movie_hot_rank_xx_is_weekend", movie_hot_rank, context_is_weekend)
-      val user_age_xx_is_weekend = new CrossFeature(452, "user_age_xx_is_weekend", user_age, context_is_weekend)
-      val user_gender_xx_context_time_hour = new CrossFeature(453, "user_gender_xx_context_time_hour", user_gender, context_time_hour)
-      cross_features.append(movie_genres_xx_is_weekend)
-      cross_features.append(movie_hot_rank_xx_is_weekend)
-      cross_features.append(user_age_xx_is_weekend)
-      cross_features.append(user_gender_xx_context_time_hour)
-
-      val movie_genres_xx_user_age_xx_user_gender = new CrossFeature(460, "movie_genres_xx_user_age_xx_user_gender", movie_genres, user_age, user_gender)
-      val movie_publish_year_xx_user_age_xx_user_occupation = new CrossFeature(462, "movie_publish_year_xx_user_age_xx_user_occupation", movie_publish_year, user_age, user_occupation)
-      val movie_genres_xx_user_gender_xx_user_occupation = new CrossFeature(461, "movie_genres_xx_user_gender_xx_user_occupation", movie_genres, user_gender, user_occupation)
-      val movie_avg_rate_xx_movie_hot_rank_xx_user_avg_rate = new CrossFeature(463, "movie_avg_rate_xx_movie_hot_rank_xx_user_avg_rate", movie_avg_rate, movie_hot_rank, user_avg_rate)
-      val movie_genre_cnt_xx_user_total_rate_cnt_xx_user_avg_rate = new CrossFeature(465, "movie_genre_cnt_xx_user_total_rate_cnt_xx_user_avg_rate", movie_genre_cnt, user_movie_rate_cnt, user_avg_rate)
-      val movie_genre_cnt_xx_movie_hot_rank_xx_user_genre_avg_rate = new CrossFeature(466, "movie_genre_cnt_xx_movie_hot_rank_xx_user_genre_avg_rate", movie_genre_cnt, movie_hot_rank, user_same_genre_avg_rate)
-      val movie_publish_year_xx_movie_avg_rate_xx_user_avg_rate = new CrossFeature(467, "movie_publish_year_xx_movie_avg_rate_xx_user_avg_rate", movie_publish_year, movie_avg_rate, user_avg_rate)
-
-      cross_features.append(movie_genres_xx_user_age_xx_user_gender)
-      cross_features.append(movie_publish_year_xx_user_age_xx_user_occupation)
-      cross_features.append(movie_genres_xx_user_gender_xx_user_occupation)
-      cross_features.append(movie_avg_rate_xx_movie_hot_rank_xx_user_avg_rate)
-      cross_features.append(movie_genre_cnt_xx_user_total_rate_cnt_xx_user_avg_rate)
-      cross_features.append(movie_genre_cnt_xx_movie_hot_rank_xx_user_genre_avg_rate)
-      cross_features.append(movie_publish_year_xx_movie_avg_rate_xx_user_avg_rate)
+    val featureDefs: Seq[FeatureDef] = config.features.filter(_.isEnabled)
+    val featureInstances: mutable.Map[String, Any] = scala.collection.mutable.Map.empty
+    for (defn <- featureDefs) {
+      val inst = instantiate(defn)
+      if (defn.isCategorical) {
+        raw_cate_features.append(inst.asInstanceOf[CategoricalFeature[ML1MSample]])
+      } else {
+        raw_conti_features.append(inst.asInstanceOf[ContinuousFeature[ML1MSample]])
+      }
+      featureInstances(defn.name) = inst
+      val typeName = if (defn.isCategorical) "categorical" else "continuous"
+      green_println("[Featurizer] Registered feature: " + defn.name + " (index=" + defn.index + ", type=" + typeName + ")")
     }
+
+    // Build cross features (filter by individual enabled flag)
+    if (config.cross_features.isDefined) {
+      for (cfd <- config.cross_features.get) {
+        if (cfd.isEnabled) {
+          val feats = cfd.depends.flatMap { name =>
+            featureInstances.get(name).map(_.asInstanceOf[CategoricalFeature[ML1MSample]])
+          }
+          if (feats.size < cfd.depends.size) {
+            val missing = cfd.depends.filterNot(featureInstances.contains).mkString(", ")
+            green_println("[Featurizer] WARN: cross feature " + cfd.name + " depends not found: " + missing)
+          } else {
+            cross_features.append(new CrossFeature(cfd.index, cfd.name, feats: _*))
+          }
+        }
+      }
+    }
+    green_println("[Featurizer] Setup complete: " +
+      raw_cate_features.size + " categorical, " +
+      raw_conti_features.size + " continuous, " +
+      cross_features.size + " cross features")
 
     this
   }
