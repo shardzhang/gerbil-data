@@ -40,7 +40,7 @@ object ML1MUserMovieRateSequence {
     require(args.length >= 1, "Usage: ML1MUserMovieRate <input_base_path>")
     val basePath = args(0)
     val inputPath = s"$basePath/ratings.dat"
-    val outputPath = s"$basePath/user_movie_rate"
+    val outputPath = s"$basePath/user_movie_rate_sequence"
     green_println(f"basePath: ${basePath}, inputPath: ${inputPath}, outputPath: ${outputPath}")
 
     setLogLevel()
@@ -129,7 +129,7 @@ object ML1MUserMovieRateSequence {
 
       val result = spark.sql(sql).cache()
       println(s"result.count() = ${result.count()}")
-      DataQualityChecker.check(result, "user_movie_rate", outputPath)
+      DataQualityChecker.check(result, "user_movie_rate_sequence", outputPath)
       result.show()
       result.printSchema()
       
@@ -148,7 +148,7 @@ object ML1MUserMovieRateSequence {
 
 /**
 ================================================================================
-DATA QUALITY CHECK: user_movie_rate
+DATA QUALITY CHECK: user_movie_rate_sequence
 ================================================================================
   Total records:  6040
    ─ user_id (string)
