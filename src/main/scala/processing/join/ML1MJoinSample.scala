@@ -63,7 +63,7 @@ object ML1MJoinSample {
       // user_movie_rate.csv
       spark.read
         .option("sep", SEP)
-        .csv(s"$path/user_movie_rate")
+        .csv(s"$path/user_movie_rate_sequence")
         .toDF("user_id", "feature")
         .createOrReplaceTempView("user_movie_rate")
       // item_feature.csv

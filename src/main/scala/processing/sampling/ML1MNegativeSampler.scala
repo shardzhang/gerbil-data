@@ -5,8 +5,13 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Row, SparkSession}
 import processing.stats.DataQualityChecker
 import utils.LogUtils.{green_println, setLogLevel}
-
 import scala.util.Random
+
+/**
+ * @author shard zhang
+ * @date 2026/6/11 11:18
+ * @note ML-1M ETL-layer negative sampler — Spark-based random/popular negative sampling
+ */
 
 /** ML-1M negative sampler: generates negative samples from items each user has NOT interacted with.
  *

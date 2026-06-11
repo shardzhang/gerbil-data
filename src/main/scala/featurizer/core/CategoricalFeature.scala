@@ -10,6 +10,12 @@ import utils.MurmurHash3.LongPair
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
+/**
+ * @author shard zhang
+ * @date 2026/6/10 17:57
+ * @note Abstract categorical feature base — encodes discrete IDs into hash indices
+ */
+
 /** This categorical featurizer encodes discrete id into embedding index. */
 abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureType.Categorical) extends RawFeature(f_i, f_n, f_t) {
 
@@ -63,7 +69,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
     for (i <- feature_list.indices) {
       val fea = feature_list(i)
       val value = value_list(i)
-      val raw_fea = raw_list(i)
+      val raw_fea = raw_list(i) // fixme
       if (fea != 0) {
         val fmt = f_index.toString + ":" + raw_fea
         val hash = computeHash(fea, dim)

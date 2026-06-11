@@ -4,10 +4,16 @@ import org.apache.spark.sql.types.{FloatType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import utils.LogUtils.green_println
 
+/**
+ * @author shard zhang
+ * @date 2026/6/11 14:32
+ * @note Offline evaluation — pos/neg ratio, feature coverage, sample statistics of encoded data
+ */
+
 /** Offline evaluation for featurized training data.
-  * Reads TFRecord or Parquet output from ML1MPipeline and computes
-  * positive/negative ratio, feature coverage, and basic sample statistics.
-  */
+ * Reads TFRecord or Parquet output from ML1MPipeline and computes
+ * positive/negative ratio, feature coverage, and basic sample statistics.
+ */
 object OfflineEvaluator {
 
   /** Evaluates featurized training data and prints a metrics report.
@@ -15,9 +21,10 @@ object OfflineEvaluator {
     * @param dataPath  Path to TFRecord or Parquet directory (e.g. .../yesterday/tfrecord)
     * @param format    Input format: "tfrecord" or "parquet"
     * @param labelCol  Name of the label column (default "target")
+    * @param labelTopK Top-K labels to show in distribution (default 10, 0 = all)
     * @param topK      Top-K features to show in coverage report (default 20)
-    */
-  def evaluate(dataPath: String, format: String = "parquet", labelCol: String = "target", topK: Int = 20): Unit = {
+     */
+  def evaluate(dataPath: String, format: String = "parquet", labelCol: String = "target", labelTopK: Int = 10, topK: Int = 20): Unit = {
     val spark = SparkSession.active
 
     val df = if (format == "parquet") {
@@ -41,7 +48,7 @@ object OfflineEvaluator {
     println("  Total samples:  " + totalCount)
 
     // Positive / negative ratio
-    computeLabelDistribution(df, labelCol)
+    computeLabelDistribution(df, labelCol, labelTopK)
 
     // Feature coverage: for each feature column, compute non-null ratio
     computeFeatureCoverage(df, topK)
@@ -49,7 +56,7 @@ object OfflineEvaluator {
     println("=" * 80)
   }
 
-  private def computeLabelDistribution(df: DataFrame, labelCol: String): Unit = {
+  private def computeLabelDistribution(df: DataFrame, labelCol: String, labelTopK: Int): Unit = {
     if (!df.columns.contains(labelCol)) {
       green_println("[Eval] Label column '" + labelCol + "' not found, skipping label distribution.")
       return
@@ -59,8 +66,11 @@ object OfflineEvaluator {
     val labelRows = df.groupBy(labelCol).count().collect()
     val total = labelRows.map(r => r.getLong(1)).sum
 
-    println("  Label distribution (" + labelCol + "):")
-    for (r <- labelRows) {
+    val sortedRows = labelRows.sortBy(r => -r.getLong(1))
+    val topRows = if (labelTopK > 0) sortedRows.take(labelTopK) else sortedRows
+    val header = if (labelTopK > 0) s"Label distribution (top $labelTopK, $labelCol)" else s"Label distribution ($labelCol)"
+    println("  " + header + ":")
+    for (r <- topRows) {
       val label = r.get(0)
       val count = r.getLong(1)
       val pct = count * 100.0 / total
@@ -110,7 +120,7 @@ object OfflineEvaluator {
 
   /** CLI entry point for offline evaluation. */
   def main(args: Array[String]): Unit = {
-    val usage = "Usage: OfflineEvaluator --data_path <path> [--format tfrecord|parquet] [--label_col target] [--top_k 20]\n" +
+    val usage = "Usage: OfflineEvaluator --data_path <path> [--format tfrecord|parquet] [--label_col target] [--label_top_k 10] [--top_k 20]\n" +
       "Example: OfflineEvaluator --data_path /path/to/20260610/tfrecord --format tfrecord"
 
     if (args.length < 2) {
@@ -121,6 +131,7 @@ object OfflineEvaluator {
     var dataPath = ""
     var format = "parquet"
     var labelCol = "target"
+    var labelTopK = 10
     var topK = 20
 
     var i = 0
@@ -130,6 +141,7 @@ object OfflineEvaluator {
       if (key == "--data_path") { dataPath = value; i += 2 }
       else if (key == "--format") { format = value; i += 2 }
       else if (key == "--label_col") { labelCol = value; i += 2 }
+      else if (key == "--label_top_k") { labelTopK = value.toInt; i += 2 }
       else if (key == "--top_k") { topK = value.toInt; i += 2 }
       else {
         println("Unknown argument: " + key)
@@ -147,7 +159,7 @@ object OfflineEvaluator {
       .getOrCreate()
 
     try {
-      evaluate(dataPath, format, labelCol, topK)
+      evaluate(dataPath, format, labelCol, labelTopK, topK)
     } finally {
       spark.stop()
     }

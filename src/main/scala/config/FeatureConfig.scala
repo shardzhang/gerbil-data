@@ -1,5 +1,11 @@
 package config
 
+/**
+ * @author shard zhang
+ * @date 2026/6/11 17:45
+ * @note Feature configuration model parsed from YAML (name, index, type, class, enabled)
+ */
+
 /** Configuration for a single feature extracted from YAML. */
 case class FeatureDef(
   /** Human-readable feature name (used as prefix for TFRecord fields). */

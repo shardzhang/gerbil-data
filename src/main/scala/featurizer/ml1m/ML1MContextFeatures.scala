@@ -3,6 +3,12 @@ package featurizer.ml1m
 import featurizer.ml1m.ML1MSample
 import featurizer.core.{CategoricalFeature, RawFeature}
 
+/**
+ * @author shard zhang
+ * @date 2026/6/10 17:57
+ * @note ML-1M context features — hour, time area, day of week, weekend flag
+ */
+
 /** Context features: hour of day, time area (morning/afternoon/evening/night), day of week, weekend flag. */
 class ContextTimeHour(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
   override def parse(sample: ML1MSample): RawFeature = {

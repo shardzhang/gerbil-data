@@ -26,6 +26,8 @@ data_path=${input_path}/train_sample/${day}/train/tfrecord
 --driver-memory 8g \
 --executor-memory 8g \
 --conf spark.hadoop.fs.defaultFS=file:/// \
+--conf spark.driver.extraJavaOptions='-XX:ReservedCodeCacheSize=512m -XX:+UseCodeCacheFlushing' \
+--conf spark.executor.extraJavaOptions='-XX:ReservedCodeCacheSize=512m -XX:+UseCodeCacheFlushing' \
 ${JAR_PATH} \
 --data_path ${data_path} \
 --format tfrecord \

@@ -2,6 +2,12 @@ package processing.sampling
 
 import scala.util.Random
 
+/**
+ * @author shard zhang
+ * @date 2026/6/11 11:46
+ * @note ETL-layer negative sampler base — random/popular/mixed strategy helpers
+ */
+
 /** ETL-layer negative sampler base class.
  *
  * Provides the candidate-computation and strategy-selection algorithm as pure

@@ -2,6 +2,12 @@ package featurizer.core
 
 import scala.util.Random
 
+/**
+ * @author shard zhang
+ * @date 2026/6/11 11:18
+ * @note Abstract negative sampler — generates unobserved (user, item) pairs for training
+ */
+
 /** Generates negative training samples by sampling unobserved (user, item) pairs.
   *
   * Three sampling strategies are supported:

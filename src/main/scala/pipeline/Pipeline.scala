@@ -15,14 +15,19 @@ import featurizer.core.{FeatureType, Featurizer}
 import pipeline.serde.{PosMapSerDe, SampleWriter}
 import pipeline.stats.{DataQualityTracker, PosInfo, RunningValueStats}
 
+
+/**
+ * @author shard zhang
+ * @date 2026/6/3 14:15
+ * @note 特征编码 + 词表构建 + TFRecord
+ */
 /** Orchestrates the end-to-end training sample generation pipeline: load samples, build vocabulary (pos-map/target-map), and encode features into TFRecord/Parquet. */
 abstract class Pipeline[T: ClassTag] extends Serializable {
   @transient var hadoopConf: Configuration = new Configuration()
   /** Persists/restores position-map and target-map across runs. */
   @transient val posMapSerDe: PosMapSerDe = new PosMapSerDe(hadoopConf)
   /** Serializes featurized samples to TFRecord or Parquet. */
-  @transient lazy val writer: SampleWriter[T] = new SampleWriter[T](feature_encoder, max_dim)
-
+  @transient lazy val writer: SampleWriter[T] = new SampleWriter[T](() => feature_encoder, max_dim)
   /** Tracks record counts, parse success rates, and target distributions at each ETL stage. */
   @transient lazy val qualityTracker: DataQualityTracker = new DataQualityTracker()
 

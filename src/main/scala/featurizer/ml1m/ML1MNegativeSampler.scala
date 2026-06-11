@@ -8,6 +8,12 @@ import scala.util.Random
 import featurizer.core.NegativeSampler
 import utils.LogUtils.green_println
 
+/**
+ * @author shard zhang
+ * @date 2026/6/11 11:18
+ * @note ML-1M featurizer-layer negative sampler — broadcast-based random/popular sampling
+ */
+
 /** ML-1M negative sampler: generates negative samples from items each user has NOT interacted with.
  *
  * Strategy "random":  uniform random sampling from unobserved items

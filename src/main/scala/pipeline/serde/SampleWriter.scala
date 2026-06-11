@@ -7,13 +7,17 @@ import org.apache.spark.sql.types.StructType
 import org.tensorflow.hadoop.io.TFRecordFileOutputFormat
 import org.tensorflow.example.Example
 
-import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 import featurizer.core.Featurizer
-import pipeline.stats.PosInfo
+
+/**
+ * @author shard zhang
+ * @date 2026/6/10 17:57
+ * @note Training sample serializer — writes encoded features to TFRecord or Parquet
+ */
 
 /** Serializes training samples into TFRecord (TensorFlow Example) or Parquet format. */
-class SampleWriter[T: ClassTag](feature_encoder: Featurizer[T], max_dim: Long) extends Serializable {
+class SampleWriter[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Long) extends Serializable {
 
   /** Encodes samples into Parquet columnar format and writes to `parquetPath`. */
   def writeParquet(trainingSample: RDD[(T, Boolean)],
@@ -27,7 +31,8 @@ class SampleWriter[T: ClassTag](feature_encoder: Featurizer[T], max_dim: Long) e
     val parquetRows: RDD[Row] = trainingSample
       .map { case (sample, _) => sample }
       .mapPartitions(samples => {
-        val encoder = feature_encoder
+        // 改为 def 或工厂函数后, 每个 partition 创建独立的 featurizer 实例, 消除共享,
+        val encoder = createEncoder()
         samples.flatMap(sample => {
           val (record, has_feature, has_target) = parseParquet(sample, encoder, posMapLocalImmutable, targetMapImmutable)
           if (has_feature && has_target) {
@@ -53,7 +58,8 @@ class SampleWriter[T: ClassTag](feature_encoder: Featurizer[T], max_dim: Long) e
     trainingSample
       .map { case (sample, _) => sample }
       .mapPartitions(samples => {
-        val encoder = feature_encoder
+        // 改为 def 或工厂函数后, 每个 partition 创建独立的 featurizer 实例, 消除共享
+        val encoder = createEncoder()
         samples.flatMap(sample => {
           val (example, has_feature, has_target) = parseTfrecord(sample, encoder, posMapLocalImmutable, targetMapImmutable)
           if (has_feature && has_target) {

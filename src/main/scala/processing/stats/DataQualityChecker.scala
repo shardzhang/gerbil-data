@@ -5,6 +5,12 @@ import org.apache.spark.sql.types.{NumericType, StringType => SparkStringType, S
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import utils.LogUtils.green_println
 
+/**
+ * @author shard zhang
+ * @date 2026/6/11 14:32
+ * @note Data quality checks — numeric column summary statistics and validation
+ */
+
 /** Summary statistics for a numeric column. */
 case class NumericColStats(
   /** Minimum value (null if column is all-null). */
@@ -264,12 +270,14 @@ object DataQualityChecker {
 
     // Build a lookup map from previous stats: name -> (null_ratio, mean)
     // Collect all rows and organize by column name
+    val prevSchema = prevDf.schema
+    val hasMean = prevSchema.fieldNames.contains("mean")
     val prevRows = prevDf.collect()
     val prevLookup = scala.collection.mutable.Map.empty[String, (Double, String)]
     for (r <- prevRows) {
       val name = r.getString(r.fieldIndex("name"))
       val nullRatio = r.getDouble(r.fieldIndex("null_ratio"))
-      val meanStr = r.getString(r.fieldIndex("mean"))
+      val meanStr = if (hasMean) { if (r.isNullAt(prevSchema.fieldIndex("mean"))) "" else r.getString(prevSchema.fieldIndex("mean")) } else ""
       prevLookup(name) = (nullRatio, meanStr)
     }
 

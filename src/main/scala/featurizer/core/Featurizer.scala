@@ -5,6 +5,12 @@ import pipeline.serde.ParquetRecord.ParquetRecordBuilder
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
+/**
+ * @author shard zhang
+ * @date 2026/6/10 17:57
+ * @note Abstract featurizer orchestrator — parses samples and encodes categorical/continuous/cross features
+ */
+
 /** We use a featurizer to convert raw samples into featurized vectors. */
 abstract class Featurizer[T] extends Serializable {
   /** Registered categorical (discrete) features. */
