@@ -8,7 +8,6 @@ import org.apache.spark.sql.SparkSession
 import featurizer.ml1m.ML1MSample
 import featurizer.ml1m.ML1MFeaturizer
 import featurizer.core.Featurizer
-import config.FeatureConfigLoader
 import utils.LogUtils.green_println
 import utils.LogUtils.setLogLevel
 
@@ -16,10 +15,13 @@ import utils.LogUtils.setLogLevel
  * ML1M dataset data driver. Generates TFRecord samples plus encoding maps (json/bin).
  */
 object ML1MPipeline extends Pipeline[ML1MSample] {
-  override val max_dim: Long = FeatureConfigLoader.loadFromResource().hash_dim
+  override val max_dim: Long = 1L << 60
 
-  override def feature_encoder: Featurizer[ML1MSample] = {
-    new ML1MFeaturizer().setup()
+  /** External feature config path; set by --feature_config in main(). */
+  var featureConfigPath: Option[String] = None
+
+  override lazy val feature_encoder: Featurizer[ML1MSample] = {
+    new ML1MFeaturizer(featureConfigPath).setup()
   }
 
   /** Load ML1M join_sample CSV, parse with movie info, and return RDD of samples. */
@@ -85,9 +87,11 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
     opts.addOption(null, "output_format", true, "Output format: tfrecord, parquet, both (default: tfrecord)")
     opts.addOption(null, "train_ratio", true, "Fraction of data for training (default: 0.8)")
     opts.addOption(null, "val_ratio", true, "Fraction of data for validation (default: 0.1)")
+    opts.addOption(null, "feature_config", true, "Path to external feature config YAML (default: classpath /ml1m/features.yaml)")
 
     val parser = new DefaultParser()
     val cl = parser.parse(opts, args)
+    featureConfigPath = Option(cl.getOptionValue("feature_config"))
     val feature_threshold = cl.getOptionValue("feature_threshold").toInt
     val target_threshold = cl.getOptionValue("target_threshold").toInt
     val sample_ratio = cl.getOptionValue("sample_ratio").toDouble

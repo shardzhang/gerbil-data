@@ -39,4 +39,5 @@ ${JAR_PATH} \
 --parts 10 \
 --output_format tfrecord \
 --train_ratio 0.8 \
---val_ratio 0.1
+--val_ratio 0.1 \
+--feature_config ${PROJECT_HOME}/src/main/resources/ml1m/features.yaml

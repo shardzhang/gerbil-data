@@ -9,7 +9,7 @@ import scala.collection.mutable.ArrayBuffer
 /** Loads FeatureConfig from a YAML file. */
 object FeatureConfigLoader {
 
-  /** Loads from the classpath resource (default: /features.yaml). */
+  /** Loads config from a classpath resource (e.g. "/ml1m/features.yaml"). */
   def loadFromResource(resourcePath: String = "/features.yaml"): FeatureConfig = {
     val is = getClass.getResourceAsStream(resourcePath)
     if (is == null) {
@@ -22,7 +22,7 @@ object FeatureConfigLoader {
     }
   }
 
-  /** Loads from an external file path. */
+  /** Loads config from an external file path (for development / debugging). */
   def loadFromFile(filePath: String): FeatureConfig = {
     val is = new FileInputStream(filePath)
     try {
@@ -32,70 +32,56 @@ object FeatureConfigLoader {
     }
   }
 
+  /** Parses YAML input stream into a nested Java Map, then converts to FeatureConfig. */
   private def parseYaml(is: InputStream): FeatureConfig = {
     val yaml = new Yaml()
     val raw = yaml.load(is).asInstanceOf[util.Map[String, Any]]
     convert(raw)
   }
 
+  /** Converts the top-level YAML map into a FeatureConfig case class. */
   private def convert(raw: util.Map[String, Any]): FeatureConfig = {
-    val hashDim = raw.getOrDefault("hash_dim", "1152921504606846976").toString.toLong
-
+    val pkg = Option(raw.get("pkg")).map(_.toString)
     val features = ArrayBuffer.empty[FeatureDef]
     val rawFeatures = raw.getOrDefault("features", new util.ArrayList[Any]())
       .asInstanceOf[util.List[util.Map[String, Any]]]
     for (rf <- rawFeatures.asScala) {
-      features += convertFeature(rf)
+      features += convertFeature(rf, pkg)
     }
 
     val crossRaw = raw.getOrDefault("cross_features", null)
     val crossConfig = if (crossRaw != null) {
-      Some(convertCrossConfig(crossRaw.asInstanceOf[util.Map[String, Any]]))
+      val rawList = crossRaw.asInstanceOf[util.List[util.Map[String, Any]]]
+      Some(rawList.asScala.map(m => convertCrossFeature(m)).toSeq)
     } else {
       None
     }
 
-    FeatureConfig(hashDim, features.toSeq, crossConfig)
+    FeatureConfig(pkg, features, crossConfig)
   }
 
-  private def convertFeature(raw: util.Map[String, Any]): FeatureDef = {
+  /** Converts a single YAML feature map into a FeatureDef. Resolves className via pkg prefix. */
+  private def convertFeature(raw: util.Map[String, Any], pkg: Option[String]): FeatureDef = {
     val name = raw.get("name").toString
     val index = raw.get("index").toString.toInt
-    val fType = raw.get("type").toString
-
-    val source = Option(raw.get("source")).map(_.toString)
-    val className = Option(raw.get("class")).map(_.toString)
-    // "class" in YAML maps to "className" in Scala (class is a reserved keyword)
+    val rawClass = raw.get("class").toString
+    val className = if (pkg.isDefined && !rawClass.contains(".")) {
+      pkg.get + "." + rawClass
+    } else {
+      rawClass
+    }
     val enabled = Option(raw.get("enabled")).map(v => java.lang.Boolean.parseBoolean(v.toString))
-
-    val mappingRaw = Option(raw.get("mapping")).map(_.asInstanceOf[util.Map[Any, Any]])
-    val mapping = mappingRaw.map { m =>
-      m.asScala.map { case (k, v) => k.toString -> v.toString.toInt }.toMap
-    }
-    val default = Option(raw.get("default")).map(_.toString.toInt)
-
-    val boundariesRaw = Option(raw.get("boundaries")).map(_.asInstanceOf[util.List[Any]])
-    val boundaries = boundariesRaw.map { b =>
-      b.asScala.map(_.toString.toDouble).toSeq
-    }
-    val offset = Option(raw.get("offset")).map(_.toString.toInt)
-
-    FeatureDef(name, index, fType, source, className, enabled, mapping, default, boundaries, offset)
+    val rawType = raw.get("type").toString.toInt
+    FeatureDef(name, index, rawType, className, enabled)
   }
 
-  private def convertCrossConfig(raw: util.Map[String, Any]): CrossConfig = {
+  /** Converts a single cross feature map into CrossFeatureDef. */
+  private def convertCrossFeature(raw: util.Map[String, Any]): CrossFeatureDef = {
+    val name = raw.get("name").toString
+    val index = raw.get("index").toString.toInt
     val enabled = Option(raw.get("enabled")).map(v => java.lang.Boolean.parseBoolean(v.toString))
-    val pairsRaw = Option(raw.get("pairs")).map(_.asInstanceOf[util.List[util.Map[String, Any]]])
-    val pairs = pairsRaw.map { list =>
-      list.asScala.map { m =>
-        val name = m.get("name").toString
-        val index = m.get("index").toString.toInt
-        val left = m.get("left").toString
-        val right = m.get("right").toString
-        val left2 = Option(m.get("left2")).map(_.toString)
-        CrossFeatureDef(name, index, left, right, left2)
-      }.toSeq
-    }
-    CrossConfig(enabled, pairs)
+    val dependsRaw = raw.get("depends").asInstanceOf[util.List[Any]]
+    val depends = dependsRaw.asScala.map(_.toString).toSeq
+    CrossFeatureDef(name, index, enabled, depends)
   }
 }
