@@ -63,7 +63,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
     for (i <- feature_list.indices) {
       val fea = feature_list(i)
       val value = value_list(i)
-      val raw_fea = raw_list(i)
+      val raw_fea = raw_list(i) // fixme
       if (fea != 0) {
         val fmt = f_index.toString + ":" + raw_fea
         val hash = computeHash(fea, dim)

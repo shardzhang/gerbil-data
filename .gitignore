@@ -24,3 +24,4 @@ bash/driver/tmp/
 bash/conf/env.sh
 **/.DS_Store
 .mvn-local-settings.xml
+.venv/
