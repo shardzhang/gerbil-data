@@ -44,7 +44,7 @@ jobs:
         run: mvn clean test
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
           directory: target/site/jacoco/
           fail_ci_if_error: false
