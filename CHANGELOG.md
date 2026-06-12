@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Bilingual READMEs (English + Chinese) for `dag/`, `tools/`, `docs/dataset/ml_1m/`
+- Dockerfile + devcontainer for reproducible development environment
+- Project logo (`assets/gerbil.jpg`)
 
 ### Changed
 
