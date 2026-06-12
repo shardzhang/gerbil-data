@@ -34,8 +34,8 @@ source "../conf/env.sh" && "${SPARK_HOME}/bin/spark-submit" \
 --conf spark.sql.shuffle.partitions=1 \
 --driver-memory 2g \
 --executor-memory 2g \
---conf spark.driver.extraJavaOptions='-XX:ReservedCodeCacheSize=256m' \
---conf spark.executor.extraJavaOptions='-XX:ReservedCodeCacheSize=256m' "${JAR_PATH}" \
+--conf spark.driver.extraJavaOptions='-XX:ReservedCodeCacheSize=256m -XX:+UseCodeCacheFlushing' \
+--conf spark.executor.extraJavaOptions='-XX:ReservedCodeCacheSize=256m -XX:+UseCodeCacheFlushing' "${JAR_PATH}" \
 --feature_threshold 1 \
 --target_threshold 1 \
 --sample_ratio 1.0 \
