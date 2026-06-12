@@ -26,3 +26,4 @@ bash/conf/env.sh
 .mvn-local-settings.xml
 .venv/
 tools/cpp_featurizer/build
+.airflow/

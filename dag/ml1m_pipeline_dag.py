@@ -7,7 +7,7 @@ DAG structure:
                       │
                       ▼
                   join_sample ─┬─ neg_sampler (optional)
-                               └─ pipeline ──► evaluate
+                               └─ encode ──► evaluate
 
 Each task submits a Spark job via spark-submit using the shared uber-jar.
 
@@ -198,13 +198,14 @@ neg_sampler = BashOperator(
             "--neg_ratio", "5",
             "--strategy", "popular",
         ],
+        spark_args_builder=pipeline_spark_args,
     )),
     dag=dag,
 )
 
 # Stage 4: Training sample generation
-pipeline = BashOperator(
-    task_id="ml1m_pipeline",
+encode = BashOperator(
+    task_id="ml1m_encode",
     bash_command=shell_wrap(spark_cmd(
         "pipeline.ML1MPipeline",
         JAR_PATH,
@@ -248,6 +249,6 @@ clean_sample >> [movie_stats, user_behavior]
 movie_stats >> join_sample
 user_behavior >> join_sample
 join_sample >> neg_sampler
-join_sample >> pipeline
-neg_sampler >> pipeline
-pipeline >> evaluate
+join_sample >> encode
+neg_sampler >> encode
+encode >> evaluate
