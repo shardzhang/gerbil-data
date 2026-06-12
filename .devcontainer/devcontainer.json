@@ -1,0 +1,43 @@
+{
+  "name": "gerbil-data",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": ".."
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "scalameta.metals",
+        "ms-vscode.vscode-java-debug",
+        "vscjava.vscode-java-pack",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "yzhang.markdown-all-in-one",
+        "davidanson.vscode-markdownlint"
+      ],
+      "settings": {
+        "files.watcherExclude": {
+          "**/target/**": true,
+          "**/.metals/**": true,
+          "**/.bloop/**": true
+        },
+        "search.exclude": {
+          "**/target/**": true,
+          "**/.metals/**": true
+        },
+        "metals.javaHome": "/opt/java/openjdk",
+        "java.configuration.runtimes": [
+          {
+            "name": "JavaSE-1.8",
+            "path": "/opt/java/openjdk"
+          }
+        ]
+      }
+    }
+  },
+  "postCreateCommand": "mvn dependency:go-offline -q 2>/dev/null; echo 'gerbil-data dev container ready'",
+  "remoteUser": "root",
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ]
+}

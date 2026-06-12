@@ -29,3 +29,7 @@ bash/conf/env.sh
 tools/cpp_featurizer/build
 .airflow/
 tmp/
+
+# Docker
+.docker/
+
