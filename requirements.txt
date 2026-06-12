@@ -1,2 +1,8 @@
-protobuf==3.6.0
-tfrecord==1.13
+# Python dependencies for gerbil-data utilities
+#
+# These are only needed for auxiliary Python tools (not the core Scala pipeline):
+#   - dag/run_pipeline.py    — Pipeline orchestrator
+#   - bash/tools/*.py         — Data inspection utilities (print TFRecord, Parquet, etc.)
+
+protobuf==3.6.0        # TFRecord protobuf serialization (must match Scala protobuf version)
+tfrecord==1.13         # TFRecord reader/writer for Python
