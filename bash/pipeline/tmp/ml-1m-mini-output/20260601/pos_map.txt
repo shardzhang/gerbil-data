@@ -1,1 +1,0 @@
-field_name,field_index,field_type,dim

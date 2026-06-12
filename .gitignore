@@ -20,9 +20,11 @@ target/
 .metals/
 .bloop/
 bash/driver/tmp/
+bash/pipeline/tmp/
 .classpath
 .factorypath
 .project
 .settings
 bash/conf/env.sh
 .vscode/settings.json
+.venv

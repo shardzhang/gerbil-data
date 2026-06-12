@@ -149,6 +149,8 @@ mvn clean package -DskipTests
 ```bash
 curl -O https://files.grouplens.org/datasets/movielens/ml-1m.zip
 unzip ml-1m.zip
+# Set this environment variable for the commands below
+export ML1M_HOME=/path/to/unzipped/ml-1m
 ```
 
 ### 3. Run the pipeline
@@ -156,42 +158,42 @@ unzip ml-1m.zip
 #### Step 1: Clean raw data
 ```bash
 spark-submit --class processing.clean.ML1MCleanSample \
-  target/gerbil-data-1.0-SNAPSHOT-jar-with-dependencies.jar \
-  /path/to/ml-1m
+  target/gerbil-data-1.0.0-jar-with-dependencies.jar \
+  ${ML1M_HOME}
 ```
 
 #### Step 2: Extract user behavior sequences
 ```bash
 spark-submit --class processing.feature.ML1MUserMovieRateSequence \
-  target/gerbil-data-1.0-SNAPSHOT-jar-with-dependencies.jar \
-  /path/to/ml-1m
+  target/gerbil-data-1.0.0-jar-with-dependencies.jar \
+  ${ML1M_HOME}
 ```
 
 #### Step 3: Compute movie statistics
 ```bash
 spark-submit --class processing.feature.ML1MMovieStatFeature \
-  target/gerbil-data-1.0-SNAPSHOT-jar-with-dependencies.jar \
-  /path/to/ml-1m
+  target/gerbil-data-1.0.0-jar-with-dependencies.jar \
+  ${ML1M_HOME}
 ```
 
 #### Step 4: Join all features
 ```bash
 spark-submit --class processing.join.ML1MJoinSample \
-  target/gerbil-data-1.0-SNAPSHOT-jar-with-dependencies.jar \
-  /path/to/ml-1m
+  target/gerbil-data-1.0.0-jar-with-dependencies.jar \
+  ${ML1M_HOME}
 ```
 
 #### Step 5: Generate TFRecord / Parquet samples
 ```bash
 spark-submit --class pipeline.ML1MPipeline \
   --conf spark.serializer=org.apache.spark.serializer.JavaSerializer \
-  target/gerbil-data-1.0-SNAPSHOT-jar-with-dependencies.jar \
+  target/gerbil-data-1.0.0-jar-with-dependencies.jar \
   --yesterday <date> \
   --parts <num_partitions> \
   --feature_threshold <threshold> \
   --target_threshold <threshold> \
   --sample_ratio <ratio> \
-  --input_dir /path/to/ml-1m \
+  --input_dir ${ML1M_HOME} \
   --output_dir /path/to/output \
   --output_format tfrecord
 ```
