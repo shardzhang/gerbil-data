@@ -20,7 +20,7 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
   /** External feature config path; set by --feature_config in main(). */
   var featureConfigPath: Option[String] = None
 
-  override lazy val feature_encoder: Featurizer[ML1MSample] = {
+  override def feature_encoder: Featurizer[ML1MSample] = {
     new ML1MFeaturizer(featureConfigPath).setup()
   }
 

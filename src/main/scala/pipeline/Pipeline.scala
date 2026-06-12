@@ -21,8 +21,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
   /** Persists/restores position-map and target-map across runs. */
   @transient val posMapSerDe: PosMapSerDe = new PosMapSerDe(hadoopConf)
   /** Serializes featurized samples to TFRecord or Parquet. */
-  @transient lazy val writer: SampleWriter[T] = new SampleWriter[T](feature_encoder, max_dim)
-
+  @transient lazy val writer: SampleWriter[T] = new SampleWriter[T](() => feature_encoder, max_dim)
   /** Tracks record counts, parse success rates, and target distributions at each ETL stage. */
   @transient lazy val qualityTracker: DataQualityTracker = new DataQualityTracker()
 
@@ -30,6 +29,8 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
   def max_dim: Long
 
   /** The featurizer that converts raw samples into encoded features. */
+  // lazy val -> 单例模式(所有线程共享), 导致竞态损坏
+  // def -> 每次调用创建新实例
   def feature_encoder: Featurizer[T]
 
   /** Loads and parses raw training samples from the given input directory. */
@@ -178,6 +179,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     val train_sample_hash_arr = trainingSample
       .map { case (sample, _) => sample }
       .mapPartitions(samples => {
+        // 改为 def 或工厂函数后, 每个 partition 创建独立的 featurizer 实例, 消除共享, 竞态消失
         val encoder = feature_encoder
         val pos_hash = new mutable.HashMap[(String, Int, Byte, Long), RunningValueStats]()
         for (sample <- samples) {
