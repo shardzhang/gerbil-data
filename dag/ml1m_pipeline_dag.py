@@ -60,6 +60,17 @@ FEATURE_CONFIG = Variable.get(
 SPARK_SUBMIT = f"{SPARK_HOME}/bin/spark-submit"
 DS_NODASH = "{{ ds_nodash }}"
 
+# ── env.sh loader (same pattern as run_pipeline.py) ────────────────────────
+ENV_SH = Path(PROJECT_HOME) / "bash" / "conf" / "env.sh"
+
+
+def shell_wrap(cmd: str) -> str:
+    """Wrap a command so it runs in bash after sourcing env.sh."""
+    if ENV_SH.exists():
+        return f"source {ENV_SH} && {cmd}"
+    return cmd
+
+
 # ── Spark template builders ─────────────────────────────────────────────────
 def common_spark_args(memory: str = "4g") -> list[str]:
     return [
@@ -75,8 +86,8 @@ def common_spark_args(memory: str = "4g") -> list[str]:
         "--executor-memory", "2g",
         "--conf", "spark.default.parallelism=2",
         "--conf", "spark.sql.shuffle.partitions=2",
-        "--conf", "spark.driver.extraJavaOptions='-verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log'",
-        "--conf", "spark.executor.extraJavaOptions='-verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps'",
+        "--conf", "spark.driver.extraJavaOptions='-verbose:gc -XX:+PrintGCDetails'",
+        "--conf", "spark.executor.extraJavaOptions='-verbose:gc -XX:+PrintGCDetails'",
     ]
 
 
@@ -95,8 +106,8 @@ def pipeline_spark_args(memory: str = "8g") -> list[str]:
         "--driver-memory", memory,
         "--executor-memory", "8g",
         "--conf", "spark.hadoop.fs.defaultFS=file:///",
-        "--conf", "spark.driver.extraJavaOptions='-XX:ReservedCodeCacheSize=512m -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log'",
-        "--conf", "spark.executor.extraJavaOptions='-XX:ReservedCodeCacheSize=512m -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps'",
+        "--conf", "spark.driver.extraJavaOptions='-XX:ReservedCodeCacheSize=512m -verbose:gc -XX:+PrintGCDetails'",
+        "--conf", "spark.executor.extraJavaOptions='-XX:ReservedCodeCacheSize=512m -verbose:gc -XX:+PrintGCDetails'",
     ]
 
 
@@ -134,51 +145,51 @@ dag = DAG(
 # Stage 1: Data cleaning
 clean_sample = BashOperator(
     task_id="clean_sample",
-    bash_command=spark_cmd(
+    bash_command=shell_wrap(spark_cmd(
         "processing.clean.ML1MCleanSample",
         JAR_PATH,
         [DATA_PATH],
-    ),
+    )),
     dag=dag,
 )
 
 # Stage 2a: Movie statistics
 movie_stats = BashOperator(
     task_id="movie_stat_features",
-    bash_command=spark_cmd(
+    bash_command=shell_wrap(spark_cmd(
         "processing.feature.ML1MMovieStatFeature",
         JAR_PATH,
         [DATA_PATH],
-    ),
+    )),
     dag=dag,
 )
 
 # Stage 2b: User behavior sequences
 user_behavior = BashOperator(
     task_id="user_movie_rate_sequence",
-    bash_command=spark_cmd(
+    bash_command=shell_wrap(spark_cmd(
         "processing.feature.ML1MUserMovieRateSequence",
         JAR_PATH,
         [DATA_PATH],
-    ),
+    )),
     dag=dag,
 )
 
 # Stage 3: Feature join
 join_sample = BashOperator(
     task_id="join_sample",
-    bash_command=spark_cmd(
+    bash_command=shell_wrap(spark_cmd(
         "processing.join.ML1MJoinSample",
         JAR_PATH,
         [DATA_PATH],
-    ),
+    )),
     dag=dag,
 )
 
 # Stage 3b (optional): Negative sampling
 neg_sampler = BashOperator(
     task_id="negative_sampler",
-    bash_command=spark_cmd(
+    bash_command=shell_wrap(spark_cmd(
         "processing.sampling.ML1MNegativeSampler",
         JAR_PATH,
         [
@@ -187,14 +198,14 @@ neg_sampler = BashOperator(
             "--neg_ratio", "5",
             "--strategy", "popular",
         ],
-    ),
+    )),
     dag=dag,
 )
 
 # Stage 4: Training sample generation
 pipeline = BashOperator(
     task_id="ml1m_pipeline",
-    bash_command=spark_cmd(
+    bash_command=shell_wrap(spark_cmd(
         "pipeline.ML1MPipeline",
         JAR_PATH,
         [
@@ -211,14 +222,14 @@ pipeline = BashOperator(
             "--feature_config", FEATURE_CONFIG,
         ],
         spark_args_builder=pipeline_spark_args,
-    ),
+    )),
     dag=dag,
 )
 
 # Stage 5: Offline evaluation
 evaluate = BashOperator(
     task_id="offline_evaluation",
-    bash_command=spark_cmd(
+    bash_command=shell_wrap(spark_cmd(
         "pipeline.eval.OfflineEvaluator",
         JAR_PATH,
         [
@@ -228,7 +239,7 @@ evaluate = BashOperator(
             "--top_k", "20",
         ],
         spark_args_builder=pipeline_spark_args,
-    ),
+    )),
     dag=dag,
 )
 
