@@ -4,5 +4,5 @@
 #   - dag/run_pipeline.py    — Pipeline orchestrator
 #   - bash/tools/*.py         — Data inspection utilities (print TFRecord, Parquet, etc.)
 
-protobuf==3.6.0        # TFRecord protobuf serialization (must match Scala protobuf version)
+protobuf==7.35.1        # TFRecord protobuf serialization (must match Scala protobuf version)
 tfrecord==1.13         # TFRecord reader/writer for Python
