@@ -1,0 +1,25 @@
+#!/bin/sh
+# Validates commit message follows Conventional Commits format.
+# Install: git config core.hooksPath .githooks
+
+COMMIT_MSG=$(cat "$1" | head -1)
+
+# Skip merge commits and squash commits
+if echo "$COMMIT_MSG" | grep -Eq '^(Merge|squash!|fixup!|wip|WIP)'; then
+    exit 0
+fi
+
+# Validate format: <type>: <subject>
+if ! echo "$COMMIT_MSG" | grep -Eq '^(feat|fix|refactor|test|docs|chore)(\(.+\))?!?: .+'; then
+    echo ""
+    echo "  ✗ Invalid commit message format:"
+    echo "    \"$COMMIT_MSG\""
+    echo ""
+    echo "  ✓ Expected: <type>: <subject>"
+    echo "    Example: feat: add time-based train/val/test split"
+    echo "    Types: feat, fix, refactor, test, docs, chore"
+    echo ""
+    exit 1
+fi
+
+exit 0

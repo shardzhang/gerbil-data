@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use gerbil-data in your research, please cite it as below."
+title: "gerbil-data: A Spark-based data processing pipeline for recommender system training samples"
+authors:
+  - family-names: Zhang
+    given-names: Shard
+    orcid: ""
+version: 1.0.0
+date-released: 2026-06-10
+url: "https://github.com/shardzhang/gerbil-data"
+preferred-citation:
+  type: software
+  title: "gerbil-data: A Spark-based data processing pipeline for recommender system training samples"
+  authors:
+    - family-names: Zhang
+      given-names: Shard
+  version: 1.0.0
+  date-released: 2026-06-10

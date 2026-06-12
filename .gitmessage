@@ -1,0 +1,17 @@
+# <type>: <subject>
+#
+# Types:
+#   feat     New feature
+#   fix      Bug fix
+#   refactor Code refactoring
+#   test     Adding or updating tests
+#   docs     Documentation changes
+#   chore    Build/config/CI changes
+#
+# Examples:
+#   feat: add time-based train/val/test split
+#   fix: handle null pointer in movie feature parsing
+#   docs: update encoding spec for cross features
+#
+# Subject: imperative, lowercase, no period at end.
+# Body (optional): explain what and why, not how.

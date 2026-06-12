@@ -32,7 +32,16 @@ Feature suggestions are welcome! When suggesting a feature:
    ```bash
    mvn clean package
    ```
-6. **Commit** your changes with a clear, descriptive message
+6. **Commit** your changes — use a clear, descriptive message following [Conventional Commits](https://www.conventionalcommits.org/):
+   ```
+   <type>: <short description>
+   
+   [optional body]
+   ```
+   Types: `feat` (new feature), `fix` (bug fix), `refactor` (code change), `test` (tests), `docs` (documentation), `chore` (build/config). Examples:
+   - `feat: add time-based train/val/test split`
+   - `fix: handle null pointer in movie feature parsing`
+   - `docs: update encoding spec for cross features`
 7. **Push** to your fork and submit a pull request
 
 ### Development Setup
@@ -40,6 +49,14 @@ Feature suggestions are welcome! When suggesting a feature:
 ```bash
 git clone https://github.com/shardzhang/gerbil-data.git
 cd gerbil-data
+
+# Enable commit message template
+git config commit.template .gitmessage
+
+# Enable commit-msg validation hook
+git config core.hooksPath .githooks
+
+# Build the project
 mvn clean package -DskipTests
 ```
 

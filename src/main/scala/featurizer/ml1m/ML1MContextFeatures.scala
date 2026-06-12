@@ -1,6 +1,5 @@
 package featurizer.ml1m
 
-import featurizer.ml1m.ML1MSample
 import featurizer.core.{CategoricalFeature, RawFeature}
 
 /**

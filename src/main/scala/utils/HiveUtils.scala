@@ -173,7 +173,9 @@ object HiveUtils {
         .split("/")(0)
         .split("=")(1)
     } catch {
-      case _: Exception => ""
+      case e: Exception =>
+        System.err.println(s"Warning: failed to parse max partition: ${e.getMessage}")
+        ""
     }
   }
 
@@ -192,7 +194,9 @@ object HiveUtils {
       val days = partitions.map(r => r.split("=")(1)).filter(_ <= dayCurrent)
       if (days.isEmpty) dayCurrent else days.max
     } catch {
-      case _: Exception => dayCurrent
+      case e: Exception =>
+        System.err.println(s"Warning: failed to find nearest partition: ${e.getMessage}")
+        dayCurrent
     }
   }
 }

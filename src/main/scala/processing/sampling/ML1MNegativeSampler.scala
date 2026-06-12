@@ -45,7 +45,9 @@ class ML1MNegativeSampler(spark: SparkSession, inputDir: String, val strategy: S
         try {
           Some(r.getString(0) -> r.getSeq[String](1).toSet)
         } catch {
-          case _: Exception => None
+          case e: Exception =>
+            System.err.println(s"Warning: skipping malformed user history row: ${e.getMessage}")
+            None
         })
       .collectAsMap().toMap
   }
@@ -55,7 +57,9 @@ class ML1MNegativeSampler(spark: SparkSession, inputDir: String, val strategy: S
       .rdd.flatMap(r => try {
         Some(r.getString(0))
       } catch {
-        case _: Exception => None
+        case e: Exception =>
+          System.err.println(s"Warning: skipping malformed item pool row: ${e.getMessage}")
+          None
       })
       .collect()
   }
@@ -80,7 +84,9 @@ class ML1MNegativeSampler(spark: SparkSession, inputDir: String, val strategy: S
         try {
           Some(r.getString(0) -> r.getString(1))
         } catch {
-          case _: Exception => None
+          case e: Exception =>
+            System.err.println(s"Warning: skipping malformed item feature row: ${e.getMessage}")
+            None
         }
       )
       .collectAsMap().toMap
@@ -92,7 +98,9 @@ class ML1MNegativeSampler(spark: SparkSession, inputDir: String, val strategy: S
         try {
           Some(r.getString(0) -> r.getLong(1).toInt)
         } catch {
-          case _: Exception => None
+          case e: Exception =>
+            System.err.println(s"Warning: skipping malformed pop count row: ${e.getMessage}")
+            None
         })
       .collectAsMap().toMap
   }

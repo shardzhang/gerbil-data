@@ -1,7 +1,6 @@
 package featurizer.ml1m
 
 import utils.MurmurHash3
-import featurizer.ml1m.ML1MSample
 import featurizer.core.{CategoricalFeature, RawFeature}
 
 /**

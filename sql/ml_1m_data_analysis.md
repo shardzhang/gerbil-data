@@ -1,3 +1,4 @@
+# ML-1M Data Analysis Queries
 
 ```bash
 hive -e "
@@ -12,26 +13,20 @@ LIMIT 20;
 "
 ```
 
+-- Data statistics:
 
+-- 1. Number of distinct users
 
+-- 2. Number of distinct items
 
--- 数据统计：
+-- 3. Average number of items per user
 
--- 1、多少个不同用户
+-- 4. Top 10 most/least rated movies (movie_id, title, genres, rate: min/max/avg/count)
 
--- 2、多少个不同item
+-- 5. Top 10 highest/lowest rated movies (movie_id, title, genres, rate: min/max/avg/count)
 
--- 3、每个用户包含的平均item个数
+-- 6. Rating counts by occupation and age group
 
--- 4、评分最多/少的Top10电影(movie_id, title, genres, rate: min/max/avg/count)
+-- 7. Average rating by occupation and age group
 
--- 5、评分最高/低的Top10电影(movie_id, title, genres, rate: min/max/avg/count)
-
--- 6、 各个职业、年龄段的电影评分个数
-
--- 7、 各个职业、年龄段的电影平均评分
-
--- 8、评分的日期分布(day, movie_cnt, user_cnt, )
-
---
-
+-- 8. Rating date distribution (day, movie_cnt, user_cnt)

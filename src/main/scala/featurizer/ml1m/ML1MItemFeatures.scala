@@ -2,7 +2,6 @@ package featurizer.ml1m
 
 import utils.MurmurHash3
 import utils.LogUtils.green_println
-import featurizer.ml1m.ML1MSample
 import featurizer.core.{CategoricalFeature, ContinuousFeature, RawFeature}
 
 /**
