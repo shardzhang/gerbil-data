@@ -5,4 +5,4 @@
 #   - bash/tools/*.py         — Data inspection utilities (print TFRecord, Parquet, etc.)
 
 protobuf==3.6.0        # TFRecord protobuf serialization (must match Scala protobuf version)
-tfrecord==1.13         # TFRecord reader/writer for Python
+tfrecord==1.14.6         # TFRecord reader/writer for Python
