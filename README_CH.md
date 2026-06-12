@@ -3,20 +3,24 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Scala](https://img.shields.io/badge/Scala-2.12.17-red)](https://www.scala-lang.org/)
 [![Spark](https://img.shields.io/badge/Spark-3.4.0-orange)](https://spark.apache.org/)
+[![CI](https://img.shields.io/github/actions/workflow/status/shardzhang/gerbil-data/ci.yml?branch=main)](https://github.com/shardzhang/gerbil-data/actions/workflows/ci.yml)
 
-基于 Apache Spark 的推荐系统数据处理和训练样本生成 pipeline。处理原始用户-物品交互数据，提取丰富的特征（用户、物品、上下文、行为序列），并输出 **TFRecord** 和 **Parquet** 格式的训练样本供机器学习模型使用。
+基于 Apache Spark 的生产级推荐系统特征工程 pipeline。处理原始用户-物品交互数据，通过 ETL pipeline 提取丰富特征（用户画像、物品属性、上下文信号、多时间窗口行为序列），输出 **TFRecord** 和 **Parquet** 格式的特征化训练样本，可直接用于 TensorFlow 深度学习模型训练。
 
-目前支持 [MovieLens 1M (ML-1M)](https://grouplens.org/datasets/movielens/1m/) 数据集，模块化架构可扩展至其他数据集。
+目前支持 [MovieLens 1M (ML-1M)](https://grouplens.org/datasets/movielens/1m/) 数据集，模块化可扩展架构设计，便于适配其他数据集。
 
 ## 功能特性
 
-- **数据清洗** — 过滤无效记录、去重、验证原始交互数据
-- **特征提取** — 用户画像、物品属性、上下文特征、可配置时间窗口的行为序列
-- **统计特征** — 基于计数和比率的特征（流行度、活跃度、评分方差等）
-- **交叉特征** — 二阶和三阶特征组合，捕捉更深层模式
-- **多格式输出** — TFRecord（TensorFlow Example protobuf）和 Parquet（列式存储）
-- **词表管理** — 特征位置映射，支持 JSON（可读）和二进制（在线推理归一化）
-- **多种预测目标** — 多分类、二分类、回归
+1. **数据清洗与特征提取**: 将原始交互日志加工为结构化训练样本，这是推荐系统特征工程的基石环节。基于 Spark SQL 完成去重、异常过滤、多表特征 Join，各个阶段内置列级数据质量检查，杜绝"垃圾进垃圾出"。提取用户画像、物品属性、上下文信号、可配置时间窗口的行为序列——覆盖推荐模型所需的完整特征谱系。支持**多种预测目标**: 多分类、二分类、回归
+2. **负采样**: 为每条正样本生成该用户未交互的物品作为负样本，CTR 模型训练的必备环节。支持均匀随机、流行度偏置采样 exponent 0.75、混合三种策略，有效缓解"马太效应"，防止热门物品主导训练梯度，提升模型对长尾物品的泛化能力。
+3. **统计特征与交叉特征**: 计算基于计数和比率的统计特征（流行度、活跃度、评分方差等），同时支持二阶和三阶特征组合捕捉更深层模式。全部 58 个特征通过类型安全的泛型 `Featurizer[T]` 架构编码，每种产出 `{name}_raw / _index / _value` 三元组 —— FFM、DeepFM、DIN 等模型的标准 embedding lookup 格式。支持纯哈希编码（快速实验）和 PosMap 词表编码（生产服务），YAML 声明式注册，新增特征无需改代码。
+4. **词表管理与多格式输出**: 基于频次阈值构建 embedding 词表，高频分配独立位置、低频复用历史或丢弃。特征位置映射持久化为 JSON（可读）和二进制（含均值/标准差，用于在线归一化）。输出 TFRecord（TensorFlow Example protobuf）和 Parquet（列式存储）两种格式，按时间切分 train/val/test 防止数据泄露。
+5. **数据质量**: 防范生产推荐系统的两大隐形杀手 —— 训练-服务不一致和数据漂移。ETL 层自动检测各阶段的空值率、基数、数值分布等列级指标；特征编码层追踪解析成功率和目标分布 Top-5。跨运行漂移检测自动对比历史基线，当总量波动超过 20%、空值率变化超过 5%、均值偏移超过 50% 时发出告警。
+6. **TFRecord 数据源**: 自定义 Spark SQL 数据源，弥合 ETL 与 TensorFlow 的鸿沟。通过 `format("tfrecords")"` 原生读写，支持 schema 推断、Example/SequenceExample protobuf 格式、 全Spark 类型编解码 —— 消除训练流水线中繁琐的中间数据转换步骤。
+7. **配置层**: YAML 驱动的特征注册中心。新增或禁用特征只需编辑一个配置文件，无需改代码、无需重编译。支持 classpath 和外部文件两种加载方式。
+8. **编排层**: 模式 Pipeline 执行引擎。Airflow DAG 用于生产调度，支持自动重试和监控；独立 Python 脚本用于本地开发和 CI。拓扑排序保证阶段执行顺序，`--dry-run` 模式支持执行计划预览。
+9. **C++ 在线推理**:  与Scala 训练侧按位一致的 C++ 特征重实现，专为延迟敏感的在线推理场景设计。加载完全相同的词表二进制，执行完全相同的 MurmurHash3 和键拼接逻辑 —— 从根源上消除生产系统中训练-服务不一致的常见问题。正确性经数万行 golden data diff 验证。
+10. 基础设施：产级配套工具链，包括 spark-submit 封装脚本与环境配置、Hive DDL 持久化中间表定义、TensorFlow Example 和 SequenceExample protobuf 分布式训练所需协议定义。
 
 ## 项目架构
 
@@ -31,6 +35,9 @@ gerbil-data/
 │   │   └── join/               #   特征关联
 │   ├── proto/                  # Protobuf 编译
 │   └── tools/                  # 工具脚本
+├── dag/                        # Pipeline DAG（Airflow + 独立运行）
+│   ├── ml1m_pipeline_dag.py    # Airflow DAG 定义
+│   └── run_pipeline.py         # 独立运行脚本（无需 Airflow）
 ├── docs/                       # 文档
 ├── proto/                      # TensorFlow Example protobuf 定义
 ├── sql/                        # Hive/Spark SQL 脚本

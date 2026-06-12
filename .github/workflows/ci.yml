@@ -29,3 +29,10 @@ jobs:
 
       - name: Package
         run: mvn clean package -DskipTests
+
+      - name: Upload JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: gerbil-data-jar-${{ matrix.java }}
+          path: target/gerbil-data-*-jar-with-dependencies.jar
+          retention-days: 7

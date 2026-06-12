@@ -3,20 +3,33 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Scala](https://img.shields.io/badge/Scala-2.12.17-red)](https://www.scala-lang.org/)
 [![Spark](https://img.shields.io/badge/Spark-3.4.0-orange)](https://spark.apache.org/)
+[![CI](https://img.shields.io/github/actions/workflow/status/shardzhang/gerbil-data/ci.yml?branch=main)](https://github.com/shardzhang/gerbil-data/actions/workflows/ci.yml)
 
-A data processing and training sample generation pipeline for recommender systems, built on Apache Spark. It processes raw user-item interaction data, extracts rich features (user, item, context, behavior sequences), and outputs training samples in **TFRecord** and **Parquet** formats for machine learning models.
+A production-grade feature engineering pipeline for recommender systems, built on Apache Spark. It processes raw user-item interaction data through an ETL pipeline, extracts rich features (user demographics, item attributes, context signals, multi-window behavior sequences), and outputs featurized training samples in **TFRecord** and **Parquet** formats — ready for TensorFlow deep learning models.
 
-Currently supports the [MovieLens 1M (ML-1M)](https://grouplens.org/datasets/movielens/1m/) dataset with a modular architecture that can be extended to other datasets.
+Currently supports the [MovieLens 1M (ML-1M)](https://grouplens.org/datasets/movielens/1m/) dataset with a modular, extensible architecture designed for easy adaptation to other datasets.
 
 ## Features
 
-- **Data Cleaning** — Filter invalid records, deduplicate, and validate raw interaction data
-- **Feature Extraction** — User profiles, item attributes, context features, behavior sequences with configurable time windows
-- **Statistical Features** — Count-based and ratio-based features (popularity, activity, rating variance, etc.)
-- **Cross Features** — Second-order and third-order feature crosses for deeper pattern capture
-- **Multi-Format Output** — TFRecord (TensorFlow Example protobuf) and Parquet (columnar storage)
-- **Vocabulary Management** — Feature position maps in JSON (readable) and binary (normalized for online inference)
-- **Multiple Prediction Targets** — Multi-class classification, binary classification, regression
+1. **Data Cleaning and Feature Extraction**: Transforms raw interaction logs into structured training samples. Handles deduplication, anomaly filtering, and validation of raw data through Spark SQL. Extracts user profiles, item attributes, context signals, and behavior sequences with configurable time windows — covering the full spectrum of features needed for recommendation models.
+
+2. **Negative Sampling**: For each positive instance, generates unobserved items as negative samples — a critical component for CTR model training. Supports uniform random, popularity-biased sampling with exponent 0.75, and hybrid strategies. The popularity-biased variant mitigates the "Matthew effect" where popular items dominate training, leading to better generalization on long-tail items.
+
+3. **Statistical and Cross Features**: Computes count-based and ratio-based features (popularity, activity, rating variance, etc.) alongside second-order and third-order feature crosses for deeper pattern capture. All 58 features are encoded through a type-safe generic `Featurizer[T]` architecture — each producing `{name}_raw / _index / _value` triplets, the standard embedding lookup schema for FFM, DeepFM, DIN, and similar models. Supports both hash-based encoding for rapid prototyping and vocabulary-based embedding for production serving. Features are registered via YAML with zero code changes required.
+
+4. **Vocabulary Management and Multi-Format Output**: Builds embedding vocabularies through frequency thresholding, allocating slots for frequent values while recycling rare ones. Feature position maps are persisted in JSON (readable) and binary with mean/std (online normalization). Outputs training samples in TFRecord (TensorFlow Example protobuf) and Parquet (columnar storage) formats, with time-based train/val/test split to prevent data leakage.
+
+5. **Data Quality**: Guards against training-serving skew and data drift. Validates column-level statistics — null ratios, cardinality, numeric distributions — across ETL stages. Tracks parse success rates and target distribution during featurization. Cross-run drift detection alerts when volume deviates by over 20%, null ratios shift by over 5%, or means change by over 50%.
+
+6. **TFRecord Data Source**: A custom Spark SQL connector bridging ETL and TensorFlow. Provides native `format("tfrecords")"` read/write with schema inference, Example and SequenceExample protobuf handling, and full Spark type codecs — eliminating intermediate data conversion.
+
+7. **Configuration**: YAML-driven feature registry for experimentation velocity. Adding or disabling features requires editing a single config file — no code changes, no recompilation. Supports classpath and external file loading.
+
+8. **Orchestration**: Dual-mode pipeline execution. Airflow DAG for production scheduling; standalone Python runner for local development and CI. Topological sort ensures stage dependencies are honored.
+
+9. **C++ Online Inference**: A bit-exact C++ reimplementation of the Scala featurizer for latency-critical serving. Loads the identical vocabulary binary and executes the same MurmurHash3 with matching key concatenation — eliminating training-serving skew. Verified by golden data diff across thousands of rows.
+
+10. **Multiple Prediction Targets and Infrastructure**: Supports multi-class classification, binary classification, and regression targets. Includes Spark-submit wrappers with environment configuration, Hive DDLs for persistent tables, and TensorFlow protobuf definitions.
 
 ## Architecture
 
@@ -31,6 +44,9 @@ gerbil-data/
 │   │   └── join/               #   Feature joining
 │   ├── proto/                  # Protobuf compilation
 │   └── tools/                  # Utility scripts
+├── dag/                        # Pipeline DAG (Airflow + standalone)
+│   ├── ml1m_pipeline_dag.py    # Airflow DAG definition
+│   └── run_pipeline.py         # Standalone runner (no Airflow required)
 ├── docs/                       # Documentation
 ├── proto/                      # TensorFlow Example protobuf definitions
 ├── sql/                        # Hive/Spark SQL scripts
@@ -226,10 +242,17 @@ Columnar storage format compatible with Spark and many big data tools.
 | Module | Description |
 |--------|-------------|
 | `processing` | ETL pipeline: data cleaning, feature derivation, multi-table joining |
-| `featurizer` | ML feature encoding: categorical/continuous/cross featurizers, hash-based embedding index |
+| `sampling` | Negative sampling for CTR training (random/popular/mixed) |
+| `featurizer` | ML feature encoding: categorical/continuous/cross featurizers, hash/PosMap embedding |
 | `pipeline` | Orchestration: sample generation, vocabulary management, TFRecord/Parquet output |
+| `config` | YAML-driven feature configuration (SnakeYAML → Scala case classes) |
 | `tfrecords` | Custom Spark SQL data source for TFRecord format |
-| `utils` | Logging, date utilities, protobuf helpers |
+| `utils` | Logging, MurmurHash3, date utilities, protobuf helpers |
+| `dag` | Pipeline orchestration: Airflow DAG (production) + standalone Python runner (CI/dev) |
+| `bash` | Spark-submit wrapper scripts with environment configuration |
+| `sql` | Hive DDL for persistent tables |
+| `proto` | TensorFlow Example / SequenceExample protobuf definitions |
+| `tools` | C++ online inference featurizer + golden data generators |
 
 ## Dependencies
 

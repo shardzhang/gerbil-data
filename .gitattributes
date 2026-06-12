@@ -1,0 +1,46 @@
+# Auto detect text files and normalize line endings
+* text=auto
+
+# Source code
+*.java text diff=java
+*.scala text diff
+*.sc text
+*.xml text
+*.yml text
+*.yaml text
+*.json text
+*.sql text
+*.py text
+*.sh text eol=lf
+*.conf text
+*.properties text
+*.template text
+*.md text
+
+# Build / tooling
+*.gradle text
+pom.xml text
+*.cff text
+*.cfg text
+*.ini text
+*.txt text
+
+# Binary files
+*.jar binary
+*.zip binary
+*.gz binary
+*.class binary
+*.bin binary
+*.proto binary
+*.o binary
+*.so binary
+*.dylib binary
+*.DS_Store binary
+*.log binary
+*.dat binary
+
+# Git
+.gitignore text
+.gitattributes text
+.gitmessage text
+.gitmodules text

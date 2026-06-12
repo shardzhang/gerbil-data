@@ -10,6 +10,7 @@ spark-warehouse/
 hs_err_pid*
 .target
 .idea
+*.iml
 .target/
 target/
 .mvn/
@@ -27,3 +28,4 @@ bash/conf/env.sh
 .venv/
 tools/cpp_featurizer/build
 .airflow/
+tmp/
