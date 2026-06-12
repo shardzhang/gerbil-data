@@ -13,6 +13,12 @@ import utils.LogUtils.green_println
 import featurizer.core.FeatureType
 import pipeline.stats.PosInfo
 
+/**
+ * @author shard zhang
+ * @date 2026/6/10 17:57
+ * @note PosMap serialization — saves/restores feature position maps in JSON/text/binary formats
+ */
+
 /** Persists and restores feature position maps, target maps, and field dimension maps in JSON, text, and binary formats. */
 class PosMapSerDe(val hadoopConf: Configuration) {
   /** Reconstructs a PosInfo from legacy mean/std representation (used when restoring older binary format). */

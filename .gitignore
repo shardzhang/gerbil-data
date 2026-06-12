@@ -25,3 +25,4 @@ bash/conf/env.sh
 **/.DS_Store
 .mvn-local-settings.xml
 .venv/
+tools/cpp_featurizer/build

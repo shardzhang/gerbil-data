@@ -2,7 +2,7 @@
 Standalone ML-1M pipeline orchestrator — for CI / dev environments without Airflow.
 
 Usage:
-  python dag/run_pipeline.py [--date YYYYMMDD] [--skip NEG_SAMPLE] [--dry-run]
+  python dag/run_pipeline.py [--date YYYYMMDD] [--skip-neg-sample] [--dry-run]
 
 Runs each stage in topological order, respects dependencies, and fails fast on errors.
 """
@@ -21,11 +21,9 @@ FEATURE_CONFIG = ROOT / "src" / "main" / "resources" / "ml1m" / "features.yaml"
 
 BASE_HOME = Path(os.environ.get("BASE_HOME", Path.home() / "PycharmProject"))
 DATA_PATH = Path(os.environ.get("ML_1M_PATH", BASE_HOME / "data" / "ml-1m"))
-SPARK_HOME = Path(os.environ.get("SPARK_HOME", "/opt/spark-3.4.0-bin-hadoop3"))
-SPARK_SUBMIT = SPARK_HOME / "bin" / "spark-submit"
 
 SPARK_BASE = [
-    str(SPARK_SUBMIT),
+    "spark-submit",
     "--master", "local[*]",
     "--conf", "spark.ui.port=8688",
     "--conf", "spark.driver.maxResultSize=10g",
@@ -77,7 +75,7 @@ STAGES = {
         "desc": "Generate negative samples",
         "optional": True,
     },
-    "pipeline": {
+    "encode": {
         "class": "pipeline.ML1MPipeline",
         "args": lambda date: [
             "--feature_threshold", "10",
@@ -103,14 +101,24 @@ STAGES = {
             "--label_col", "target",
             "--top_k", "20",
         ],
-        "depends": ["pipeline"],
+        "depends": ["encode"],
         "desc": "Evaluate output quality (label dist + feature coverage)",
     },
 }
 
 
+ENV_SH = ROOT / "bash" / "conf" / "env.sh"
+
+
 def build_cmd(class_name: str, args: list[str]) -> list[str]:
     return SPARK_BASE + ["--class", class_name, str(JAR)] + args
+
+
+def shell_wrap(cmd: list[str]) -> str:
+    """Wrap a command so it runs in bash after sourcing env.sh."""
+    if ENV_SH.exists():
+        return f"source {ENV_SH} && " + shlex.join(cmd)
+    return shlex.join(cmd)
 
 
 def run_stage(stage_name: str, date: str, dry_run: bool = False) -> bool:
@@ -120,15 +128,16 @@ def run_stage(stage_name: str, date: str, dry_run: bool = False) -> bool:
     else:
         args = info["args"]
     cmd = build_cmd(info["class"], args)
+    shell_cmd = shell_wrap(cmd)
     print(f"\n{'='*72}")
     print(f"Stage: {stage_name}")
     print(f"Desc:  {info['desc']}")
-    print(f"Cmd:   {shlex.join(cmd)}")
+    print(f"Cmd:   {shell_cmd}")
     print(f"{'='*72}")
     if dry_run:
         print("[DRY-RUN] skipped\n")
         return True
-    result = subprocess.run(cmd, capture_output=False)
+    result = subprocess.run(["bash", "-c", shell_cmd], capture_output=False)
     if result.returncode != 0:
         print(f"\n[FAIL] {stage_name} exited with code {result.returncode}")
         return False
@@ -137,7 +146,16 @@ def run_stage(stage_name: str, date: str, dry_run: bool = False) -> bool:
 
 
 def toposort(stages: dict, skip_optional: bool) -> list[str]:
-    """Topological sort of stages; respects dependencies."""
+    """Topological sort of stages; respects dependencies.
+    拓扑排序经典写法: 天然保证依赖项一定排在当前节点前面.
+    :param stages: dict, 阶段字典，结构示例：
+        {
+            "stageA": {"depends": ["stageB", "stageC"], "optional": False},
+            "stageB": {"depends": [], "optional": False},
+            "stageC": {"depends": [], "optional": True}
+        }
+    :param skip_optional: bool. True = 跳过可选阶段；False = 一并执行可选阶段
+    """
     visited = set()
     order = []
 
@@ -150,6 +168,8 @@ def toposort(stages: dict, skip_optional: bool) -> list[str]:
             return
         if skip_optional and info.get("optional"):
             return
+
+        # 先递归处理所有依赖 → 再加入当前节点
         for dep in info.get("depends", []):
             dfs(dep)
         order.append(node)

@@ -2,7 +2,7 @@
 ML-1M Feature Engineering Pipeline — Airflow DAG.
 
 DAG structure:
-  clean_sample ─┬─ movie_stats ─┐
+  clean_sample ─┬─ movie_stats ──┐
                 └─ user_behavior ┘
                       │
                       ▼

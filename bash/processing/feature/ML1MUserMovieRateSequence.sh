@@ -16,8 +16,8 @@ path=${ML_1M_PATH}
 --conf spark.ui.port=8688 \
 --conf spark.driver.maxResultSize=10g \
 --conf spark.dynamicAllocation.enabled=false \
---conf spark.driver.extraJavaOptions='-verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log' \
---conf spark.executor.extraJavaOptions='-verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps' \
+--conf spark.driver.extraJavaOptions='-XX:ReservedCodeCacheSize=512m -XX:+UseCodeCacheFlushing -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log' \
+--conf spark.executor.extraJavaOptions='-XX:ReservedCodeCacheSize=512m -XX:+UseCodeCacheFlushing -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps' \
 --conf spark.driver.cores=5 \
 --conf spark.network.timeout=600s \
 --conf spark.default.parallelism=2 \

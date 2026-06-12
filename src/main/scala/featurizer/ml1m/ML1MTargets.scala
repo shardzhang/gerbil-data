@@ -3,6 +3,12 @@ package featurizer.ml1m
 import featurizer.ml1m.ML1MSample
 import featurizer.core.RawTarget
 
+/**
+ * @author shard zhang
+ * @date 2026/6/10 17:57
+ * @note ML-1M target — multi-class using raw rating value (1-5) as class ID
+ */
+
 /** Multi-class target: uses the raw rating value (1-5) directly as the class ID. */
 class Target extends RawTarget[ML1MSample] {
   override def parse(sample: ML1MSample): RawTarget[ML1MSample] = {

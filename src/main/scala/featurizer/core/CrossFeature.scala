@@ -10,6 +10,12 @@ import utils.MurmurHash3.LongPair
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
+/**
+ * @author shard zhang
+ * @date 2026/6/10 17:57
+ * @note Feature crosses — Cartesian product of categorical features, hashed into embedding indices
+ */
+
 /** This cross featurizer encodes feature crosses (combinations of multiple categorical features) into embedding index. */
 class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) extends RawFeature(f_i, f_n, f_t = FeatureType.Categorical) {
   /** Current combination indices for iterating over the Cartesian product. */

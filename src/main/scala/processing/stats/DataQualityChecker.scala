@@ -5,6 +5,12 @@ import org.apache.spark.sql.types.{NumericType, StringType => SparkStringType, S
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import utils.LogUtils.green_println
 
+/**
+ * @author shard zhang
+ * @date 2026/6/11 14:32
+ * @note Data quality checks — numeric column summary statistics and validation
+ */
+
 /** Summary statistics for a numeric column. */
 case class NumericColStats(
   /** Minimum value (null if column is all-null). */

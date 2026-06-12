@@ -15,6 +15,12 @@ import featurizer.core.{FeatureType, Featurizer}
 import pipeline.serde.{PosMapSerDe, SampleWriter}
 import pipeline.stats.{DataQualityTracker, PosInfo, RunningValueStats}
 
+
+/**
+ * @author shard zhang
+ * @date 2026/6/3 14:15
+ * @note 特征编码 + 词表构建 + TFRecord
+ */
 /** Orchestrates the end-to-end training sample generation pipeline: load samples, build vocabulary (pos-map/target-map), and encode features into TFRecord/Parquet. */
 abstract class Pipeline[T: ClassTag] extends Serializable {
   @transient var hadoopConf: Configuration = new Configuration()
@@ -29,8 +35,6 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
   def max_dim: Long
 
   /** The featurizer that converts raw samples into encoded features. */
-  // lazy val -> 单例模式(所有线程共享), 导致竞态损坏
-  // def -> 每次调用创建新实例
   def feature_encoder: Featurizer[T]
 
   /** Loads and parses raw training samples from the given input directory. */
@@ -179,7 +183,6 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     val train_sample_hash_arr = trainingSample
       .map { case (sample, _) => sample }
       .mapPartitions(samples => {
-        // 改为 def 或工厂函数后, 每个 partition 创建独立的 featurizer 实例, 消除共享, 竞态消失
         val encoder = feature_encoder
         val pos_hash = new mutable.HashMap[(String, Int, Byte, Long), RunningValueStats]()
         for (sample <- samples) {

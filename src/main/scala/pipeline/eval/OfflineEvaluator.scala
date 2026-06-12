@@ -4,10 +4,16 @@ import org.apache.spark.sql.types.{FloatType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import utils.LogUtils.green_println
 
+/**
+ * @author shard zhang
+ * @date 2026/6/11 14:32
+ * @note Offline evaluation — pos/neg ratio, feature coverage, sample statistics of encoded data
+ */
+
 /** Offline evaluation for featurized training data.
-  * Reads TFRecord or Parquet output from ML1MPipeline and computes
-  * positive/negative ratio, feature coverage, and basic sample statistics.
-  */
+ * Reads TFRecord or Parquet output from ML1MPipeline and computes
+ * positive/negative ratio, feature coverage, and basic sample statistics.
+ */
 object OfflineEvaluator {
 
   /** Evaluates featurized training data and prints a metrics report.

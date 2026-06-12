@@ -12,8 +12,12 @@ import utils.LogUtils.green_println
 import utils.LogUtils.setLogLevel
 
 /**
- * ML1M dataset data driver. Generates TFRecord samples plus encoding maps (json/bin).
+ * @author shard zhang
+ * @date 2026/6/5 18:07
+ * @note ML-1M pipeline driver — orchestrates feature encoding, vocabulary construction, TFRecord output
  */
+
+/** ML1M dataset data driver. Generates TFRecord samples plus encoding maps (json/bin). */
 object ML1MPipeline extends Pipeline[ML1MSample] {
   override val max_dim: Long = 1L << 60
 

@@ -7,6 +7,12 @@ import tfrecords.serde.{BytesListFeatureEncoder, FloatListFeatureEncoder, Int64L
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
+/**
+ * @author shard zhang
+ * @date 2026/6/10 17:57
+ * @note Abstract continuous feature base — encodes numerical values into embedding indices
+ */
+
 /** This continuous featurizer encodes numerical value into an embedding-compatible index. */
 abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureType.Continuous) extends RawFeature(f_i, f_n, f_t) {
 
