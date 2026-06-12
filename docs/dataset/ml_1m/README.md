@@ -1,23 +1,21 @@
-# 数据查看
+# Data Overview
 
 ml-1m
 
-数据为匿名化处理，共包含 6040 名用户对约 3900 部电影的 1,000,209 条评分；
-
-
+Anonymized dataset containing 1,000,209 ratings from 6,040 users on approximately 3,900 movies.
 
 ## movies.dat
 
-电影信息
+Movie information
 
-`MovieID::Titile::Genres`
+`MovieID::Title::Genres`
 
-- MovieID：电影ID，范围1-3952
-- Title：电影名称（含上映年份）
-- `Genres`：类型，通过`|`分隔。Action、Adventure、Animation、Children's、Comedy、Crime、Documentary、Drama、Fantasy、Film-Noir、Horror、Musical、Mystery、Romance、Sci-Fi、Thriller、War、Western
+- MovieID: Movie ID, range 1-3952
+- Title: Movie name (with release year)
+- `Genres`: Genre(s), separated by `|`. Action, Adventure, Animation, Children's, Comedy, Crime, Documentary, Drama, Fantasy, Film-Noir, Horror, Musical, Mystery, Romance, Sci-Fi, Thriller, War, Western
 
 ```bash
-~/Py/data/ml-1m  head movies.dat                               ✔  at 18:16:55
+~/Py/data/ml-1m  head movies.dat
 1::Toy Story (1995)::Animation|Children's|Comedy
 2::Jumanji (1995)::Adventure|Children's|Fantasy
 3::Grumpier Old Men (1995)::Comedy|Romance
@@ -30,80 +28,78 @@ ml-1m
 10::GoldenEye (1995)::Action|Adventure|Thriller
 ```
 
-
-
 ## users.dat
 
-格式：`UserID::Gender::Age::Occupation::Zip-code`
+Format: `UserID::Gender::Age::Occupation::Zip-code`
 
-- 用户 ID，范围 1 - 6040
+- User ID, range 1 - 6040
 
-- 性别：M（男性）/ F（女性）
+- Gender: M (Male) / F (Female)
 
-- Age：年龄段（编码对应）：
+- Age: Age range (encoded):
 
-  1 → 18 岁以下
+  1 → Under 18
 
-  18 → 18-24 岁
+  18 → 18-24
 
-  25 → 25-34 岁
+  25 → 25-34
 
-  35 → 35-44 岁
+  35 → 35-44
 
-  45 → 45-49 岁
+  45 → 45-49
 
-  50 → 50-55 岁
+  50 → 50-55
 
-  56 → 56 岁以上
+  56 → 56+
 
-- Occupation：职业（编码对应）：
+- Occupation (encoded):
 
-  0 → 其他 / 未说明
+  0 → Other / Not specified
 
-  1 → 学术 / 教育工作者
+  1 → Academic / Educator
 
-  2 → 艺术家
+  2 → Artist
 
-  3 → 文书 / 行政
+  3 → Clerical / Administrative
 
-  4 → 大学生 / 研究生
+  4 → College / Graduate student
 
-  5 → 客户服务
+  5 → Customer service
 
-  6 → 医生 / 医疗保健
+  6 → Doctor / Healthcare
 
-  7 → 高管 / 管理
+  7 → Executive / Managerial
 
-  8 → 农民
+  8 → Farmer
 
-  9 → 家庭主妇
+  9 → Homemaker
 
-  10 → K-12 学生
+  10 → K-12 student
 
-  11 → 律师
+  11 → Lawyer
 
-  12 → 程序员
+  12 → Programmer
 
-  13 → 退休
+  13 → Retired
 
-  14 → 销售 / 营销
+  14 → Sales / Marketing
 
-  15 → 科学家
+  15 → Scientist
 
-  16 → 自雇
+  16 → Self-employed
 
-  17 → 技术人员 / 工程师
+  17 → Technician / Engineer
 
-  18 → 工匠 / 技工
+  18 → Tradesman / Craftsman
 
-  19 → 失业
+  19 → Unemployed
 
-  20 → 作家
+  20 → Writer
 
-- 邮政编码（用户自愿提供，无准确性校验）
+- Zip code (self-reported by users, not validated for accuracy)
 
 ```bash
- ~/Py/data/ml-1m  head users.dat                                ✔  at 18:17:08
+ ~/Py/data/ml-1m  head users.dat
 1::F::1::10::48067
 2::M::56::16::70072
 3::M::25::15::55117
@@ -116,23 +112,19 @@ ml-1m
 10::F::35::1::95370
 ```
 
+## ratings.dat
 
+Format: `UserID::MovieID::Rating:Timestamp`
 
+- `UserID`: User ID, range 1 - 6040
+- `MovieID`: Movie ID, range 1 - 3952
+- `Rating`: Rating on a 5-star scale (integer, 1-5 stars)
+- `Timestamp`: Unix timestamp in seconds
 
-
-## ratings.dat 
-
-格式：`UserID::MovieID::Rating:Timestamp`
-
-- `UserID`：用户 ID，范围 1 - 6040
-- `MovieID`：电影 ID，范围 1 - 3952
-- `Rating`：评分，仅支持 5 星制（整数，1-5 星）
-- `Timestamp`：时间戳，单位为秒（自 Unix 纪元起）
-
-补充：每个用户至少有 20 条评分记录
+Note: Each user has at least 20 rating records.
 
 ```bash
-~/Py/data/ml-1m  head ratings.dat                              ✔  at 18:16:58
+~/Py/data/ml-1m  head ratings.dat
 1::1193::5::978300760
 1::661::3::978302109
 1::914::3::978301968
@@ -145,26 +137,13 @@ ml-1m
 1::919::4::978301368
 ```
 
+Binary classification task: Model user click-through rate as click probability. Ratings >= 3 are treated as positive samples. Ratings < 3 are treated as negative samples.
 
+Data tables:
 
-二分类问题：将用户点击率建模为点击概率。令评分>=3设为正样本。评分<3设为负样本。
-
-
-
-数据表：
-
-1. ml_1m_item_tabel：物品表
-2. ml_1m_user_tabel：用户表
-3. ml_1m_label_tabel：标签表，包含
-4. ml_1m_user_behavior_tabel：用户行为序列表
-5. ml_1m_train_sample_binary：样本表（二分类）
-6. ml_1m_train_sample_multiclass：样本表（多分类）
-
-
-
-
-
-
-
-
-
+1. `ml_1m_item_tabel`: Item table
+2. `ml_1m_user_tabel`: User table
+3. `ml_1m_label_tabel`: Label table
+4. `ml_1m_user_behavior_tabel`: User behavior sequence table
+5. `ml_1m_train_sample_binary`: Sample table (binary classification)
+6. `ml_1m_train_sample_multiclass`: Sample table (multi-class classification)

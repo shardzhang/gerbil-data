@@ -327,7 +327,9 @@ object ML1MSample {
         val pattern = "\\((\\d{4})\\)".r
         pattern.findFirstMatchIn(train_sample.movie_title).map(_.group(1).toInt).getOrElse(1990)
       } catch {
-        case _: Exception => 0
+        case e: Exception =>
+          System.err.println(s"Warning: failed to parse publish year: ${e.getMessage}")
+          0
       }
       val genres = item_feature.getString("movie_genres")
       if (genres != null) {

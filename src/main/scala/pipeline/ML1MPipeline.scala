@@ -71,7 +71,9 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
         try {
           Some(r.getString(0).toInt -> (r.getString(1), r.getString(2).split("\\|").map(_.trim)))
         } catch {
-          case _: Exception => None
+          case e: Exception =>
+            System.err.println(s"Warning: skipping malformed movie row: ${e.getMessage}")
+            None
         }
       })
       .collectAsMap()

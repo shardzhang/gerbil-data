@@ -53,7 +53,9 @@ class ML1MNegativeSampler(spark: SparkSession, inputDir: String) extends Negativ
       .rdd.flatMap(r => try {
         Some(r.getString(0))
       } catch {
-        case _: Exception => None
+        case e: Exception =>
+          System.err.println(s"Warning: skipping malformed item pool row: ${e.getMessage}")
+          None
       })
       .collect()
     green_println(s"[NegativeSampler] item pool: ${pool.length}")
@@ -69,7 +71,9 @@ class ML1MNegativeSampler(spark: SparkSession, inputDir: String) extends Negativ
       .rdd.flatMap(r => try {
         Some(r.getString(0) -> r.getString(1))
       } catch {
-        case _: Exception => None
+        case e: Exception =>
+          System.err.println(s"Warning: skipping malformed user history row: ${e.getMessage}")
+          None
       })
       .aggregateByKey(Set.empty[String])(_ + _, _ ++ _)
       .collectAsMap().toMap
@@ -88,21 +92,29 @@ class ML1MNegativeSampler(spark: SparkSession, inputDir: String) extends Negativ
         val cnt = try {
           r.getString(3).toLong
         } catch {
-          case _: Exception => 0L
+          case e: Exception =>
+            System.err.println(s"Warning: malformed movie_rate_count: ${e.getMessage}")
+            0L
         }
         val avg = try {
           r.getString(4).toDouble
         } catch {
-          case _: Exception => 0.0
+          case e: Exception =>
+            System.err.println(s"Warning: malformed movie_avg_rate: ${e.getMessage}")
+            0.0
         }
         val rank = try {
           r.getString(6).toInt
         } catch {
-          case _: Exception => 99999
+          case e: Exception =>
+            System.err.println(s"Warning: malformed movie_hot_rank: ${e.getMessage}")
+            99999
         }
         Some(id -> (title, genres, cnt, avg, rank))
       } catch {
-        case _: Exception => None
+        case e: Exception =>
+          System.err.println(s"Warning: skipping malformed item feature row: ${e.getMessage}")
+          None
       }
     }.collectAsMap().toMap
   }
@@ -117,7 +129,9 @@ class ML1MNegativeSampler(spark: SparkSession, inputDir: String) extends Negativ
       .rdd.flatMap(r => try {
         Some(r.getString(0) -> r.getLong(1).toInt)
       } catch {
-        case _: Exception => None
+        case e: Exception =>
+          System.err.println(s"Warning: skipping malformed pop count row: ${e.getMessage}")
+          None
       })
       .collectAsMap().toMap
   }
@@ -225,7 +239,9 @@ class ML1MNegativeSampler(spark: SparkSession, inputDir: String) extends Negativ
         val p = "\\((\\d{4})\\)".r
         p.findFirstMatchIn(title).map(_.group(1).toInt).getOrElse(1990)
       } catch {
-        case _: Exception => 0
+        case e: Exception =>
+          System.err.println(s"Warning: failed to parse publish year from '${title}': ${e.getMessage}")
+          0
       }
       neg.movie_rate_count = cnt
       neg.movie_avg_rate = avg
