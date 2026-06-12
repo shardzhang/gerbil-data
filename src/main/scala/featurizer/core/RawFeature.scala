@@ -3,20 +3,30 @@ package featurizer.core
 import scala.collection.mutable.ArrayBuffer
 
 /**
- * @author shard zhang
- * @date 2026/6/10 17:57
- * @note Feature type constants (Categorical=1, Continuous=0) and base feature fields
+ * Feature type constants and base class for all feature encoders.
+ *
+ * Two feature types are supported:
+ *  - Categorical (type=1): discrete IDs hashed into embedding indices via MurmurHash3
+ *  - Continuous (type=0): numerical values used directly as embedding positions (identity mapping)
+ *
+ * All features produce an embedding-compatible triple of (raw, index, value) tensors.
  */
-
-/** Feature type constants distinguishing categorical (discrete) from continuous (numerical) features. */
 object FeatureType {
-  /** Numerical value used directly as embedding position (no hashing). */
   val Continuous: Byte = 0
-  /** Discrete ID hashed into embedding space. */
   val Categorical: Byte = 1
 }
 
-/** Base class for all feature types. Each feature has an index, name, type, and produces hash-based position indices for embedding lookup. */
+/**
+ * Base class for all feature types in the encoding framework.
+ *
+ * Each feature is identified by a unique (index, name) pair and produces
+ * hash-based position indices for embedding lookup. Subclasses implement
+ * the specific parsing and encoding logic.
+ *
+ * @param f_i unique numeric feature index within the feature set
+ * @param f_n human-readable feature name (used as TFRecord field prefix)
+ * @param f_t feature type: FeatureType.Continuous (0) or FeatureType.Categorical (1)
+ */
 abstract class RawFeature(f_i: Int, f_n: String, f_t: Byte) extends Serializable {
   /** Numeric feature index (unique within the feature set). */
   val f_index: Int = f_i

@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2026-06-12
+
+### Added
+
+- Bilingual READMEs (English + Chinese) for `dag/`, `tools/`, `docs/dataset/ml_1m/`
+
+### Changed
+
+- Root README architecture tree now includes `dag/` directory
+- Root README features section rewritten with layered module-by-module architecture description
+
 ## [1.0.0] - 2026-06-10
 
 ### Added

@@ -24,8 +24,21 @@ jobs:
           distribution: temurin
           cache: maven
 
-      - name: Build and test
+      - name: Build and test with coverage
         run: mvn clean test
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          directory: target/site/jacoco/
+          fail_ci_if_error: false
 
       - name: Package
         run: mvn clean package -DskipTests
+
+      - name: Upload JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: gerbil-data-jar-${{ matrix.java }}
+          path: target/gerbil-data-*-jar-with-dependencies.jar
+          retention-days: 7

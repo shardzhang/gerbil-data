@@ -21,7 +21,7 @@ case class StageQuality(
 /** Collects quality metrics across pipeline stages and prints a consolidated report at the end. */
 class DataQualityTracker {
   /** Accumulated stage quality snapshots. */
-  private val reports = scala.collection.mutable.ListBuffer.empty[StageQuality]
+  private[pipeline] val reports = scala.collection.mutable.ListBuffer.empty[StageQuality]
 
   /** Records a stage with full stats: parse success count and target distribution. */
   def record(stage: String, totalCount: Long, validCount: Long, targetDistribution: Seq[(Int, Int)]): Unit = {

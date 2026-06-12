@@ -1,0 +1,9 @@
+pkg: featurizer.ml1m
+features:
+  - {name: user_age, index: 2, type: 1, class: UserAge, enabled: true}
+  - {name: user_gender, index: 3, type: 1, class: UserGender, enabled: true}
+  - {name: movie_avg_rate_continue, index: 109, type: 0, class: MovieAvgRateContinue, enabled: true}
+  - {name: disabled_feat, index: 99, type: 1, class: DisabledFeat, enabled: false}
+cross_features:
+  - {name: cross_age_gender, index: 500, enabled: true, depends: [user_age, user_gender]}
+  - {name: cross_disabled, index: 501, enabled: false, depends: [user_age]}
