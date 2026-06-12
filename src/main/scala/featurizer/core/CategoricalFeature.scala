@@ -11,12 +11,20 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 /**
- * @author shard zhang
- * @date 2026/6/10 17:57
- * @note Abstract categorical feature base — encodes discrete IDs into hash indices
+ * Categorical feature encoder for discrete IDs.
+ *
+ * Encodes each discrete feature value into an embedding index via MurmurHash3.
+ * The hash key is `(f_index || feature_value)` in little-endian byte order,
+ * which ensures different fields with the same raw value map to different
+ * embedding positions.
+ *
+ * Each feature produces three TFRecord fields:
+ *  - `{name}_raw`: the original string value
+ *  - `{name}_index`: the hashed embedding position (or pos-map lookup position)
+ *  - `{name}_value`: the weight/importance (typically 1.0 for categorical)
+ *
+ * @tparam T the raw sample type from which this feature is extracted
  */
-
-/** This categorical featurizer encodes discrete id into embedding index. */
 abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureType.Categorical) extends RawFeature(f_i, f_n, f_t) {
 
   /** Parses the sample and populates raw/feature/value buffers. */

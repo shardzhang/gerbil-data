@@ -6,12 +6,14 @@ import tfrecords.serde.FloatListFeatureEncoder
 import scala.collection.mutable
 
 /**
- * @author shard zhang
- * @date 2026/6/10 17:57
- * @note Abstract prediction target base — parses labels, encodes into TFRecord/Parquet
+ * Prediction target extractor for supervised learning.
+ *
+ * Parses a raw sample to extract the label and encodes it into TFRecord or Parquet.
+ * Supports optional target-map lookup for mapping raw labels to contiguous indices
+ * (e.g. mapping sparse class IDs to dense indices for multi-class classification).
+ *
+ * @tparam T the raw sample type
  */
-
-/** Base class for prediction targets. Parses a raw sample to extract the label and encodes it into TFRecord or Parquet with optional target-map lookup. */
 abstract class RawTarget[T] extends Serializable {
   /** The parsed target value (float). */
   var target: Float = 0.0F

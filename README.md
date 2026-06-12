@@ -1,9 +1,14 @@
+<p align="center">
+  <img src="assets/gerbil.jpg" alt="gerbil-data" width="200">
+</p>
+
 # gerbil-data
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Scala](https://img.shields.io/badge/Scala-2.12.17-red)](https://www.scala-lang.org/)
 [![Spark](https://img.shields.io/badge/Spark-3.4.0-orange)](https://spark.apache.org/)
 [![CI](https://img.shields.io/github/actions/workflow/status/shardzhang/gerbil-data/ci.yml?branch=main)](https://github.com/shardzhang/gerbil-data/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/codecov/c/github/shardzhang/gerbil-data?branch=main)](https://codecov.io/gh/shardzhang/gerbil-data)
 
 A production-grade feature engineering pipeline for recommender systems, built on Apache Spark. It processes raw user-item interaction data through an ETL pipeline, extracts rich features (user demographics, item attributes, context signals, multi-window behavior sequences), and outputs featurized training samples in **TFRecord** and **Parquet** formats — ready for TensorFlow deep learning models.
 

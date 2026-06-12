@@ -1,9 +1,14 @@
+<p align="center">
+  <img src="assets/gerbil.jpg" alt="gerbil-data" width="200">
+</p>
+
 # gerbil-data
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Scala](https://img.shields.io/badge/Scala-2.12.17-red)](https://www.scala-lang.org/)
 [![Spark](https://img.shields.io/badge/Spark-3.4.0-orange)](https://spark.apache.org/)
 [![CI](https://img.shields.io/github/actions/workflow/status/shardzhang/gerbil-data/ci.yml?branch=main)](https://github.com/shardzhang/gerbil-data/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/codecov/c/github/shardzhang/gerbil-data?branch=main)](https://codecov.io/gh/shardzhang/gerbil-data)
 
 基于 Apache Spark 的生产级推荐系统特征工程 pipeline。处理原始用户-物品交互数据，通过 ETL pipeline 提取丰富特征（用户画像、物品属性、上下文信号、多时间窗口行为序列），输出 **TFRecord** 和 **Parquet** 格式的特征化训练样本，可直接用于 TensorFlow 深度学习模型训练。
 

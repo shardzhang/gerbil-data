@@ -17,11 +17,22 @@ import pipeline.stats.{DataQualityTracker, PosInfo, RunningValueStats}
 
 
 /**
- * @author shard zhang
- * @date 2026/6/3 14:15
- * @note 特征编码 + 词表构建 + TFRecord
+ * End-to-end training sample generation pipeline.
+ *
+ * Orchestrates the full workflow from raw samples to featurized TFRecord/Parquet output:
+ *
+ *  1. Load and parse raw samples from the input directory
+ *  2. Time-based train/val/test split to prevent data leakage
+ *  3. Compute target distribution and build target-map (frequency thresholding)
+ *  4. Collect hash statistics across all samples, build embedding vocabulary (pos-map)
+ *  5. Encode each sample via the Featurizer and write to TFRecord or Parquet
+ *  6. Report data quality metrics (parse success rate, target distribution, etc.)
+ *
+ * Supports incremental training: pos-map and target-map from previous runs
+ * can be loaded and updated with new data.
+ *
+ * @tparam T the training sample type, must have a ClassTag for Spark serialization
  */
-/** Orchestrates the end-to-end training sample generation pipeline: load samples, build vocabulary (pos-map/target-map), and encode features into TFRecord/Parquet. */
 abstract class Pipeline[T: ClassTag] extends Serializable {
   @transient var hadoopConf: Configuration = new Configuration()
   /** Persists/restores position-map and target-map across runs. */

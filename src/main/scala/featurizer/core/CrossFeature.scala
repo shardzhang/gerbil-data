@@ -11,12 +11,23 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 /**
- * @author shard zhang
- * @date 2026/6/10 17:57
- * @note Feature crosses — Cartesian product of categorical features, hashed into embedding indices
+ * Cross feature encoder for feature interactions.
+ *
+ * Computes the Cartesian product of constituent categorical features and hashes
+ * each combination into an embedding index. Supports second-order (2 features)
+ * and third-order (3 features) crosses.
+ *
+ * The hash key concatenates all constituent `(f_index || feature_value)` pairs
+ * in little-endian byte order, e.g. `1:action__xx__3:male` for a gender × genre cross.
+ *
+ * Each combination produces three TFRecord fields:
+ *  - `{name}_raw`: human-readable combination string (e.g. "1:action__xx__3:male")
+ *  - `{name}_index`: the hashed embedding position
+ *  - `{name}_value`: 1.0 (constant weight for crosses)
+ *
+ * @tparam T the raw sample type
+ * @param rnfs the constituent categorical features to cross
  */
-
-/** This cross featurizer encodes feature crosses (combinations of multiple categorical features) into embedding index. */
 class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) extends RawFeature(f_i, f_n, f_t = FeatureType.Categorical) {
   /** Current combination indices for iterating over the Cartesian product. */
   val indexes: Array[Int] = new Array[Int](rnfs.length)

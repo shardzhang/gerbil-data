@@ -8,12 +8,19 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 /**
- * @author shard zhang
- * @date 2026/6/10 17:57
- * @note Abstract continuous feature base — encodes numerical values into embedding indices
+ * Continuous feature encoder for numerical values.
+ *
+ * Unlike categorical features (which hash discrete IDs), continuous features
+ * use the raw numerical value directly as the embedding position (identity mapping).
+ * This preserves the ordinal relationship between values in embedding space.
+ *
+ * Each feature produces three TFRecord fields:
+ *  - `{name}_raw`: the original string representation
+ *  - `{name}_index`: the numerical value itself (used as embedding position)
+ *  - `{name}_value`: the numerical value (used as embedding weight)
+ *
+ * @tparam T the raw sample type from which this feature is extracted
  */
-
-/** This continuous featurizer encodes numerical value into an embedding-compatible index. */
 abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureType.Continuous) extends RawFeature(f_i, f_n, f_t) {
 
   /** Parses the sample and populates raw/feature/value buffers. */

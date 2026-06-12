@@ -14,7 +14,7 @@ We take the security of gerbil-data seriously. If you discover a security vulner
 
 Instead, report them via email to:
 
-**shardzhang@example.com** (replace with actual email)
+**zhngd@outlook.com**
 
 You should receive a response within 48 hours. If you do not, please follow up to ensure we received your report.
 

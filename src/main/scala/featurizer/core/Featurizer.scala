@@ -6,12 +6,22 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 /**
- * @author shard zhang
- * @date 2026/6/10 17:57
- * @note Abstract featurizer orchestrator — parses samples and encodes categorical/continuous/cross features
+ * Orchestrates feature encoding across categorical, continuous, and cross features.
+ *
+ * Typical usage:
+ * {{{
+ *   val featurizer = new ML1MFeaturizer().setup()
+ *   val builder = Example.newBuilder()
+ *   featurizer.encode(sample, maxDim, builder)
+ *   val example = builder.build()
+ * }}}
+ *
+ * Supports two encoding modes:
+ *  1. Hash-only: embeds features via MurmurHash3 (no vocabulary needed)
+ *  2. PosMap lookup: looks up pre-built vocabulary positions (production serving)
+ *
+ * @tparam T the raw sample type
  */
-
-/** We use a featurizer to convert raw samples into featurized vectors. */
 abstract class Featurizer[T] extends Serializable {
   /** Registered categorical (discrete) features. */
   val raw_cate_features: ArrayBuffer[CategoricalFeature[T]] = new ArrayBuffer[CategoricalFeature[T]]()
