@@ -140,13 +140,15 @@ def parse_feature_name_index_map(path: Path) -> Dict[int, str]:
                 continue
 
             parts = line.split(",")
-            if parts[0] == "target":
-                continue
             if len(parts) < 2:
                 raise ValueError(f"Invalid feature map line at {path}:{line_number}")
 
+            try:
+                feature_index = int(parts[1])
+            except ValueError:
+                continue
+
             feature_name = parts[0]
-            feature_index = int(parts[1])
             index_to_name[feature_index] = feature_name
 
     return index_to_name
