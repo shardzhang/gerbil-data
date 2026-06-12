@@ -232,10 +232,17 @@ bash bash/pipeline/ML1MPipeline.sh
 | 模块 | 说明 |
 |------|------|
 | `processing` | ETL pipeline：数据清洗、特征衍生、多表关联 |
-| `featurizer` | ML 特征编码：类别/连续/交叉特征化器，基于哈希的嵌入索引 |
+| `sampling` | CTR 负采样（随机 / 流行度 / 混合） |
+| `featurizer` | ML 特征编码：类别/连续/交叉特征，哈希/PosMap 嵌入 |
 | `pipeline` | 编排：样本生成、词表管理、TFRecord/Parquet 输出 |
+| `config` | YAML 驱动特征配置（SnakeYAML → Scala case class） |
 | `tfrecords` | 自定义 Spark SQL TFRecord 数据源 |
-| `utils` | 日志、日期工具、protobuf 辅助函数 |
+| `utils` | 日志、MurmurHash3、日期工具、protobuf 辅助 |
+| `dag` | 编排层：Airflow DAG（生产）+ 独立 Python 脚本（CI/开发） |
+| `bash` | Spark-submit 封装脚本与环境配置 |
+| `sql` | Hive DDL 持久化表定义 |
+| `proto` | TensorFlow Example / SequenceExample protobuf 定义 |
+| `tools` | C++ 在线推理特征处理器 + golden data 生成器 |
 
 ## 依赖项
 
