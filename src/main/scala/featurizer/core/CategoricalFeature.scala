@@ -36,7 +36,6 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
   var feature_list: ArrayBuffer[Long] = new ArrayBuffer[Long]()
   /** Weights/values for each occurrence. */
   var value_list: ArrayBuffer[Float] = new ArrayBuffer[Float]()
-
   /** Byte length of the hash key: 4 (index) + 8 (feature). */
   val key_len: Int = 4 + 8
 
@@ -60,7 +59,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
     hash
   }
 
-  override def get_hash(dim: Long): ArrayBuffer[Long] = {
+  override def getHash(dim: Long): ArrayBuffer[Long] = {
     val pos_list = new ArrayBuffer[Long]()
     for (i <- feature_list.indices) {
       val fea = feature_list(i)
@@ -72,7 +71,7 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureT
     pos_list
   }
 
-  override def get_hash_info(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
+  override def getHashInfo(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     val pos_info_list = new ArrayBuffer[(String, Int, Byte, String, Long, Float)]()
     for (i <- feature_list.indices) {
       val fea = feature_list(i)

@@ -38,8 +38,8 @@ abstract class RawFeature(f_i: Int, f_n: String, f_t: Byte) extends Serializable
   final val SEED: Int = 0x3c074a61
 
   /** Computes raw hash values for all values in this feature. */
-  def get_hash(dim: Long): ArrayBuffer[Long]
+  def getHash(dim: Long): ArrayBuffer[Long]
 
   /** Computes detailed hash info: (name, index, type, raw, hash, value) for each value. */
-  def get_hash_info(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)]
+  def getHashInfo(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)]
 }

@@ -79,53 +79,110 @@ gerbil-data/
 
 ### Pipeline Overview
 
+```mermaid
+flowchart LR
+    subgraph Raw[Raw Data]
+        direction TB
+        R1[ratings.dat] --- R2[users.dat] --- R3[movies.dat]
+    end
+
+    subgraph ETL[ETL Processing]
+        C[ML1MCleanSample<br/>Filter · Dedup · Validate]
+        U[ML1MUserMovieRateSequence<br/>User behavior sequences<br/>1d / 3d / 7d / 15d / all]
+        M[ML1MMovieStatFeature<br/>Movie stats: count,<br/>avg rate, hot rank]
+        P[User Profile<br/>Parse users.dat]
+        J[ML1MJoinSample<br/>Join all features]
+    end
+
+    subgraph Sampling[Negative Sampling]
+        N[ML1MNegativeSampler<br/>Random / Popular / Mixed]
+    end
+
+    subgraph Encoding[Feature Encoding]
+        F[ML1MFeaturizer<br/>44 features via YAML config<br/>Categorical + Continuous]
+        H[Hash → Embedding Index<br/>MurmurHash3 x64_128<br/>f_index #124;#124; value as key]
+        V[Vocabulary<br/>Frequency threshold<br/>Pos-map / Target-map]
+    end
+
+    subgraph Train[Training Data]
+        T[TFRecord<br/>TensorFlow Example]
+        Pq[Parquet<br/>Columnar format]
+        Pm[Pos-map<br/>JSON + Binary]
+    end
+
+    subgraph Serving[C++ Inference]
+        Cp[C++ Featurizer<br/>Bit-exact reproduction]
+        Ld[Load vocabulary<br/>Same hash · Same key]
+    end
+
+    Raw --> C
+    C --> U & M
+    U & M & P --> J
+    J --> N & F
+    F --> H --> V
+    V --> T & Pq & Pm
+    Pm --> Ld --> Cp
 ```
-                         ┌─────────────────────────────┐
-                         │       Raw Data Sources       │
-                         │  ratings.dat  users.dat      │
-                         │  movies.dat                  │
-                         └──────────────┬───────────────┘
-                                        │
-                                        ▼
-                         ┌─────────────────────────────┐
-                         │       ML1MCleanSample       │
-                         │  Filter · Dedup · Validate  │
-                         │  Output: clean_sample/      │
-                         └──────────────┬───────────────┘
-                                        │
-                    ┌───────────────────┼───────────────────┐
-                    ▼                   ▼                   ▼
- ┌─────────────────────────────┐ ┌─────────────────────┐ ┌──────────────────┐
- │  ML1MUserMovieRateSequence  │ │ML1MMovieStatFeature │ │ (users.dat)      │
- │  Behavior sequences by user │ │Movie stats: count,  │ │ User profile     │
- │  (1d / 3d / 7d / 15d / all)│ │avg rate, hot rank   │ │ parsing          │
- │  Output: user_movie_rate/   │ │Output: item_feature/│ └────────┬─────────┘
- └──────────────┬──────────────┘ └──────────┬──────────┘          │
-                │                           │                    │
-                └───────────────┬───────────┴────────────────────┘
-                                │
-                                ▼
-                 ┌─────────────────────────────┐
-                 │       ML1MJoinSample        │
-                 │  Join user + item + context │
-                 │  + behavior sequences       │
-                 │  Output: join_sample/       │
-                 └──────────────┬──────────────┘
-                                │
-                                ▼
-                 ┌─────────────────────────────┐
-                 │        ML1MPipeline         │
-                 │  Feature encoding · Hash →  │
-                 │  embedding index            │
-                 │  Vocabulary management      │
-                 ├─────────────────────────────┤
-                 │  Output:                    │
-                 │  ├── tfrecord/              │
-                 │  ├── parquet/               │
-                 │  ├── pos_map.json           │
-                 │  ├── pos_map.bin            │
-                 │  └── pos_map.txt            │
-                 └─────────────────────────────┘
+
+### Component Architecture
+
+```mermaid
+flowchart TD
+    subgraph Config[Configuration Layer]
+        YAML[features.yaml<br/>Feature registry<br/>Name · Index · Type · Class]
+        FC[FeatureConfig<br/>Case class model]
+        CL[FeatureConfigLoader<br/>YAML → FeatureDef]
+    end
+
+    subgraph Core[Featurizer Core]
+        FE["Featurizer[T]<br/>Generic abstract framework"]
+        CF["CategoricalFeature[T]<br/>Hash-based embedding<br/>(name_raw, _index, _value)"]
+        COF["ContinuousFeature[T]<br/>Identity mapping"]
+        XF["CrossFeature[T]<br/>Combinatory enumeration"]
+        RT["RawTarget[T]"]
+    end
+
+    subgraph ML1M[ML-1M Implementation]
+        MF[ML1MFeaturizer<br/>Reflection-based instantiation<br/>from YAML config]
+        MS[ML1MSample<br/>50+ fields: user, item,<br/>context, behavior]
+        UF[~40 concrete feature classes<br/>Shared traits eliminate<br/>copy-paste duplication]
+    end
+
+    subgraph Pipe[Pipeline]
+        PL["Pipeline[T]<br/>Time-based split<br/>Vocabulary building<br/>Quality tracking"]
+        SW["SampleWriter[T]<br/>TFRecord + Parquet<br/>Partition-local featurizer"]
+        PS[PosMapSerDe<br/>Save / Restore<br/>vocabulary across runs]
+        QT[DataQualityTracker<br/>Parse rate · Target dist<br/>Drift detection]
+    end
+
+    subgraph Serde[Serialization]
+        TR[tfrecords/ package<br/>Custom Spark SQL<br/>TFRecord data source]
+        TF[TFRecord IO<br/>Hadoop Input/Output format]
+        PB[Protobuf<br/>TensorFlow Example]
+    end
+
+    subgraph Sched[Scheduling]
+        AD[Airflow DAG<br/>ml1m_pipeline_dag.py]
+        SP[Bash scripts<br/>Spark-submit wrappers]
+        DV[Docker + DevContainer<br/>Reproducible env]
+    end
+
+    YAML --> FC --> CL --> MF
+    MF --> FE
+    FE --> CF & COF & XF & RT
+    CF & COF & XF --> UF
+    MS --> UF
+    FE --> PL
+    PL --> SW & PS & QT
+    SW --> TF
+    TF --> PB
+    TR --> PB
+    AD & SP & DV --> PL
+
+    style FE fill:#e1f5fe
+    style PL fill:#e1f5fe
+    style YAML fill:#fff3e0
+    style MF fill:#f3e5f5
 ```
 
 ## Prerequisites

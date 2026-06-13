@@ -40,7 +40,7 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
     value_list.clear()
   }
 
-  override def get_hash(dim: Long): ArrayBuffer[Long] = {
+  override def getHash(dim: Long): ArrayBuffer[Long] = {
     val pos_list = new ArrayBuffer[Long]()
     for (fea <- feature_list) {
       if (fea != 0) {
@@ -50,7 +50,7 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
     pos_list
   }
 
-  override def get_hash_info(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
+  override def getHashInfo(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     val pos_info_list = new ArrayBuffer[(String, Int, Byte, String, Long, Float)]()
     for (i <- feature_list.indices) {
       val fea = feature_list(i)

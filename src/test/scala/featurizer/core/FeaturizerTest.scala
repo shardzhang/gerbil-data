@@ -141,7 +141,7 @@ class FeatureEncoderTest extends WordSpec with Matchers {
       val feat = new TestCategoricalFeature(1, "test_feat")
       feat.parse("10,20,30")
 
-      val hashes = feat.get_hash(1000)
+      val hashes = feat.getHash(1000)
       assert(hashes.size === 3)
       hashes.foreach(h => assert(h >= 0 && h < 1000))
     }
@@ -149,7 +149,7 @@ class FeatureEncoderTest extends WordSpec with Matchers {
     "skip zero values in get_hash" in {
       val feat = new TestCategoricalFeature(1, "test_feat")
       feat.parse("0,10,0,20")
-      val hashes = feat.get_hash(1000)
+      val hashes = feat.getHash(1000)
       assert(hashes.size === 2)
     }
 
@@ -224,11 +224,11 @@ class FeatureEncoderTest extends WordSpec with Matchers {
       }
     }
 
-    "get_hash_info returns detailed info" in {
+    "getHashInfo returns detailed info" in {
       val feat = new TestCategoricalFeature(1, "test_feat")
       feat.parse("10,20")
 
-      val info = feat.get_hash_info(1000)
+      val info = feat.getHashInfo(1000)
       assert(info.size === 2)
       info.foreach { case (name, idx, fType, fmt, hash, value) =>
         assert(name === "test_feat")
@@ -261,14 +261,14 @@ class FeatureEncoderTest extends WordSpec with Matchers {
       val feat = new TestContinuousFeature(1, "conti_feat")
       feat.parse("5,10,15")
 
-      val hashes = feat.get_hash(1000)
+      val hashes = feat.getHash(1000)
       assert(hashes === ArrayBuffer(5L, 10L, 15L))
     }
 
     "skip zero values in get_hash" in {
       val feat = new TestContinuousFeature(1, "conti_feat")
       feat.parse("0,10,0,20")
-      val hashes = feat.get_hash(1000)
+      val hashes = feat.getHash(1000)
       assert(hashes === ArrayBuffer(10L, 20L))
     }
 
@@ -311,11 +311,11 @@ class FeatureEncoderTest extends WordSpec with Matchers {
       assert(encoded_map("conti_feat") === ArrayBuffer(10L, 20L))
     }
 
-    "get_hash_info returns detailed info" in {
+    "getHashInfo returns detailed info" in {
       val feat = new TestContinuousFeature(1, "conti_feat")
       feat.parse("10")
 
-      val info = feat.get_hash_info(1000)
+      val info = feat.getHashInfo(1000)
       assert(info.size === 1)
       val (name, idx, fType, fmt, hash, value) = info.head
       assert(name === "conti_feat")
@@ -403,7 +403,7 @@ class FeatureEncoderTest extends WordSpec with Matchers {
       f2.parse("30")
 
       val cross = new CrossFeature[String](100, "cross_f", f1, f2)
-      val hashes = cross.get_hash(1000)
+      val hashes = cross.getHash(1000)
       assert(hashes.size === 2)
     }
 
@@ -437,14 +437,14 @@ class FeatureEncoderTest extends WordSpec with Matchers {
       assert(encoded_map("cross_f").size === 1)
     }
 
-    "get_hash_info returns detailed info" in {
+    "getHashInfo returns detailed info" in {
       val f1 = new TestCategoricalFeature(1, "f1")
       f1.parse("10")
       val f2 = new TestCategoricalFeature(2, "f2")
       f2.parse("20")
 
       val cross = new CrossFeature[String](100, "cross_f", f1, f2)
-      val info = cross.get_hash_info(1000)
+      val info = cross.getHashInfo(1000)
       assert(info.size === 1)
       val (name, idx, fType, fmt, _, _) = info.head
       assert(name === "cross_f")

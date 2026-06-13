@@ -64,7 +64,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
 
   /** Computes hash info (field name, index, type, raw value, hash, value) for vocabulary building. */
   def getHashInfo(sample: T, encoder: Featurizer[T]): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
-    encoder.get_hash_info(sample, max_dim)
+    encoder.getHashInfo(sample, max_dim)
   }
 
   /** Builds the Parquet schema with (target, *_raw, *_index, *_value) columns for each feature. */

@@ -117,7 +117,7 @@ class ML1MFeaturizerTest extends WordSpec with Matchers {
       val sample = createSample()
 
       // First get hashes
-      val hashInfo = encoder.get_hash_info(sample, 1L << 20)
+      val hashInfo = encoder.getHashInfo(sample, 1L << 20)
       val pos_map = hashInfo.map { case (_, idx, _, _, hash, _) =>
         (idx, hash) -> (hash % 100).toInt
       }.toMap
@@ -143,11 +143,11 @@ class ML1MFeaturizerTest extends WordSpec with Matchers {
       assert(hashes.nonEmpty)
     }
 
-    "get_hash_info returns detailed hash info" in {
+    "getHashInfo returns detailed hash info" in {
       val encoder = new ML1MFeaturizer().setup()
       val sample = createSample()
 
-      val info = encoder.get_hash_info(sample, 1L << 20)
+      val info = encoder.getHashInfo(sample, 1L << 20)
       assert(info.nonEmpty)
       info.foreach { case (name, idx, fType, fmt, hash, value) =>
         assert(name.nonEmpty)

@@ -94,7 +94,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
     }
   }
 
-  override def get_hash_info(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
+  override def getHashInfo(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     val buf = ArrayBuffer[(String, Int, Byte, String, Long, Float)]()
     foreachCombination {
       buf.append((f_name, f_index, f_type, formatCombination, computeHash(dim), 1.0F))
@@ -103,15 +103,15 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
   }
 
   /** Convenience overload: parses input, then computes hash info for all combinations. */
-  def get_hash_info(input: T, dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
+  def getHashInfo(input: T, dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     for (c_f <- rnfs) {
       c_f.clear()
       c_f.parse(input)
     }
-    get_hash_info(dim)
+    getHashInfo(dim)
   }
 
-  override def get_hash(dim: Long): ArrayBuffer[Long] = {
+  override def getHash(dim: Long): ArrayBuffer[Long] = {
     val buf = new ArrayBuffer[Long]
     foreachCombination {
       buf.append(computeHash(dim))

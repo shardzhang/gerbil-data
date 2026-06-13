@@ -72,22 +72,22 @@ abstract class Featurizer[T] extends Serializable {
       raw_f.parse(input)
     }
     for (raw_f <- raw_cate_features) {
-      val hash = raw_f.get_hash(dim)
+      val hash = raw_f.getHash(dim)
       buf.appendAll(hash)
     }
     for (raw_f <- raw_conti_features) {
-      val hash = raw_f.get_hash(dim)
+      val hash = raw_f.getHash(dim)
       buf.appendAll(hash)
     }
     for (cross_f <- cross_features) {
-      val hash = cross_f.get_hash(dim)
+      val hash = cross_f.getHash(dim)
       buf.appendAll(hash)
     }
     buf
   }
 
   /** Computes detailed hash info (field name, index, type, raw value, hash, value) for vocabulary building. */
-  def get_hash_info(input: T, dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
+  def getHashInfo(input: T, dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     val buf = new ArrayBuffer[(String, Int, Byte, String, Long, Float)]
     for (raw_f <- raw_cate_features) {
       raw_f.clear()
@@ -98,15 +98,15 @@ abstract class Featurizer[T] extends Serializable {
       raw_f.parse(input)
     }
     for (raw_f <- raw_cate_features) {
-      val hash_info = raw_f.get_hash_info(dim)
+      val hash_info = raw_f.getHashInfo(dim)
       buf.appendAll(hash_info)
     }
     for (raw_f <- raw_conti_features) {
-      val pos_info = raw_f.get_hash_info(dim)
+      val pos_info = raw_f.getHashInfo(dim)
       buf.appendAll(pos_info)
     }
     for (cross_f <- cross_features) {
-      val pos_info = cross_f.get_hash_info(dim)
+      val pos_info = cross_f.getHashInfo(dim)
       buf.appendAll(pos_info)
     }
     buf

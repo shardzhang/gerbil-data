@@ -70,52 +70,110 @@ gerbil-data/
 
 ### Pipeline 数据流
 
+```mermaid
+flowchart LR
+    subgraph Raw[原始数据]
+        direction TB
+        R1[ratings.dat] --- R2[users.dat] --- R3[movies.dat]
+    end
+
+    subgraph ETL[ETL 处理]
+        C[ML1MCleanSample<br/>过滤 · 去重 · 校验]
+        U[ML1MUserMovieRateSequence<br/>用户行为序列<br/>1天 / 3天 / 7天 / 15天 / 全部]
+        M[ML1MMovieStatFeature<br/>电影统计: 评分次数<br/>均分 · 热度排名]
+        P[用户画像<br/>解析 users.dat]
+        J[ML1MJoinSample<br/>关联所有特征]
+    end
+
+    subgraph Sampling[负采样]
+        N[ML1MNegativeSampler<br/>随机 / 流行度 / 混合]
+    end
+
+    subgraph Encoding[特征编码]
+        F[ML1MFeaturizer<br/>44个特征 · YAML 配置<br/>离散 + 连续]
+        H[Hash → 嵌入索引<br/>MurmurHash3 x64_128<br/>f_index #124;#124; 值作为 key]
+        V[词表<br/>频次阈值<br/>Pos-map / Target-map]
+    end
+
+    subgraph Train[训练数据]
+        T[TFRecord<br/>TensorFlow Example]
+        Pq[Parquet<br/>列式格式]
+        Pm[Pos-map<br/>JSON + 二进制]
+    end
+
+    subgraph Serving[C++ 在线推理]
+        Cp[C++ Featurizer<br/>按位一致的重实现]
+        Ld[加载词表<br/>相同 Hash · 相同 Key]
+    end
+
+    Raw --> C
+    C --> U & M
+    U & M & P --> J
+    J --> N & F
+    F --> H --> V
+    V --> T & Pq & Pm
+    Pm --> Ld --> Cp
 ```
-                         ┌─────────────────────────────┐
-                         │         原始数据源            │
-                         │  ratings.dat  users.dat      │
-                         │  movies.dat                  │
-                         └──────────────┬───────────────┘
-                                        │
-                                        ▼
-                         ┌─────────────────────────────┐
-                         │       ML1MCleanSample       │
-                         │  数据过滤 · 去重 · 校验     │
-                         │  输出: clean_sample/        │
-                         └──────────────┬───────────────┘
-                                        │
-                    ┌───────────────────┼───────────────────┐
-                    ▼                   ▼                   ▼
- ┌─────────────────────────────┐ ┌─────────────────────┐ ┌──────────────────┐
- │  ML1MUserMovieRateSequence  │ │ML1MMovieStatFeature │ │ (users.dat)      │
- │  按用户提取行为序列          │ │电影统计: 评分次数、 │ │ 用户画像解析     │
- │  (1天/3天/7天/15天/全部)     │ │均分、热度排名       │ │                  │
- │  输出: user_movie_rate/     │ │输出: item_feature/  │ └────────┬─────────┘
- └──────────────┬──────────────┘ └──────────┬──────────┘          │
-                │                           │                    │
-                └───────────────┬───────────┴────────────────────┘
-                                │
-                                ▼
-                 ┌─────────────────────────────┐
-                 │       ML1MJoinSample        │
-                 │  关联用户 + 物品 + 上下文    │
-                 │  + 行为序列                 │
-                 │  输出: join_sample/         │
-                 └──────────────┬──────────────┘
-                                │
-                                ▼
-                 ┌─────────────────────────────┐
-                 │        ML1MPipeline         │
-                 │  特征编码 · Hash → 嵌入索引  │
-                 │  词表管理                   │
-                 ├─────────────────────────────┤
-                 │  输出:                      │
-                 │  ├── tfrecord/              │
-                 │  ├── parquet/               │
-                 │  ├── pos_map.json           │
-                 │  ├── pos_map.bin            │
-                 │  └── pos_map.txt            │
-                 └─────────────────────────────┘
+
+### 组件架构
+
+```mermaid
+flowchart TD
+    subgraph Config[配置层]
+        YAML[features.yaml<br/>特征注册中心<br/>名称 · 索引 · 类型 · 类名]
+        FC[FeatureConfig<br/>Case class 模型]
+        CL[FeatureConfigLoader<br/>YAML → FeatureDef]
+    end
+
+    subgraph Core[特征化核心]
+        FE["Featurizer[T]<br/>泛型抽象框架"]
+        CF["CategoricalFeature[T]<br/>哈希嵌入<br/>(name_raw, _index, _value)"]
+        COF["ContinuousFeature[T]<br/>恒等映射"]
+        XF["CrossFeature[T]<br/>组合枚举"]
+        RT["RawTarget[T]"]
+    end
+
+    subgraph ML1M[ML-1M 实现]
+        MF[ML1MFeaturizer<br/>反射实例化<br/>从 YAML 配置]
+        MS[ML1MSample<br/>50+ 字段: 用户、物品<br/>上下文、行为]
+        UF[~40 个具体特征类<br/>共享 trait 消除<br/>复制粘贴重复]
+    end
+
+    subgraph Pipe[流水线]
+        PL["Pipeline[T]<br/>时间维度切分<br/>词表构建<br/>质量追踪"]
+        SW["SampleWriter[T]<br/>TFRecord + Parquet<br/>分区级特征化器"]
+        PS[PosMapSerDe<br/>保存 / 恢复<br/>跨运行词表]
+        QT[DataQualityTracker<br/>解析率 · 目标分布<br/>漂移检测]
+    end
+
+    subgraph Serde[序列化]
+        TR[tfrecords/ 包<br/>自定义 Spark SQL<br/>TFRecord 数据源]
+        TF[TFRecord IO<br/>Hadoop Input/Output 格式]
+        PB[Protobuf<br/>TensorFlow Example]
+    end
+
+    subgraph Sched[调度]
+        AD[Airflow DAG<br/>ml1m_pipeline_dag.py]
+        SP[Bash 脚本<br/>Spark-submit 封装]
+        DV[Docker + DevContainer<br/>可复现环境]
+    end
+
+    YAML --> FC --> CL --> MF
+    MF --> FE
+    FE --> CF & COF & XF & RT
+    CF & COF & XF --> UF
+    MS --> UF
+    FE --> PL
+    PL --> SW & PS & QT
+    SW --> TF
+    TF --> PB
+    TR --> PB
+    AD & SP & DV --> PL
+
+    style FE fill:#e1f5fe
+    style PL fill:#e1f5fe
+    style YAML fill:#fff3e0
+    style MF fill:#f3e5f5
 ```
 
 ## 前置要求
