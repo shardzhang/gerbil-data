@@ -81,13 +81,13 @@ def common_spark_args(memory: str = "4g") -> list[str]:
         "--conf", "spark.driver.cores=5",
         "--conf", "spark.network.timeout=600s",
         "--conf", "spark.kryoserializer.buffer.max=2000m",
-        "--conf", 'spark.serializer="org.apache.spark.serializer.KryoSerializer"',
+        "--conf", "spark.serializer=org.apache.spark.serializer.KryoSerializer",
         "--driver-memory", memory,
         "--executor-memory", "2g",
         "--conf", "spark.default.parallelism=2",
         "--conf", "spark.sql.shuffle.partitions=2",
-        "--conf", "spark.driver.extraJavaOptions='-verbose:gc -XX:+PrintGCDetails'",
-        "--conf", "spark.executor.extraJavaOptions='-verbose:gc -XX:+PrintGCDetails'",
+        "--conf", "spark.driver.extraJavaOptions=-verbose:gc -XX:+PrintGCDetails",
+        "--conf", "spark.executor.extraJavaOptions=-verbose:gc -XX:+PrintGCDetails",
     ]
 
 
@@ -102,12 +102,12 @@ def pipeline_spark_args(memory: str = "8g") -> list[str]:
         "--conf", "spark.default.parallelism=64",
         "--conf", "spark.sql.shuffle.partitions=64",
         "--conf", "spark.kryoserializer.buffer.max=2000m",
-        "--conf", 'spark.serializer="org.apache.spark.serializer.KryoSerializer"',
+        "--conf", "spark.serializer=org.apache.spark.serializer.KryoSerializer",
         "--driver-memory", memory,
         "--executor-memory", "8g",
         "--conf", "spark.hadoop.fs.defaultFS=file:///",
-        "--conf", "spark.driver.extraJavaOptions='-XX:ReservedCodeCacheSize=512m -verbose:gc -XX:+PrintGCDetails'",
-        "--conf", "spark.executor.extraJavaOptions='-XX:ReservedCodeCacheSize=512m -verbose:gc -XX:+PrintGCDetails'",
+        "--conf", "spark.driver.extraJavaOptions=-XX:ReservedCodeCacheSize=512m -verbose:gc -XX:+PrintGCDetails",
+        "--conf", "spark.executor.extraJavaOptions=-XX:ReservedCodeCacheSize=512m -verbose:gc -XX:+PrintGCDetails",
     ]
 
 

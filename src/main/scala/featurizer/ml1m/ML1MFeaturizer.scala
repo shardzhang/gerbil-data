@@ -6,9 +6,7 @@ import utils.LogUtils.green_println
 import scala.collection.mutable
 
 /**
- * @author shard zhang
- * @date 2026/6/10 17:57
- * @note ML-1M featurizer orchestrator — reads features.yaml, instantiates and registers all feature extractors
+ * ML-1M featurizer orchestrator — reads features.yaml, instantiates and registers all feature extractors
  */
 
 /** Featurizes each ML1M sample before feeding to the model.
@@ -28,15 +26,11 @@ class ML1MFeaturizer(configPath: Option[String] = None) extends Featurizer[ML1MS
       ctor.newInstance(featureDef.index.asInstanceOf[AnyRef], featureDef.name)
     } catch {
       case e: ClassNotFoundException =>
-        System.err.println("[Featurizer] ERROR: class not found for feature '" + featureDef.name +
-          "' (index=" + featureDef.index + "): " + featureDef.className)
-        sys.exit(1)
-        throw e
+        throw new RuntimeException("[Featurizer] class not found for feature '" + featureDef.name +
+          "' (index=" + featureDef.index + "): " + featureDef.className, e)
       case e: NoSuchMethodException =>
-        System.err.println("[Featurizer] ERROR: missing (Int, String) constructor for feature '" +
-          featureDef.name + "' (index=" + featureDef.index + "): " + featureDef.className)
-        sys.exit(1)
-        throw e
+        throw new RuntimeException("[Featurizer] missing (Int, String) constructor for feature '" +
+          featureDef.name + "' (index=" + featureDef.index + "): " + featureDef.className, e)
     }
   }
 

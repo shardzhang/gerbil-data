@@ -39,5 +39,6 @@
   "remoteUser": "root",
   "mounts": [
     "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
-  ]
+  ],
+  "runArgs": ["--memory=8g"]
 }

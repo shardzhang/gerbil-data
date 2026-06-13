@@ -1,9 +1,7 @@
 package pipeline.stats
 
 /**
- * @author shard zhang
- * @date 2026/6/11 13:49
- * @note ETL quality tracking — per-stage count, parse success rate, target distribution
+ * ETL quality tracking — per-stage count, parse success rate, target distribution
  */
 
 /** Quality snapshot for one ETL stage: record count, parse success rate, and target label distribution. */

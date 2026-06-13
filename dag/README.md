@@ -128,65 +128,6 @@ dag_id        | run_id                            | state   | execution_date    
 ml1m_pipeline | manual__2026-06-12T04:57:14+00:00 | running | 2026-06-12T04:57:14+00:00 | 2026-06-12T04:57:23.162014+00:00 |
 ```
 
-### Check Task Status in JSON (Mixed Format)
-
-Using `-o json` outputs JSON for programmatic parsing. The example below shows two attempts — one missing the pipe and one correctly using `jq` for formatting:
-
-```bash
- ~/PycharmProject/gerbil-data  on main !1  airflow tasks states-for-dag-run ml1m_pipeline manual__2026-06-12T04:57:14+00:00 -o json` ~/PycharmProject/gerbil-data  on main ⇣2⇡1 !4 ?1  airflow tasks states-for-dag-run ml1m_pipeline manual__2026-06-12T04:57:14+00:00 -o json | jq .         ✔  gerbil-data Py  at 13:04:46
-[
-  {
-    "dag_id": "ml1m_pipeline",
-    "execution_date": "2026-06-12T04:57:14+00:00",
-    "task_id": "clean_sample",
-    "state": "success",
-    "start_date": "2026-06-12T04:57:23.895341+00:00",
-    "end_date": "2026-06-12T04:58:03.805839+00:00"
-  },
-  {
-    "dag_id": "ml1m_pipeline",
-    "execution_date": "2026-06-12T04:57:14+00:00",
-    "task_id": "movie_stat_features",
-    "state": "success",
-    "start_date": "2026-06-12T04:58:05.929723+00:00",
-    "end_date": "2026-06-12T04:58:52.409529+00:00"
-  },
-  {
-    "dag_id": "ml1m_pipeline",
-    "execution_date": "2026-06-12T04:57:14+00:00",
-    "task_id": "user_movie_rate_sequence",
-    "state": "success",
-    "start_date": "2026-06-12T04:58:56.464890+00:00",
-    "end_date": "2026-06-12T04:59:21.757937+00:00"
-  },
-  {
-    "dag_id": "ml1m_pipeline",
-    "execution_date": "2026-06-12T04:57:14+00:00",
-    "task_id": "join_sample",
-    "state": "success",
-    "start_date": "2026-06-12T04:59:25.818581+00:00",
-    "end_date": "2026-06-12T04:59:52.152856+00:00"
-  },
-  {
-    "dag_id": "ml1m_pipeline",
-    "execution_date": "2026-06-12T04:57:14+00:00",
-    "task_id": "ml1m_pipeline",
-    "state": "success",
-    "start_date": "2026-06-12T05:19:04.782324+00:00",
-    "end_date": "2026-06-12T05:32:45.615393+00:00"
-  },
-  {
-    "dag_id": "ml1m_pipeline",
-    "execution_date": "2026-06-12T04:57:14+00:00",
-    "task_id": "offline_evaluation",``````
-    "state": "success",
-    "start_date": "2026-06-12T05:32:48.916991+00:00",
-    "end_date": "2026-06-12T05:49:31.688929+00:00"
-  }
-]`
-[{"dag_id": "ml1m_pipeline", "execution_date": "2026-06-12T04:57:14+00:00", "task_id": "clean_sample", "state": "success", "start_date": "2026-06-12T04:57:23.895341+00:00", "end_date": "2026-06-12T04:58:03.805839+00:00"}, {"dag_id": "ml1m_pipeline", "execution_date": "2026-06-12T04:57:14+00:00", "task_id": "movie_stat_features", "state": "success", "start_date": "2026-06-12T04:58:05.929723+00:00", "end_date": "2026-06-12T04:58:52.409529+00:00"}, {"dag_id": "ml1m_pipeline", "execution_date": "2026-06-12T04:57:14+00:00", "task_id": "user_movie_rate_sequence", "state": "success", "start_date": "2026-06-12T04:58:56.464890+00:00", "end_date": "2026-06-12T04:59:21.757937+00:00"}, {"dag_id": "ml1m_pipeline", "execution_date": "2026-06-12T04:57:14+00:00", "task_id": "join_sample", "state": "success", "start_date": "2026-06-12T04:59:25.818581+00:00", "end_date": "2026-06-12T04:59:52.152856+00:00"}, {"dag_id": "ml1m_pipeline", "execution_date": "2026-06-12T04:57:14+00:00", "task_id": "ml1m_encode", "state": "success", "start_date": "2026-06-12T05:19:04.782324+00:00", "end_date": "2026-06-12T05:32:45.615393+00:00"}, {"dag_id": "ml1m_pipeline", "execution_date": "2026-06-12T04:57:14+00:00", "task_id": "offline_evaluation", "state": "success", "start_date": "2026-06-12T05:32:48.916991+00:00", "end_date": "2026-06-12T05:49:31.688929+00:00"}]
-```
-
 ### Check Task Status in JSON (Clean Format)
 
 Using `-o json | jq .` for properly formatted output, making it easy to read all Task details:

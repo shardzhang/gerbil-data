@@ -3,9 +3,7 @@ package featurizer.ml1m
 import featurizer.core.{CategoricalFeature, RawFeature}
 
 /**
- * @author shard zhang
- * @date 2026/6/10 17:57
- * @note ML-1M context features — hour, time area, day of week, weekend flag
+ * ML-1M context features — hour, time area, day of week, weekend flag
  */
 
 /** Context features: hour of day, time area (morning/afternoon/evening/night), day of week, weekend flag. */

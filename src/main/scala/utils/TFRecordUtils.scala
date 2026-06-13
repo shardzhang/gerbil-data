@@ -6,10 +6,7 @@ import java.nio.charset.StandardCharsets
 
 /**
  * TFRecord feature value writing
- *
- * @author shard zhang
- * @date 2026/6/2 14:55
- * @note Custom TFRecord encoding method
+ * Custom TFRecord encoding method
  *
  *       TFRecordUtils.floatFeature(target)
  *

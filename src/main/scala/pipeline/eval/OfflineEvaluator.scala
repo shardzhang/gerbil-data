@@ -5,9 +5,7 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import utils.LogUtils.green_println
 
 /**
- * @author shard zhang
- * @date 2026/6/11 14:32
- * @note Offline evaluation — pos/neg ratio, feature coverage, sample statistics of encoded data
+ * Offline evaluation — pos/neg ratio, feature coverage, sample statistics of encoded data
  */
 
 /** Offline evaluation for featurized training data.

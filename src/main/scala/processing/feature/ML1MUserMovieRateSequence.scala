@@ -5,11 +5,8 @@ import processing.stats.DataQualityChecker
 import utils.LogUtils.{green_println, setLogLevel}
 
 /**
- * @author shard zhang
- * @date 2026/5/29 18:18
- * @note ML-1M user movie rating sequence construction
  *       Builds per-user movie rating sequences, keeping top-N most recent per user.
- *
+ * ML-1M user movie rating sequence construction
  *       DataFrames load raw text; SQL handles all transformation logic.
  *       DataFrames load raw text; SQL handles all transformation logic.
  *

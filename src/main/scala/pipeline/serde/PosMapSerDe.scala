@@ -14,9 +14,7 @@ import featurizer.core.FeatureType
 import pipeline.stats.PosInfo
 
 /**
- * @author shard zhang
- * @date 2026/6/10 17:57
- * @note PosMap serialization — saves/restores feature position maps in JSON/text/binary formats
+ * PosMap serialization — saves/restores feature position maps in JSON/text/binary formats
  */
 
 /** Persists and restores feature position maps, target maps, and field dimension maps in JSON, text, and binary formats. */

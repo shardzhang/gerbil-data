@@ -122,12 +122,11 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
       val train = indexed.filter { case (_, idx) => idx < trainEnd }.map(_._1).persist(StorageLevel.MEMORY_AND_DISK_SER)
       val valid = indexed.filter { case (_, idx) => idx >= trainEnd && idx < valEnd }.map(_._1).persist(StorageLevel.MEMORY_AND_DISK_SER)
       val test = indexed.filter { case (_, idx) => idx >= valEnd }.map(_._1).persist(StorageLevel.MEMORY_AND_DISK_SER)
-      indexed.unpersist()
-      allSamples.unpersist()
-
       val trainCount = train.count()
       val valCount = valid.count()
       val testCount = test.count()
+      indexed.unpersist()
+      allSamples.unpersist()
       green_println(s"train/val/test split: ${total} total, " +
         s"train=${trainCount} (${train_ratio*100}%), " +
         s"val=${valCount} (${val_ratio*100}%), " +

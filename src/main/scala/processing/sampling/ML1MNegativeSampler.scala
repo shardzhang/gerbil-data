@@ -8,9 +8,7 @@ import utils.LogUtils.{green_println, setLogLevel}
 import scala.util.Random
 
 /**
- * @author shard zhang
- * @date 2026/6/11 11:18
- * @note ML-1M ETL-layer negative sampler — Spark-based random/popular negative sampling
+ * ML-1M ETL-layer negative sampler — Spark-based random/popular negative sampling
  */
 
 /** ML-1M negative sampler: generates negative samples from items each user has NOT interacted with.
@@ -192,7 +190,7 @@ object ML1MNegativeSampler {
     opts.addOption(null, "input", true, "Input directory")
     opts.addOption(null, "output", true, "Output directory (default: <path>/neg_sample)")
     opts.addOption(null, "strategy", true, "Sampling strategy: random, popular (default), mixed")
-    opts.addOption(null, "neg_ratio", true, "neg_ratio: default 0. neg_ratio=5表示1个正样本对应5个负样本")
+    opts.addOption(null, "neg_ratio", true, "neg_ratio: default 0. e.g., neg_ratio=5 means 5 negatives per positive")
 
     val parser = new DefaultParser()
     val cl = parser.parse(opts, args)

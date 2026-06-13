@@ -78,7 +78,6 @@ DAG 默认每日调度（`schedule="@daily"`），不回溯历史。
 首次使用 `airflow tasks states-for-dag-run` 时缺少 run_id 参数，CLI 会提示用法。补充正确的 run_id 后即可查看本次 DAG Run 中各 Task 的执行状态：
 
 ```bash
-
 ~/PycharmProject/gerbil-data  on main ⇣2⇡1 !4 ?1  source .venv/bin/activate    
  ~/PycharmProject/gerbil-data  on main ⇣2⇡1 !4 ?1  airflow tasks states-for-dag-run ml1m_pipeline
 Usage: airflow tasks states-for-dag-run [-h] [-o table, json, yaml, plain] [-v] dag_id execution_date_or_run_id
@@ -128,66 +127,7 @@ dag_id        | run_id                            | state   | execution_date    
 ml1m_pipeline | manual__2026-06-12T04:57:14+00:00 | running | 2026-06-12T04:57:14+00:00 | 2026-06-12T04:57:23.162014+00:00 |
 ```
 
-### 查看 JSON 格式任务状态（含管道符混乱版）
-
-使用 `-o json` 输出 JSON 格式，便于程序化解析。下面演示了缺少管道符和正确使用 `jq` 格式化的两种写法：
-
-```bash
- ~/PycharmProject/gerbil-data  on main !1  airflow tasks states-for-dag-run ml1m_pipeline manual__2026-06-12T04:57:14+00:00 -o json` ~/PycharmProject/gerbil-data  on main ⇣2⇡1 !4 ?1  airflow tasks states-for-dag-run ml1m_pipeline manual__2026-06-12T04:57:14+00:00 -o json | jq .         ✔  gerbil-data Py  at 13:04:46
-[
-  {
-    "dag_id": "ml1m_pipeline",
-    "execution_date": "2026-06-12T04:57:14+00:00",
-    "task_id": "clean_sample",
-    "state": "success",
-    "start_date": "2026-06-12T04:57:23.895341+00:00",
-    "end_date": "2026-06-12T04:58:03.805839+00:00"
-  },
-  {
-    "dag_id": "ml1m_pipeline",
-    "execution_date": "2026-06-12T04:57:14+00:00",
-    "task_id": "movie_stat_features",
-    "state": "success",
-    "start_date": "2026-06-12T04:58:05.929723+00:00",
-    "end_date": "2026-06-12T04:58:52.409529+00:00"
-  },
-  {
-    "dag_id": "ml1m_pipeline",
-    "execution_date": "2026-06-12T04:57:14+00:00",
-    "task_id": "user_movie_rate_sequence",
-    "state": "success",
-    "start_date": "2026-06-12T04:58:56.464890+00:00",
-    "end_date": "2026-06-12T04:59:21.757937+00:00"
-  },
-  {
-    "dag_id": "ml1m_pipeline",
-    "execution_date": "2026-06-12T04:57:14+00:00",
-    "task_id": "join_sample",
-    "state": "success",
-    "start_date": "2026-06-12T04:59:25.818581+00:00",
-    "end_date": "2026-06-12T04:59:52.152856+00:00"
-  },
-  {
-    "dag_id": "ml1m_pipeline",
-    "execution_date": "2026-06-12T04:57:14+00:00",
-    "task_id": "ml1m_pipeline",
-    "state": "success",
-    "start_date": "2026-06-12T05:19:04.782324+00:00",
-    "end_date": "2026-06-12T05:32:45.615393+00:00"
-  },
-  {
-    "dag_id": "ml1m_pipeline",
-    "execution_date": "2026-06-12T04:57:14+00:00",
-    "task_id": "offline_evaluation",``````
-    "state": "success",
-    "start_date": "2026-06-12T05:32:48.916991+00:00",
-    "end_date": "2026-06-12T05:49:31.688929+00:00"
-  }
-]`
-[{"dag_id": "ml1m_pipeline", "execution_date": "2026-06-12T04:57:14+00:00", "task_id": "clean_sample", "state": "success", "start_date": "2026-06-12T04:57:23.895341+00:00", "end_date": "2026-06-12T04:58:03.805839+00:00"}, {"dag_id": "ml1m_pipeline", "execution_date": "2026-06-12T04:57:14+00:00", "task_id": "movie_stat_features", "state": "success", "start_date": "2026-06-12T04:58:05.929723+00:00", "end_date": "2026-06-12T04:58:52.409529+00:00"}, {"dag_id": "ml1m_pipeline", "execution_date": "2026-06-12T04:57:14+00:00", "task_id": "user_movie_rate_sequence", "state": "success", "start_date": "2026-06-12T04:58:56.464890+00:00", "end_date": "2026-06-12T04:59:21.757937+00:00"}, {"dag_id": "ml1m_pipeline", "execution_date": "2026-06-12T04:57:14+00:00", "task_id": "join_sample", "state": "success", "start_date": "2026-06-12T04:59:25.818581+00:00", "end_date": "2026-06-12T04:59:52.152856+00:00"}, {"dag_id": "ml1m_pipeline", "execution_date": "2026-06-12T04:57:14+00:00", "task_id": "ml1m_encode", "state": "success", "start_date": "2026-06-12T05:19:04.782324+00:00", "end_date": "2026-06-12T05:32:45.615393+00:00"}, {"dag_id": "ml1m_pipeline", "execution_date": "2026-06-12T04:57:14+00:00", "task_id": "offline_evaluation", "state": "success", "start_date": "2026-06-12T05:32:48.916991+00:00", "end_date": "2026-06-12T05:49:31.688929+00:00"}]
-```
-
-### 查看 JSON 格式任务状态（正确版）
+### 查看 JSON 格式任务状态
 
 正确使用 `-o json | jq .` 格式化输出，便于阅读所有 Task 的完整信息：
 

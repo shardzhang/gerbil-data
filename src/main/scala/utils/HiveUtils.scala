@@ -4,9 +4,6 @@ import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import utils.LogUtils.green_println
 
 /**
- * @author Shard Zhang
- * @date 2022/4/20 16:47
- * @note
  */
 
 /** Hive table I/O utilities: save DataFrames to partitioned tables and print samples. */

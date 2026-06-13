@@ -209,6 +209,37 @@ bash bash/processing/join/ML1MJoinSample.sh
 bash bash/pipeline/ML1MPipeline.sh
 ```
 
+## Docker / DevContainer
+
+A Docker image with all build dependencies (Java 8, Scala 2.12, Maven, protoc, Python) is provided for a reproducible development environment.
+
+### Build the image (or skip to use pre-built)
+
+```bash
+docker build -t gerbil-data .
+```
+
+### Interactive shell
+
+```bash
+docker run -it --rm -v "$PWD":/workspace gerbil-data bash
+```
+
+### Run Maven commands
+
+```bash
+docker run --rm -v "$PWD":/workspace gerbil-data mvn compile -DskipTests
+```
+
+### VS Code DevContainer
+
+1. Install the **Dev Containers** extension
+2. Press `Cmd+Shift+P` → **Dev Containers: Reopen in Container**
+3. VS Code will automatically build and enter the container, with Metals (Scala LSP) and all extensions configured
+
+> Spark is not included in the image to keep it lightweight. Mount it at runtime if needed:
+> `-v /path/to/spark:/opt/spark`
+
 ## Feature Types
 
 ### Raw Features

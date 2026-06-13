@@ -5,9 +5,7 @@ import utils.LogUtils.green_println
 import featurizer.core.{CategoricalFeature, ContinuousFeature, RawFeature}
 
 /**
- * @author shard zhang
- * @date 2026/6/10 17:57
- * @note ML-1M item features — movie title, genres, rating count, avg rating, hot rank, publish year
+ * ML-1M item features — movie title, genres, rating count, avg rating, hot rank, publish year
  */
 
 /** Movie/item features: title tokens, genres, rating count, average rating, genre count, hot rank, publish year. */

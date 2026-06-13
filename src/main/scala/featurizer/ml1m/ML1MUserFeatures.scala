@@ -6,9 +6,7 @@ import featurizer.ml1m.ML1MSample
 import featurizer.core.{CategoricalFeature, ContinuousFeature, RawFeature}
 
 /**
- * @author shard zhang
- * @date 2026/6/10 17:57
- * @note ML-1M user features — demographics, rating statistics, genre preferences, watch patterns
+ * ML-1M user features — demographics, rating statistics, genre preferences, watch patterns
  */
 
 /** User features: demographic (age, gender, occupation, zip), rating statistics (std, count, avg) bucketed and continuous, top genres, watch-same-genre indicators. */

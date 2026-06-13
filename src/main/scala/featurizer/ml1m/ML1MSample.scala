@@ -11,9 +11,6 @@ import com.alibaba.fastjson.JSON
 import utils.LogUtils.green_println
 
 /**
- * @author shard zhang
- * @date 2026/5/29 18:02
- * @note
  *
  *  ML-1M training sample, including user features, item features, user behavior sequence features, label
  *  Training sample with user/item/context features, behavior sequences, and target label.

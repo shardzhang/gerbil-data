@@ -5,11 +5,8 @@ import processing.stats.DataQualityChecker
 import utils.LogUtils.{green_println, setLogLevel}
 
 /**
- * @author shard zhang
- * @date 2026/5/29 12:09
- * @note ML-1M reads raw samples, joins user profiles, item features, and user behavior sequences to form final plaintext samples
  *       Reads clean samples and joins user profiles, item features, and user behavior sequences.
- *
+ * ML-1M reads raw samples, joins user profiles, item features, and user behavior sequences to form final plaintext samples
  *       DataFrames load raw text; SQL handles all transformation logic.
  *       DataFrames load raw text; SQL handles all transformation logic.
  *

@@ -31,7 +31,7 @@ pom.xml text
 *.gz binary
 *.class binary
 *.bin binary
-*.proto binary
+*.proto text
 *.o binary
 *.so binary
 *.dylib binary

@@ -1,9 +1,7 @@
 package config
 
 /**
- * @author shard zhang
- * @date 2026/6/11 17:45
- * @note Feature configuration model parsed from YAML (name, index, type, class, enabled)
+ * Feature configuration model parsed from YAML (name, index, type, class, enabled)
  */
 
 /** Configuration for a single feature extracted from YAML. */
@@ -12,7 +10,7 @@ case class FeatureDef(
   name: String,
   /** Unique numeric feature index within the feature set. */
   index: Int,
-  /** Feature type: 1 = categorical (离散), 0 = continuous (连续). */
+  /** Feature type: 1 = categorical, 0 = continuous. */
   `type`: Int,
   /** Fully-qualified Scala class name that implements parse() logic. */
   className: String,

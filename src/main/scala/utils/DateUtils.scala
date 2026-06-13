@@ -4,9 +4,6 @@ import java.text.SimpleDateFormat
 import java.util.{Calendar, Date}
 
 /**
- * @author Shard Zhang
- * @date 2022/4/28 17:33
- * @note
  */
 /** Date arithmetic and formatting utilities. */
 object DateUtils {

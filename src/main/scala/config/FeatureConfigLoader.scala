@@ -7,9 +7,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 
 /**
- * @author shard zhang
- * @date 2026/6/11 15:22
- * @note YAML configuration loader — classpath resource or external file
+ * YAML configuration loader — classpath resource or external file
  */
 
 /** Loads FeatureConfig from a YAML file. */

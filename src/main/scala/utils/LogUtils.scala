@@ -4,9 +4,7 @@ import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.DataFrame
 
 /**
- * @author Shard Zhang
- * @date 2021/3/18 09:37
- * @note Color printing in Spark shell console
+ * Color printing in Spark shell console
  *       https://stackoverflow.com/questions/287871/how-to-print-colored-text-to-the-terminal
  */
 

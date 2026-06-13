@@ -23,26 +23,26 @@ RUN mkdir -p /usr/share/man/man1 && \
     apt-get update && apt-get install -y --no-install-recommends maven && \
     rm -rf /var/lib/apt/lists/*
 
-# Scala (via coursier for reliability)
-RUN curl -fL https://github.com/coursier/coursier/releases/latest/download/cs-x86_64-pc-linux.gz | \
-    gzip -d > /usr/local/bin/cs && \
-    chmod +x /usr/local/bin/cs && \
-    cs install scala:${SCALA_VERSION} scalac:${SCALA_VERSION} && \
+# Scala (download directly via coursier JAR, architecture-independent)
+RUN curl -fsLo /tmp/coursier.jar https://github.com/coursier/coursier/releases/latest/download/coursier.jar && \
+    java -jar /tmp/coursier.jar install scala:${SCALA_VERSION} scalac:${SCALA_VERSION} && \
     ln -s ~/.local/share/coursier/bin/scala /usr/local/bin/scala && \
-    ln -s ~/.local/share/coursier/bin/scalac /usr/local/bin/scalac
+    ln -s ~/.local/share/coursier/bin/scalac /usr/local/bin/scalac && \
+    rm /tmp/coursier.jar
 
-# Spark
-RUN curl -fsSL https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz \
-    -o /tmp/spark.tgz && \
-    tar xzf /tmp/spark.tgz -C /opt && \
-    ln -s /opt/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} /opt/spark && \
-    rm /tmp/spark.tgz
+# Spark is excluded from the image to keep it lightweight (~350MB).
+# Mount Spark into the container at runtime:
+#   -v /path/to/spark:/opt/spark
+# or set SPARK_HOME in devcontainer.json.
 
-ENV SPARK_HOME=/opt/spark
-ENV PATH=$SPARK_HOME/bin:$PATH
-
-# protoc
-RUN curl -fsSL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip \
+# protoc (architecture-aware download)
+RUN arch=$(uname -m) && \
+    case $arch in \
+        x86_64) protoc_arch=x86_64 ;; \
+        aarch64|arm64) protoc_arch=aarch_64 ;; \
+        *) echo "unsupported arch: $arch"; exit 1 ;; \
+    esac && \
+    curl -fsSL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-${protoc_arch}.zip \
     -o /tmp/protoc.zip && \
     unzip /tmp/protoc.zip -d /opt/protoc && \
     rm /tmp/protoc.zip
@@ -57,6 +57,6 @@ RUN pip3 install --no-cache-dir -r /tmp/requirements.txt && \
 # Working directory
 WORKDIR /workspace
 
-# Default: build the project
+# Copy pom.xml to enable Maven dependency caching (run mvn manually for full download)
 COPY pom.xml .
-RUN mvn dependency:go-offline -q 2>/dev/null || true
+# Note: dependencies are downloaded on first `mvn compile` inside the container

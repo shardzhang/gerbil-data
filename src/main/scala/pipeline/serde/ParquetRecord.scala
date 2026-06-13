@@ -5,9 +5,7 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 
 /**
- * @author shard zhang
- * @date 2026/6/3 14:15
- * @note ParquetRecord
+ * ParquetRecord
  */
 /** A serializable record backed by a mutable map of column name -> value. */
 case class ParquetRecord(columns: mutable.Map[String, Any]) extends Serializable {

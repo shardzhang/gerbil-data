@@ -11,9 +11,7 @@ import scala.reflect.ClassTag
 import featurizer.core.Featurizer
 
 /**
- * @author shard zhang
- * @date 2026/6/10 17:57
- * @note Training sample serializer — writes encoded features to TFRecord or Parquet
+ * Training sample serializer — writes encoded features to TFRecord or Parquet
  */
 
 /** Serializes training samples into TFRecord (TensorFlow Example) or Parquet format. */
@@ -31,7 +29,7 @@ class SampleWriter[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Lon
     val parquetRows: RDD[Row] = trainingSample
       .map { case (sample, _) => sample }
       .mapPartitions(samples => {
-        // 改为 def 或工厂函数后, 每个 partition 创建独立的 featurizer 实例, 消除共享,
+        // Factory function ensures each Spark partition gets its own featurizer instance, avoiding shared mutable state
         val encoder = createEncoder()
         samples.flatMap(sample => {
           val (record, has_feature, has_target) = parseParquet(sample, encoder, posMapLocalImmutable, targetMapImmutable)
@@ -58,7 +56,7 @@ class SampleWriter[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Lon
     trainingSample
       .map { case (sample, _) => sample }
       .mapPartitions(samples => {
-        // 改为 def 或工厂函数后, 每个 partition 创建独立的 featurizer 实例, 消除共享
+        // Factory function ensures each Spark partition gets its own featurizer instance, avoiding shared mutable state
         val encoder = createEncoder()
         samples.flatMap(sample => {
           val (example, has_feature, has_target) = parseTfrecord(sample, encoder, posMapLocalImmutable, targetMapImmutable)

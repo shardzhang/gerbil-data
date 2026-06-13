@@ -1,9 +1,7 @@
 package pipeline.stats
 
 /**
- * @author shard zhang
- * @date 2026/6/10 17:57
- * @note Running statistics — online sum, sum-of-squares, count for mean/variance computation
+ * Running statistics — online sum, sum-of-squares, count for mean/variance computation
  */
 
 /** Tracks running sum-of-values, sum-of-squares, and count for online mean/variance computation. */

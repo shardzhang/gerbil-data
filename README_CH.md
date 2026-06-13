@@ -199,6 +199,37 @@ bash bash/processing/join/ML1MJoinSample.sh
 bash bash/pipeline/ML1MPipeline.sh
 ```
 
+## Docker / DevContainer
+
+提供了一键构建的开发环境 Docker 镜像（Java 8、Scala 2.12、Maven、protoc、Python），确保开发环境可复现。
+
+### 构建镜像
+
+```bash
+docker build -t gerbil-data .
+```
+
+### 交互式终端
+
+```bash
+docker run -it --rm -v "$PWD":/workspace gerbil-data bash
+```
+
+### 运行 Maven 命令
+
+```bash
+docker run --rm -v "$PWD":/workspace gerbil-data mvn compile -DskipTests
+```
+
+### VS Code DevContainer
+
+1. 安装 **Dev Containers** 扩展
+2. `Cmd+Shift+P` → **Dev Containers: Reopen in Container**
+3. VS Code 自动构建并进入容器，Metals（Scala 语言服务器）和所有扩展已配置好
+
+> Spark 未内置在镜像中以保持轻量，需要时在运行时挂载：
+> `-v /path/to/spark:/opt/spark`
+
 ## 特征类型
 
 ### 原始特征

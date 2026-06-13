@@ -6,11 +6,8 @@ import processing.stats.DataQualityChecker
 import utils.LogUtils.{green_println, setLogLevel}
 
 /**
- * @author shard zhang
- * @date 2026/5/28 17:45
- * @note ML-1M processes raw ml-1m rating data, cleans and outputs CSV
  *       Cleans raw ML-1M ratings into deduplicated CSV with day field.
- *
+ * ML-1M processes raw ml-1m rating data, cleans and outputs CSV
  *       DataFrames load raw text; SQL handles all transformation logic.
  *       DataFrames load raw text; SQL handles all transformation logic.
  *

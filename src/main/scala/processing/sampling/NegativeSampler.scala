@@ -3,9 +3,7 @@ package processing.sampling
 import scala.util.Random
 
 /**
- * @author shard zhang
- * @date 2026/6/11 11:46
- * @note ETL-layer negative sampler base — random/popular/mixed strategy helpers
+ * ETL-layer negative sampler base — random/popular/mixed strategy helpers
  */
 
 /** ETL-layer negative sampler base class.
@@ -76,7 +74,7 @@ object NegativeSampler {
     }
   }
 
-  // 轮盘赌加权随机采样，按物品权重高低做概率抽取
+  // Roulette-wheel weighted random sampling: items with higher popularity are more likely to be selected
   private def rouletteSample[T](candidates: Array[T], popCounts: Map[T, Int], numNeg: Int, rand: Random): Seq[T] = {
     val weighted = candidates.map { id =>
       (id, math.pow(popCounts.getOrElse(id, 1).toDouble, 0.75))

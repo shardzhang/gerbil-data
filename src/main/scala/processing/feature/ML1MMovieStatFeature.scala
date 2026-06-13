@@ -6,9 +6,7 @@ import utils.LogUtils.green_println
 import utils.LogUtils.setLogLevel
 
 /**
- * @author shard zhang
- * @date 2026/6/4 11:42
- * @note Computes movie statistical features: average rating, rating count, genre count, and hot rank.
+ * Computes movie statistical features: average rating, rating count, genre count, and hot rank.
  */
 object ML1MMovieStatFeature {
   /** Raw data separator in ML-1M movies.dat (double colon). */
