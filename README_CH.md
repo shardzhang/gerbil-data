@@ -31,41 +31,58 @@
 
 ```
 gerbil-data/
-├── bash/                       # 执行 pipeline 步骤的 Shell 脚本
-│   ├── conf/                   # 环境配置
-│   ├── pipeline/               # 训练样本生成脚本
-│   ├── processing/             # 数据预处理脚本
-│   │   ├── clean/              #   数据清洗
-│   │   ├── feature/            #   特征提取
-│   │   └── join/               #   特征关联
-│   ├── proto/                  # Protobuf 编译
-│   └── tools/                  # 工具脚本
-├── dag/                        # Pipeline DAG（Airflow + 独立运行）
-│   ├── ml1m_pipeline_dag.py    # Airflow DAG 定义
-│   └── run_pipeline.py         # 独立运行脚本（无需 Airflow）
-├── docs/                       # 文档
-├── proto/                      # TensorFlow Example protobuf 定义
-├── sql/                        # Hive/Spark SQL 脚本
+├── .devcontainer/               # DevContainer 可复现开发环境
+├── assets/                      # 项目资源（logo 等）
+├── bash/                        # 执行 pipeline 步骤的 Shell 脚本
+│   ├── conf/                    # 环境配置
+│   ├── pipeline/                # 训练样本生成脚本
+│   │   └── eval/                #   离线评估
+│   ├── processing/              # 数据预处理脚本
+│   │   ├── clean/               #   数据清洗
+│   │   ├── feature/             #   特征提取
+│   │   ├── join/                #   特征关联
+│   │   └── sampling/            #   负采样
+│   ├── proto/                   # Protobuf 编译
+│   └── tools/                   # 工具脚本
+├── dag/                         # Pipeline DAG（Airflow + 独立运行）
+│   ├── ml1m_pipeline_dag.py     # Airflow DAG 定义
+│   └── run_pipeline.py          # 独立运行脚本（无需 Airflow）
+├── docs/                        # 文档
+├── proto/                       # TensorFlow Example protobuf 定义
+├── sql/                         # Hive/Spark SQL 脚本
 ├── src/
-│   └── main/
-│       ├── java/               # Java 工具类（TensorFlow Hadoop I/O）
-│       └── scala/
-│           ├── processing/     # ETL：原始数据 → 平面中间表
-│           │   ├── clean/      #   数据清洗与验证
-│           │   ├── feature/    #   特征衍生（统计量、序列）
-│           │   └── join/       #   多表特征关联
-│           ├── featurizer/     # ML 编码：特征 → 嵌入索引
-│           │   ├── core/       #   抽象特征化框架
-│           │   └── ml1m/       #   ML-1M 具体实现
-│           ├── pipeline/       # 编排与训练样本生成
-│           │   ├── serde/      #   序列化（TFRecord、Parquet、pos-map）
-│           │   └── stats/      #   在线统计（运行值、位置信息）
-│           ├── tfrecords/      # 自定义 Spark SQL TFRecord 数据源
-│           │   ├── serde/      #   序列化/反序列化
-│           │   └── udf/        #   用户自定义函数
-│           └── utils/          # 工具函数
-├── pom.xml                     # Maven 构建配置
-└── requirements.txt            # Python 依赖
+│   ├── main/
+│   │   ├── java/                # Java 工具类（TensorFlow Hadoop I/O）
+│   │   ├── resources/           # 配置文件（features.yaml）
+│   │   └── scala/
+│   │       ├── config/          # 配置加载与解析
+│   │       ├── processing/      # ETL：原始数据 → 平面中间表
+│   │       │   ├── clean/       #   数据清洗与验证
+│   │       │   ├── feature/     #   特征衍生（统计量、序列）
+│   │       │   └── join/        #   多表特征关联
+│   │       ├── featurizer/      # ML 编码：特征 → 嵌入索引
+│   │       │   ├── core/        #   抽象特征化框架
+│   │       │   └── ml1m/        #   ML-1M 具体实现
+│   │       ├── pipeline/        # 编排与训练样本生成
+│   │       │   ├── serde/       #   序列化（TFRecord、Parquet、pos-map）
+│   │       │   └── stats/       #   在线统计（运行值、位置信息）
+│   │       ├── tfrecords/       # 自定义 Spark SQL TFRecord 数据源
+│   │       │   ├── serde/       #   序列化/反序列化
+│   │       │   └── udf/         #   用户自定义函数
+│   │       └── utils/           # 工具函数
+│   └── test/                    # 单元测试（镜像 main 结构）
+│       ├── scala/
+│       │   ├── config/
+│       │   ├── featurizer/
+│       │   ├── pipeline/
+│       │   ├── tfrecords/
+│       │   └── utils/
+│       └── resources/
+├── tools/                       # C++ 在线推理特征编码器
+│   └── cpp_featurizer/          #   按位一致的 C++ 重实现
+├── Dockerfile                   # Docker 构建
+├── pom.xml                      # Maven 构建配置
+└── requirements.txt             # Python 依赖
 ```
 
 ### Pipeline 数据流

@@ -40,41 +40,58 @@ Currently supports the [MovieLens 1M (ML-1M)](https://grouplens.org/datasets/mov
 
 ```
 gerbil-data/
-├── bash/                       # Shell scripts for running pipeline steps
-│   ├── conf/                   # Environment configuration
-│   ├── pipeline/               # Training sample generation scripts
-│   ├── processing/             # Data preprocessing scripts
-│   │   ├── clean/              #   Data cleaning
-│   │   ├── feature/            #   Feature extraction
-│   │   └── join/               #   Feature joining
-│   ├── proto/                  # Protobuf compilation
-│   └── tools/                  # Utility scripts
-├── dag/                        # Pipeline DAG (Airflow + standalone)
-│   ├── ml1m_pipeline_dag.py    # Airflow DAG definition
-│   └── run_pipeline.py         # Standalone runner (no Airflow required)
-├── docs/                       # Documentation
-├── proto/                      # TensorFlow Example protobuf definitions
-├── sql/                        # Hive/Spark SQL scripts
+├── .devcontainer/               # DevContainer reproducible dev environment
+├── assets/                      # Project assets (logo, etc.)
+├── bash/                        # Shell scripts for running pipeline steps
+│   ├── conf/                    # Environment configuration
+│   ├── pipeline/                # Training sample generation scripts
+│   │   └── eval/                #   Offline evaluation
+│   ├── processing/              # Data preprocessing scripts
+│   │   ├── clean/               #   Data cleaning
+│   │   ├── feature/             #   Feature extraction
+│   │   ├── join/                #   Feature joining
+│   │   └── sampling/            #   Negative sampling
+│   ├── proto/                   # Protobuf compilation
+│   └── tools/                   # Utility scripts
+├── dag/                         # Pipeline DAG (Airflow + standalone)
+│   ├── ml1m_pipeline_dag.py     # Airflow DAG definition
+│   └── run_pipeline.py          # Standalone runner (no Airflow required)
+├── docs/                        # Documentation
+├── proto/                       # TensorFlow Example protobuf definitions
+├── sql/                         # Hive/Spark SQL scripts
 ├── src/
-│   └── main/
-│       ├── java/               # Java utilities (TensorFlow Hadoop I/O)
-│       └── scala/
-│           ├── processing/     # ETL: raw data → flat intermediate tables
-│           │   ├── clean/      #   Data cleaning & validation
-│           │   ├── feature/    #   Feature derivation (stats, sequences)
-│           │   └── join/       #   Multi-table feature joining
-│           ├── featurizer/     # ML encoding: features → embedding indices
-│           │   ├── core/       #   Abstract featurization framework
-│           │   └── ml1m/       #   ML-1M concrete implementations
-│           ├── pipeline/       # Orchestration & training sample generation
-│           │   ├── serde/      #   Serialization (TFRecord, Parquet, pos-map)
-│           │   └── stats/      #   Online statistics (running value, pos info)
-│           ├── tfrecords/      # Custom Spark SQL TFRecord data source
-│           │   ├── serde/      #   Serialization/deserialization
-│           │   └── udf/        #   User-defined functions
-│           └── utils/          # Utility functions
-├── pom.xml                     # Maven build configuration
-└── requirements.txt            # Python dependencies
+│   ├── main/
+│   │   ├── java/                # Java utilities (TensorFlow Hadoop I/O)
+│   │   ├── resources/           # Configuration files (features.yaml)
+│   │   └── scala/
+│   │       ├── config/          # Config loading & parsing
+│   │       ├── processing/      # ETL: raw data → flat intermediate tables
+│   │       │   ├── clean/       #   Data cleaning & validation
+│   │       │   ├── feature/     #   Feature derivation (stats, sequences)
+│   │       │   └── join/        #   Multi-table feature joining
+│   │       ├── featurizer/      # ML encoding: features → embedding indices
+│   │       │   ├── core/        #   Abstract featurization framework
+│   │       │   └── ml1m/        #   ML-1M concrete implementations
+│   │       ├── pipeline/        # Orchestration & training sample generation
+│   │       │   ├── serde/       #   Serialization (TFRecord, Parquet, pos-map)
+│   │       │   └── stats/       #   Online statistics (running value, pos info)
+│   │       ├── tfrecords/       # Custom Spark SQL TFRecord data source
+│   │       │   ├── serde/       #   Serialization/deserialization
+│   │       │   └── udf/         #   User-defined functions
+│   │       └── utils/           # Utility functions
+│   └── test/                    # Unit tests (mirroring main structure)
+│       ├── scala/
+│       │   ├── config/
+│       │   ├── featurizer/
+│       │   ├── pipeline/
+│       │   ├── tfrecords/
+│       │   └── utils/
+│       └── resources/
+├── tools/                       # C++ Online Inference Featurizer
+│   └── cpp_featurizer/          #   Bit-exact C++ reimplementation
+├── Dockerfile                   # Docker build
+├── pom.xml                      # Maven build configuration
+└── requirements.txt             # Python dependencies
 ```
 
 ### Pipeline Overview
