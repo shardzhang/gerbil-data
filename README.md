@@ -312,6 +312,16 @@ docker run --rm -v "$PWD":/workspace gerbil-data mvn compile -DskipTests
 > Spark is not included in the image to keep it lightweight. Mount it at runtime if needed:
 > `-v /path/to/spark:/opt/spark`
 
+## Examples
+
+A Jupyter notebook demonstrating the end-to-end pipeline is available at:
+
+```bash
+jupyter notebook examples/gerbil-data-demo.ipynb
+```
+
+It covers raw data inspection, ETL pipeline execution, featurization, TFRecord output inspection, and a quick model training example.
+
 ## Feature Types
 
 ### Raw Features

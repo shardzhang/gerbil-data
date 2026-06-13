@@ -304,6 +304,16 @@ docker run --rm -v "$PWD":/workspace gerbil-data mvn compile -DskipTests
 > Spark 未内置在镜像中以保持轻量，需要时在运行时挂载：
 > `-v /path/to/spark:/opt/spark`
 
+## 示例
+
+Jupyter notebook 展示端到端 pipeline 流程：
+
+```bash
+jupyter notebook examples/gerbil-data-demo.ipynb
+```
+
+涵盖原始数据查看、ETL pipeline 执行、特征编码、TFRecord 输出检查和快速模型训练示例。
+
 ## 特征类型
 
 ### 原始特征
