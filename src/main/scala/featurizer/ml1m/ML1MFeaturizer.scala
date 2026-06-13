@@ -25,12 +25,10 @@ class ML1MFeaturizer(configPath: Option[String] = None) extends Featurizer[ML1MS
       val ctor = clazz.getConstructor(classOf[Int], classOf[String])
       ctor.newInstance(featureDef.index.asInstanceOf[AnyRef], featureDef.name)
     } catch {
-      case e: ClassNotFoundException =>
-        throw new RuntimeException("[Featurizer] class not found for feature '" + featureDef.name +
+      case e: RuntimeException => throw e
+      case e: Exception =>
+        throw new RuntimeException("[Featurizer] failed to instantiate feature '" + featureDef.name +
           "' (index=" + featureDef.index + "): " + featureDef.className, e)
-      case e: NoSuchMethodException =>
-        throw new RuntimeException("[Featurizer] missing (Int, String) constructor for feature '" +
-          featureDef.name + "' (index=" + featureDef.index + "): " + featureDef.className, e)
     }
   }
 

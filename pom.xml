@@ -273,11 +273,12 @@
                         </goals>
                         <configuration>
                             <target>
+                                <!-- Remove intermediate build dirs to save space, but keep:
+                                     - uber-jar (the main deliverable)
+                                     - scala-compile.sbt and classfiles (preserve incremental compilation) -->
                                 <delete includeemptydirs="true">
-                                    <fileset
-                                            dir="${project.build.directory}"
-                                            includes="**/*"
-                                            excludes="${project.build.finalName}-jar-with-dependencies.jar"/>
+                                    <fileset dir="${project.build.directory}"
+                                             includes="generated-sources/,maven-archiver/,*-shaded.jar"/>
                                 </delete>
                             </target>
                         </configuration>
