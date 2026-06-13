@@ -137,7 +137,7 @@ class FeatureEncoderTest extends WordSpec with Matchers {
       assert(hash1 !== hash2)
     }
 
-    "get_hash returns list of hashes" in {
+    "getHash returns list of hashes" in {
       val feat = new TestCategoricalFeature(1, "test_feat")
       feat.parse("10,20,30")
 
@@ -146,7 +146,7 @@ class FeatureEncoderTest extends WordSpec with Matchers {
       hashes.foreach(h => assert(h >= 0 && h < 1000))
     }
 
-    "skip zero values in get_hash" in {
+    "skip zero values in getHash" in {
       val feat = new TestCategoricalFeature(1, "test_feat")
       feat.parse("0,10,0,20")
       val hashes = feat.getHash(1000)
@@ -257,7 +257,7 @@ class FeatureEncoderTest extends WordSpec with Matchers {
   // ==================== ContinuousFeature ====================
 
   "ContinuousFeature" should {
-    "get_hash returns feature values directly" in {
+    "getHash returns feature values directly" in {
       val feat = new TestContinuousFeature(1, "conti_feat")
       feat.parse("5,10,15")
 
@@ -265,7 +265,7 @@ class FeatureEncoderTest extends WordSpec with Matchers {
       assert(hashes === ArrayBuffer(5L, 10L, 15L))
     }
 
-    "skip zero values in get_hash" in {
+    "skip zero values in getHash" in {
       val feat = new TestContinuousFeature(1, "conti_feat")
       feat.parse("0,10,0,20")
       val hashes = feat.getHash(1000)
@@ -396,7 +396,7 @@ class FeatureEncoderTest extends WordSpec with Matchers {
       assert(hash1 >= 0 && hash1 < 1000)
     }
 
-    "get_hash returns all combination hashes" in {
+    "getHash returns all combination hashes" in {
       val f1 = new TestCategoricalFeature(1, "f1")
       f1.parse("10,20")
       val f2 = new TestCategoricalFeature(2, "f2")

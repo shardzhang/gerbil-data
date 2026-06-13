@@ -61,7 +61,7 @@ abstract class Featurizer[T] extends Serializable {
   }
 
   /** Computes raw hash values for all features (used for debugging / hash-based vocabulary). */
-  def get_hash(input: T, dim: Long): ArrayBuffer[Long] = {
+  def getHash(input: T, dim: Long): ArrayBuffer[Long] = {
     val buf = ArrayBuffer[Long]()
     for (raw_f <- raw_cate_features) {
       raw_f.clear()

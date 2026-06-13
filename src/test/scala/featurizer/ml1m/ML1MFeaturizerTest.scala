@@ -135,11 +135,11 @@ class ML1MFeaturizerTest extends WordSpec with Matchers {
       assert(targetFeat.getFloatList.getValue(0) === 0.0F) // remapped target
     }
 
-    "get_hash returns non-empty list" in {
+    "getHash returns non-empty list" in {
       val encoder = new ML1MFeaturizer().setup()
       val sample = createSample()
 
-      val hashes = encoder.get_hash(sample, 1L << 20)
+      val hashes = encoder.getHash(sample, 1L << 20)
       assert(hashes.nonEmpty)
     }
 

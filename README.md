@@ -16,25 +16,23 @@ Currently supports the [MovieLens 1M (ML-1M)](https://grouplens.org/datasets/mov
 
 ## Features
 
-1. **Data Cleaning and Feature Extraction**: Transforms raw interaction logs into structured training samples. Handles deduplication, anomaly filtering, and validation of raw data through Spark SQL. Extracts user profiles, item attributes, context signals, and behavior sequences with configurable time windows — covering the full spectrum of features needed for recommendation models.
+1. **Data Cleaning and Feature Extraction**: Transforms raw interaction logs into structured training samples — the foundation of recommender system feature engineering. Handles deduplication, anomaly filtering, and multi-table feature joining through Spark SQL, with column-level data quality checks at every stage to eliminate "garbage in, garbage out". Extracts user profiles, item attributes, context signals, and behavior sequences with configurable time windows — covering the full spectrum of features needed for recommendation models. Supports multiple prediction targets: multi-class classification, binary classification, and regression.
 
-2. **Negative Sampling**: For each positive instance, generates unobserved items as negative samples — a critical component for CTR model training. Supports uniform random, popularity-biased sampling with exponent 0.75, and hybrid strategies. The popularity-biased variant mitigates the "Matthew effect" where popular items dominate training, leading to better generalization on long-tail items.
+2. **Negative Sampling Strategies**: For each positive instance, generates unobserved items as negative samples — a critical component for ranking model training. Supports uniform random, popularity-biased sampling, and hybrid strategies, preventing popular items from dominating training gradients and effectively mitigating the "Matthew effect", improving model generalization on long-tail items.
 
-3. **Statistical and Cross Features**: Computes count-based and ratio-based features (popularity, activity, rating variance, etc.) alongside second-order and third-order feature crosses for deeper pattern capture. All 58 features are encoded through a type-safe generic `Featurizer[T]` architecture — each producing `{name}_raw / _index / _value` triplets, the standard embedding lookup schema for FFM, DeepFM, DIN, and similar models. Supports both hash-based encoding for rapid prototyping and vocabulary-based embedding for production serving. Features are registered via YAML with zero code changes required.
+3. **High-Order Cross Features**: Supports second-order and higher-order feature combinations to capture deeper patterns in data. All 58 features are encoded through a type-safe generic `Featurizer[T]` architecture — producing the standard embedding lookup schema for DeepFM, DIN, and similar models.
 
-4. **Vocabulary Management and Multi-Format Output**: Builds embedding vocabularies through frequency thresholding, allocating slots for frequent values while recycling rare ones. Feature position maps are persisted in JSON (readable) and binary with mean/std (online normalization). Outputs training samples in TFRecord (TensorFlow Example protobuf) and Parquet (columnar storage) formats, with time-based train/val/test split to prevent data leakage.
+4. **Vocabulary Management**: Builds embedding vocabularies through frequency thresholding, assigning dedicated slots for each feature. Feature position maps are persisted in JSON (human-readable) and binary (with mean/std for online normalization).
 
-5. **Data Quality**: Guards against training-serving skew and data drift. Validates column-level statistics — null ratios, cardinality, numeric distributions — across ETL stages. Tracks parse success rates and target distribution during featurization. Cross-run drift detection alerts when volume deviates by over 20%, null ratios shift by over 5%, or means change by over 50%.
+5. **Feature Configuration**: YAML-driven feature registry. Adding or disabling features requires editing a single config file — no code changes, no recompilation. Supports classpath and external file loading.
 
-6. **TFRecord Data Source**: A custom Spark SQL connector bridging ETL and TensorFlow. Provides native `format("tfrecords")"` read/write with schema inference, Example and SequenceExample protobuf handling, and full Spark type codecs — eliminating intermediate data conversion.
+6. **Multi-Format Output**: Outputs training samples in TFRecord (TensorFlow Example protobuf) and Parquet (columnar storage) formats, with time-based train/val/test split for standard recommendation evaluation.
 
-7. **Configuration**: YAML-driven feature registry for experimentation velocity. Adding or disabling features requires editing a single config file — no code changes, no recompilation. Supports classpath and external file loading.
+7. **Data Quality Monitoring**: Guards against the two silent killers of production recommender systems — training-serving skew and data drift. Automatically detects column-level metrics (null ratios, cardinality, numeric distributions) across ETL stages; tracks parse success rates and target distribution during featurization. Cross-run drift detection compares against historical baselines and alerts when volume, null ratios, or means exceed preset thresholds.
 
-8. **Orchestration**: Dual-mode pipeline execution. Airflow DAG for production scheduling; standalone Python runner for local development and CI. Topological sort ensures stage dependencies are honored.
+8. **Pipeline Orchestration and Scheduling**: Dual-mode pipeline execution engine. Airflow DAG for production scheduling with automatic retries and monitoring; standalone Python runner for local development and CI. Topological sort ensures stage dependencies are honored. `--dry-run` mode supports execution plan preview.
 
-9. **C++ Online Inference**: A bit-exact C++ reimplementation of the Scala featurizer for latency-critical serving. Loads the identical vocabulary binary and executes the same MurmurHash3 with matching key concatenation — eliminating training-serving skew. Verified by golden data diff across thousands of rows.
-
-10. **Multiple Prediction Targets and Infrastructure**: Supports multi-class classification, binary classification, and regression targets. Includes Spark-submit wrappers with environment configuration, Hive DDLs for persistent tables, and TensorFlow protobuf definitions.
+9. **C++ Online Inference**: A bit-exact C++ reimplementation of the Scala featurizer for latency-critical serving scenarios. Loads the identical vocabulary binary and executes the same MurmurHash3 with matching key concatenation — fundamentally eliminating training-serving skew in production systems. Correctness is verified by golden data diff across tens of thousands of rows.
 
 ## Architecture
 
@@ -116,13 +114,13 @@ flowchart LR
     end
 
     subgraph Encoding[Feature Encoding]
-        F[ML1MFeaturizer<br/>44 features via YAML config<br/>Categorical + Continuous]
+        F[ML1MFeaturizer<br/>YAML config<br/>Categorical + Continuous]
         H[Hash → Embedding Index<br/>MurmurHash3 x64_128<br/>f_index #124;#124; value as key]
         V[Vocabulary<br/>Frequency threshold<br/>Pos-map / Target-map]
     end
 
     subgraph Train[Training Data]
-        T[TFRecord<br/>TensorFlow Example]
+        T[TFRecord<br/>Example]
         Pq[Parquet<br/>Columnar format]
         Pm[Pos-map<br/>JSON + Binary]
     end
@@ -162,7 +160,7 @@ flowchart TD
     subgraph ML1M[ML-1M Implementation]
         MF[ML1MFeaturizer<br/>Reflection-based instantiation<br/>from YAML config]
         MS[ML1MSample<br/>50+ fields: user, item,<br/>context, behavior]
-        UF[~40 concrete feature classes<br/>Shared traits eliminate<br/>copy-paste duplication]
+        UF[40 concrete feature classes]
     end
 
     subgraph Pipe[Pipeline]
@@ -363,7 +361,7 @@ Columnar storage format compatible with Spark and many big data tools.
 | `dag` | Pipeline orchestration: Airflow DAG (production) + standalone Python runner (CI/dev) |
 | `bash` | Spark-submit wrapper scripts with environment configuration |
 | `sql` | Hive DDL for persistent tables |
-| `proto` | TensorFlow Example / SequenceExample protobuf definitions |
+| `proto` | TensorFlow Example protobuf definitions |
 | `tools` | C++ online inference featurizer + golden data generators |
 
 ## Dependencies

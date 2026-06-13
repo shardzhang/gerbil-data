@@ -16,16 +16,15 @@
 
 ## 功能特性
 
-1. **数据清洗与特征提取**: 将原始交互日志加工为结构化训练样本，这是推荐系统特征工程的基石环节。基于 Spark SQL 完成去重、异常过滤、多表特征 Join，各个阶段内置列级数据质量检查，杜绝"垃圾进垃圾出"。提取用户画像、物品属性、上下文信号、可配置时间窗口的行为序列——覆盖推荐模型所需的完整特征谱系。支持**多种预测目标**: 多分类、二分类、回归
-2. **负采样**: 为每条正样本生成该用户未交互的物品作为负样本，CTR 模型训练的必备环节。支持均匀随机、流行度偏置采样 exponent 0.75、混合三种策略，有效缓解"马太效应"，防止热门物品主导训练梯度，提升模型对长尾物品的泛化能力。
-3. **统计特征与交叉特征**: 计算基于计数和比率的统计特征（流行度、活跃度、评分方差等），同时支持二阶和三阶特征组合捕捉更深层模式。全部 58 个特征通过类型安全的泛型 `Featurizer[T]` 架构编码，每种产出 `{name}_raw / _index / _value` 三元组 —— FFM、DeepFM、DIN 等模型的标准 embedding lookup 格式。支持纯哈希编码（快速实验）和 PosMap 词表编码（生产服务），YAML 声明式注册，新增特征无需改代码。
-4. **词表管理与多格式输出**: 基于频次阈值构建 embedding 词表，高频分配独立位置、低频复用历史或丢弃。特征位置映射持久化为 JSON（可读）和二进制（含均值/标准差，用于在线归一化）。输出 TFRecord（TensorFlow Example protobuf）和 Parquet（列式存储）两种格式，按时间切分 train/val/test 防止数据泄露。
-5. **数据质量**: 防范生产推荐系统的两大隐形杀手 —— 训练-服务不一致和数据漂移。ETL 层自动检测各阶段的空值率、基数、数值分布等列级指标；特征编码层追踪解析成功率和目标分布 Top-5。跨运行漂移检测自动对比历史基线，当总量波动超过 20%、空值率变化超过 5%、均值偏移超过 50% 时发出告警。
-6. **TFRecord 数据源**: 自定义 Spark SQL 数据源，弥合 ETL 与 TensorFlow 的鸿沟。通过 `format("tfrecords")"` 原生读写，支持 schema 推断、Example/SequenceExample protobuf 格式、 全Spark 类型编解码 —— 消除训练流水线中繁琐的中间数据转换步骤。
-7. **配置层**: YAML 驱动的特征注册中心。新增或禁用特征只需编辑一个配置文件，无需改代码、无需重编译。支持 classpath 和外部文件两种加载方式。
-8. **编排层**: 模式 Pipeline 执行引擎。Airflow DAG 用于生产调度，支持自动重试和监控；独立 Python 脚本用于本地开发和 CI。拓扑排序保证阶段执行顺序，`--dry-run` 模式支持执行计划预览。
+1. **数据清洗与特征提取**: 将原始交互日志加工为结构化训练样本，这是推荐系统特征工程的基石。基于 Spark SQL 完成去重、异常过滤、多表特征 Join，各个阶段内置列级数据质量检查，杜绝"garbage in, garbage out"。提取用户画像、物品属性、上下文信号、可配置时间窗口的行为序列——覆盖推荐模型所需的完整特征谱系。支持多种预测目标: 多分类、二分类、回归
+2. **负采样策略**: 为每条正样本生成该用户未交互的物品作为负样本，推荐系统排序模型训练的必备环节。支持均匀随机、流行度偏置采样、混合采样三种策略，防止热门物品主导训练梯度，有效缓解"马太效应"，提升模型对长尾物品的泛化能力。
+3. **高阶交叉特征**: 支持二阶及以上高阶特征组合，捕捉数据中更深层模式。全部 58 个特征通过类型安全的泛型 `Featurizer[T]` 架构编码 —— 产出DeepFM、DIN 等模型的标准 embedding lookup 格式。
+4. **词表管理**: 基于频次阈值构建 embedding 词表，为每个特征分配独立位置。特征位置映射持久化为 JSON（人类可读）和二进制（含均值/标准差，用于在线归一化）。
+5. **特征配置化**: YAML 驱动的特征注册中心。新增或禁用特征只需编辑一个配置文件，无需改代码、无需重编译。支持 classpath 和外部文件两种加载方式。
+6. **多格式输出**：最终样本支持输出 TFRecord（TensorFlow Example protobuf）和 Parquet（列式存储）两种格式，按时间切分 train/val/test 用于通用推荐效果评估。
+7. **数据质量监控**: 防范生产推荐系统的两大隐形杀手 —— 训练-服务不一致和数据漂移。ETL 层自动检测各阶段的空值率、基数、数值分布等列级指标；特征编码层追踪解析成功率和目标分布 Top-5。跨运行漂移检测自动对比历史基线，当总量波动、空值率变化、均值偏移超过预设阈值时发出告警。
+8. **Pipline编排与调度**: 模式 Pipeline 执行引擎。Airflow DAG 用于生产调度，支持自动重试和监控；独立 Python 脚本用于本地开发和 CI。拓扑排序保证阶段执行顺序，`--dry-run` 模式支持执行计划预览。
 9. **C++ 在线推理**:  与Scala 训练侧按位一致的 C++ 特征重实现，专为延迟敏感的在线推理场景设计。加载完全相同的词表二进制，执行完全相同的 MurmurHash3 和键拼接逻辑 —— 从根源上消除生产系统中训练-服务不一致的常见问题。正确性经数万行 golden data diff 验证。
-10. 基础设施：产级配套工具链，包括 spark-submit 封装脚本与环境配置、Hive DDL 持久化中间表定义、TensorFlow Example 和 SequenceExample protobuf 分布式训练所需协议定义。
 
 ## 项目架构
 
@@ -107,13 +106,13 @@ flowchart LR
     end
 
     subgraph Encoding[特征编码]
-        F[ML1MFeaturizer<br/>44个特征 · YAML 配置<br/>离散 + 连续]
+        F[ML1MFeaturizer<br/>YAML 配置<br/>离散 + 连续]
         H[Hash → 嵌入索引<br/>MurmurHash3 x64_128<br/>f_index #124;#124; 值作为 key]
         V[词表<br/>频次阈值<br/>Pos-map / Target-map]
     end
 
     subgraph Train[训练数据]
-        T[TFRecord<br/>TensorFlow Example]
+        T[TFRecord<br/>Example]
         Pq[Parquet<br/>列式格式]
         Pm[Pos-map<br/>JSON + 二进制]
     end
@@ -137,14 +136,14 @@ flowchart LR
 ```mermaid
 flowchart TD
     subgraph Config[配置层]
-        YAML[features.yaml<br/>特征注册中心<br/>名称 · 索引 · 类型 · 类名]
+        YAML[features.yaml<br/>特征注册中心]
         FC[FeatureConfig<br/>Case class 模型]
         CL[FeatureConfigLoader<br/>YAML → FeatureDef]
     end
 
     subgraph Core[特征化核心]
         FE["Featurizer[T]<br/>泛型抽象框架"]
-        CF["CategoricalFeature[T]<br/>哈希嵌入<br/>(name_raw, _index, _value)"]
+        CF["CategoricalFeature[T]<br/>哈希嵌入<br/>"]
         COF["ContinuousFeature[T]<br/>恒等映射"]
         XF["CrossFeature[T]<br/>组合枚举"]
         RT["RawTarget[T]"]
@@ -153,7 +152,7 @@ flowchart TD
     subgraph ML1M[ML-1M 实现]
         MF[ML1MFeaturizer<br/>反射实例化<br/>从 YAML 配置]
         MS[ML1MSample<br/>50+ 字段: 用户、物品<br/>上下文、行为]
-        UF[~40 个具体特征类<br/>共享 trait 消除<br/>复制粘贴重复]
+        UF[40个具体特征类]
     end
 
     subgraph Pipe[流水线]
@@ -354,7 +353,7 @@ docker run --rm -v "$PWD":/workspace gerbil-data mvn compile -DskipTests
 | `dag` | 编排层：Airflow DAG（生产）+ 独立 Python 脚本（CI/开发） |
 | `bash` | Spark-submit 封装脚本与环境配置 |
 | `sql` | Hive DDL 持久化表定义 |
-| `proto` | TensorFlow Example / SequenceExample protobuf 定义 |
+| `proto` | TensorFlow Example protobuf 定义 |
 | `tools` | C++ 在线推理特征处理器 + golden data 生成器 |
 
 ## 依赖项
