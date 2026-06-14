@@ -200,6 +200,17 @@ flowchart TD
 - **Apache Spark** 3.4.0
 - **protoc** 3.6.0（编译 protobuf 用，可选）
 
+## Python 环境
+
+为 Jupyter notebook 示例（`examples/gerbil-data-demo.ipynb`）和数据检查工具（`bash/tools/*.py`）配置 Python 虚拟环境。
+
+```bash
+cd $PROJECT_HOME
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
 ## 快速开始
 
 ### 1. 构建项目
@@ -317,6 +328,12 @@ Jupyter notebook 展示端到端 pipeline 流程：
 
 ```bash
 jupyter notebook examples/gerbil-data-demo.ipynb
+```
+
+或使用 JupyterLab：
+
+```bash
+jupyter lab examples/gerbil-data-demo.ipynb
 ```
 
 涵盖原始数据查看、ETL pipeline 执行、特征编码、TFRecord 输出检查和快速模型训练示例。

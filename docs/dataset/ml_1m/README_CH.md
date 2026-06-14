@@ -15,7 +15,7 @@ ml-1m
 - `Genres`：类型，通过`|`分隔。Action、Adventure、Animation、Children's、Comedy、Crime、Documentary、Drama、Fantasy、Film-Noir、Horror、Musical、Mystery、Romance、Sci-Fi、Thriller、War、Western
 
 ```bash
-~/Py/data/ml-1m  head movies.dat                               ✔  at 18:16:55
+~/Py/data/ml-1m  head movies.dat
 1::Toy Story (1995)::Animation|Children's|Comedy
 2::Jumanji (1995)::Adventure|Children's|Fantasy
 3::Grumpier Old Men (1995)::Comedy|Romance
@@ -99,7 +99,7 @@ ml-1m
 - 邮政编码（用户自愿提供，无准确性校验）
 
 ```bash
- ~/Py/data/ml-1m  head users.dat                                ✔  at 18:17:08
+ ~/Py/data/ml-1m  head users.dat
 1::F::1::10::48067
 2::M::56::16::70072
 3::M::25::15::55117
@@ -124,7 +124,7 @@ ml-1m
 补充：每个用户至少有 20 条评分记录
 
 ```bash
-~/Py/data/ml-1m  head ratings.dat                              ✔  at 18:16:58
+~/Py/data/ml-1m  head ratings.dat
 1::1193::5::978300760
 1::661::3::978302109
 1::914::3::978301968

@@ -1,10 +1,12 @@
-# Python dependencies for gerbil-data utilities
+# Python dependencies for gerbil-data auxiliary tools (not the core Scala pipeline).
 #
-# These are only needed for auxiliary Python tools (not the core Scala pipeline):
-#   - dag/run_pipeline.py    — Pipeline orchestrator
-#   - bash/tools/*.py         — Data inspection utilities (print TFRecord, Parquet, etc.)
+# These are only needed for:
+#   - dag/run_pipeline.py          — Pipeline orchestrator
+#   - bash/tools/*.py               — Data inspection utilities (print TFRecord, Parquet, etc.)
+#   - examples/gerbil-data-demo.ipynb  — Jupyter notebook demo
 
-protobuf==3.6.0        # TFRecord protobuf serialization (must match Scala protobuf version)
-tfrecord==1.13         # TFRecord reader/writer for Python
-tensorflow>=2.20.0
-jupyter
+protobuf>=3.20,<4     # print_tfrecord: deserialize TensorFlow Example protobuf (3.6.0 for Scala, 3.20 for Python 3.11)
+tfrecord==1.13         # print_tfrecord: read TFRecord files
+jupyter                # Jupyter notebook: run examples/gerbil-data-demo.ipynb
+pyarrow                # print_parquet: read Parquet files
+pandas                 # Jupyter notebook: read & inspect CSV data with DataFrame

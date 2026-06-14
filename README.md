@@ -208,6 +208,17 @@ flowchart TD
 - **Apache Spark** 3.4.0
 - **protoc** 3.6.0 (for protobuf compilation, optional)
 
+## Python Setup
+
+Set up the Python virtual environment for the Jupyter notebook demo (`examples/gerbil-data-demo.ipynb`) and the data inspection utilities (`bash/tools/*.py`).
+
+```bash
+cd $PROJECT_HOME
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
 ## Quick Start
 
 ### 1. Build the project
@@ -325,6 +336,12 @@ A Jupyter notebook demonstrating the end-to-end pipeline is available at:
 
 ```bash
 jupyter notebook examples/gerbil-data-demo.ipynb
+```
+
+Or with JupyterLab:
+
+```bash
+jupyter lab examples/gerbil-data-demo.ipynb
 ```
 
 It covers raw data inspection, ETL pipeline execution, featurization, TFRecord output inspection, and a quick model training example.

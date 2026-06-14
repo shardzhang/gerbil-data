@@ -28,3 +28,4 @@ bash/pipeline/tmp/
 bash/conf/env.sh
 .vscode/settings.json
 .venv
+.ipynb_checkpoints/

@@ -16,7 +16,7 @@ import argparse
 import shlex
 
 ROOT = Path(__file__).resolve().parent.parent
-JAR = ROOT / "target" / "gerbil-data-1.0-SNAPSHOT-jar-with-dependencies.jar"
+JAR = ROOT / "target" / "gerbil-data-1.0.0-jar-with-dependencies.jar"
 FEATURE_CONFIG = ROOT / "src" / "main" / "resources" / "ml1m" / "features.yaml"
 
 BASE_HOME = Path(os.environ.get("BASE_HOME", Path.home() / "PycharmProject"))
