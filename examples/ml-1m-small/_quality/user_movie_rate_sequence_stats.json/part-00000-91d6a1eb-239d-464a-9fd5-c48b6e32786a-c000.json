@@ -1,0 +1,2 @@
+{"stage":"user_movie_rate_sequence","total_count":6,"name":"user_id","type":"string","null_count":0,"null_ratio":0.0,"cardinality":6}
+{"stage":"user_movie_rate_sequence","total_count":6,"name":"feature","type":"string","null_count":0,"null_ratio":0.0,"cardinality":6}

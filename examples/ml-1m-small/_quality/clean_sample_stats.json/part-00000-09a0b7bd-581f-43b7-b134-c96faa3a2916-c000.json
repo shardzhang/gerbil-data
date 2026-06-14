@@ -1,0 +1,5 @@
+{"stage":"clean_sample","total_count":500,"name":"user_id","type":"string","null_count":0,"null_ratio":0.0,"cardinality":6}
+{"stage":"clean_sample","total_count":500,"name":"item_id","type":"string","null_count":0,"null_ratio":0.0,"cardinality":416}
+{"stage":"clean_sample","total_count":500,"name":"rating","type":"int","null_count":0,"null_ratio":0.0,"min":"1.0","max":"5.0","mean":"3.592","stddev":"1.0880734385211461"}
+{"stage":"clean_sample","total_count":500,"name":"time_stamp","type":"bigint","null_count":0,"null_ratio":0.0,"min":"9.78236075E8","max":"9.78824351E8","mean":"9.7828512038E8","stddev":"92413.5670598707"}
+{"stage":"clean_sample","total_count":500,"name":"day","type":"string","null_count":0,"null_ratio":0.0,"cardinality":3}

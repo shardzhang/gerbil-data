@@ -1,0 +1,7 @@
+{"stage":"item_feature","total_count":416,"name":"movie_id","type":"string","null_count":0,"null_ratio":0.0,"cardinality":416}
+{"stage":"item_feature","total_count":416,"name":"movie_title","type":"string","null_count":0,"null_ratio":0.0,"cardinality":416}
+{"stage":"item_feature","total_count":416,"name":"movie_genres","type":"string","null_count":0,"null_ratio":0.0,"cardinality":122}
+{"stage":"item_feature","total_count":416,"name":"movie_genre_cnt","type":"int","null_count":0,"null_ratio":0.0,"min":"1.0","max":"5.0","mean":"2.0216346153846154","stddev":"0.9579160217506538"}
+{"stage":"item_feature","total_count":416,"name":"movie_rate_count","type":"bigint","null_count":0,"null_ratio":0.0,"min":"1.0","max":"4.0","mean":"1.2019230769230769","stddev":"0.5125849010803673"}
+{"stage":"item_feature","total_count":416,"name":"movie_avg_rate","type":"double","null_count":0,"null_ratio":0.0,"min":"1.0","max":"5.0","mean":"3.5362980769230767","stddev":"1.0378667870023384"}
+{"stage":"item_feature","total_count":416,"name":"movie_hot_rank","type":"int","null_count":0,"null_ratio":0.0,"min":"1.0","max":"416.0","mean":"208.5","stddev":"120.2331069215131"}

@@ -1,0 +1,8 @@
+{"stage":"join_sample","total_count":500,"name":"user_id","type":"string","null_count":0,"null_ratio":0.0,"cardinality":6}
+{"stage":"join_sample","total_count":500,"name":"item_id","type":"string","null_count":0,"null_ratio":0.0,"cardinality":416}
+{"stage":"join_sample","total_count":500,"name":"time_stamp","type":"string","null_count":0,"null_ratio":0.0,"cardinality":250}
+{"stage":"join_sample","total_count":500,"name":"rating","type":"string","null_count":0,"null_ratio":0.0,"cardinality":5}
+{"stage":"join_sample","total_count":500,"name":"day","type":"string","null_count":0,"null_ratio":0.0,"cardinality":3}
+{"stage":"join_sample","total_count":500,"name":"user_profile","type":"string","null_count":0,"null_ratio":0.0,"cardinality":6}
+{"stage":"join_sample","total_count":500,"name":"movie_feature","type":"string","null_count":0,"null_ratio":0.0,"cardinality":416}
+{"stage":"join_sample","total_count":500,"name":"user_behavior","type":"string","null_count":0,"null_ratio":0.0,"cardinality":6}
