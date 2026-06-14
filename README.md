@@ -216,7 +216,14 @@ flowchart TD
 mvn clean package -DskipTests
 ```
 
-### 2. Download the ML-1M dataset
+### 2. View API documentation (Scaladoc)
+
+```bash
+mvn scala:doc
+open target/site/scaladocs/index.html
+```
+
+### 3. Download the ML-1M dataset
 
 ```bash
 curl -O https://files.grouplens.org/datasets/movielens/ml-1m.zip

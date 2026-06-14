@@ -208,7 +208,14 @@ flowchart TD
 mvn clean package -DskipTests
 ```
 
-### 2. 下载 ML-1M 数据集
+### 2. 查看 API 文档（Scaladoc）
+
+```bash
+mvn scala:doc
+open target/site/scaladocs/index.html
+```
+
+### 3. 下载 ML-1M 数据集
 
 ```bash
 curl -O https://files.grouplens.org/datasets/movielens/ml-1m.zip

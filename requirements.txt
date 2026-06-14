@@ -6,3 +6,5 @@
 
 protobuf==3.6.0        # TFRecord protobuf serialization (must match Scala protobuf version)
 tfrecord==1.13         # TFRecord reader/writer for Python
+tensorflow>=2.20.0
+jupyter
