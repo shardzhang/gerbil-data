@@ -295,7 +295,7 @@ object ML1MSample {
           ret = false
           0
       }
-    train_sample.label = if (train_sample.rating >= 3) 1 else 0
+    train_sample.label = if (train_sample.rating > 3) 1 else 0
 
     // parse context
     var sample_timestamp = 0L

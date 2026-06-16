@@ -10,7 +10,7 @@ source ../conf/env.sh
 
 day="20260616"
 input_path=${ML_1M_PATH}
-output_path=${input_path}/train_sample
+output_path=${input_path}/train_sample/binary
 echo "input_path: ${input_path}"
 echo "output_path: ${output_path}"
 

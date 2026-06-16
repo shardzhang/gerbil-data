@@ -64,9 +64,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
   def useTargetMap: Boolean = true
 
   /** Down-samples negative samples (target == 0) by `sample_ratio`. Positive samples are always kept. */
-  def keepSample(sample: T, sample_ratio: Double): Boolean = {
-    getSampleTarget(sample) != 0 || ThreadLocalRandom.current().nextDouble() <= sample_ratio
-  }
+  def keepSample(sample: T, sample_ratio: Double): Boolean
 
   /** Computes hash info (field name, index, type, raw value, hash, value) for vocabulary building. */
   def getHashInfo(sample: T, encoder: Featurizer[T]): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {

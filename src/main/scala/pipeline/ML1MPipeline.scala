@@ -70,11 +70,11 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
    *   multi  → keep all samples (all item_ids > 0)
    *   rating → down-sample negative (rating=0) samples
    */
-  override def keepSample(sample: ML1MSample, sample_ratio: Double): Boolean = {
+  override def keepSample(sample: ML1MSample, sample_ratio: Double = 1.0): Boolean = {
     targetMode match {
       case "binary" => sample.label != 0 || ThreadLocalRandom.current().nextDouble() <= sample_ratio
       case "multi"  => true
-      case "rating" => sample.rating.toInt != 0 || ThreadLocalRandom.current().nextDouble() <= sample_ratio
+      case "rating" => true
       case _        => throw new IllegalArgumentException(s"Unknown target_mode: '$targetMode'")
     }
   }
@@ -133,7 +133,7 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
     targetMode = Option(cl.getOptionValue("target_mode")).getOrElse("binary")
     val feature_threshold = cl.getOptionValue("feature_threshold").toInt
     val target_threshold = cl.getOptionValue("target_threshold").toInt
-    val sample_ratio = cl.getOptionValue("sample_ratio").toDouble
+    val sample_ratio = Option(cl.getOptionValue("sample_ratio").toDouble).getOrElse(0.1)
     val input_dir = cl.getOptionValue("input_dir")
     val output_dir = cl.getOptionValue("output_dir")
     val parts = cl.getOptionValue("parts").toInt

@@ -10,7 +10,7 @@ source ../conf/env.sh
 
 day="20260616"
 input_path=${ML_1M_PATH}
-output_path=${input_path}/train_sample/multi
+output_path=${input_path}/train_sample/rating
 
 "${SPARK_HOME}/bin/spark-submit" \
 --master 'local[*]' \
@@ -40,4 +40,4 @@ ${JAR_PATH} \
 --train_ratio 0.8 \
 --val_ratio 0.1 \
 --feature_config ${PROJECT_HOME}/src/main/resources/ml1m/features.yaml \
---target_mode multi
+--target_mode rating
