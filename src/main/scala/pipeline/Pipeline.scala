@@ -172,7 +172,9 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     var ignoredCount = 0
     var totalOccurrences = 0L
 
-    if (useTargetMap) {
+    if (!useTargetMap) {
+      target_map.clear()
+    } else {
       var nextIndex = target_map.size
       for ((targetId, occurrence) <- sample_num) {
         totalOccurrences += occurrence
@@ -186,7 +188,6 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
           ignoredCount += 1
         }
       }
-
       green_println(s"target_map: new=${newCount}, existing=${existingCount}, belowThreshold=${ignoredCount}, total=${totalOccurrences}")
     }
 
