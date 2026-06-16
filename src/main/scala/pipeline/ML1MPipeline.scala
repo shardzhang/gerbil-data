@@ -27,7 +27,7 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
   var targetMode: String = "binary"
 
   override def feature_encoder: Featurizer[ML1MSample] = {
-    new ML1MFeaturizer(featureConfigPath).setup()
+    new ML1MFeaturizer(featureConfigPath, targetMode).setup()
   }
 
   /** Load ML1M join_sample CSV, parse with movie info, and return RDD of samples. */
@@ -133,7 +133,7 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
     targetMode = Option(cl.getOptionValue("target_mode")).getOrElse("binary")
     val feature_threshold = cl.getOptionValue("feature_threshold").toInt
     val target_threshold = cl.getOptionValue("target_threshold").toInt
-    val sample_ratio = Option(cl.getOptionValue("sample_ratio").toDouble).getOrElse(0.1)
+    val sample_ratio = Option(cl.getOptionValue("sample_ratio")).map(_.toDouble).getOrElse(0.1)
     val input_dir = cl.getOptionValue("input_dir")
     val output_dir = cl.getOptionValue("output_dir")
     val parts = cl.getOptionValue("parts").toInt

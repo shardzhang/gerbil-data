@@ -166,32 +166,29 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     qualityTracker.record("train_stats", totalCount, validCount, sample_num.toSeq)
 
     // Build target-map: assign a sequential index to each target value meeting the threshold
-    var index = if (target_map.isEmpty) {
-      0
-    } else {
-      target_map.size
-    }
+    // Only needed for multi-class mode to re-index sparse target IDs into dense indices
+    var newCount = 0
+    var existingCount = 0
+    var ignoredCount = 0
+    var totalOccurrences = 0L
 
-    var total_number = 0
-    var newTargetCount = 0
-    var existingTargetCount = 0
-    var ignoredTargetCount = 0
-    for ((target_id, occurrence) <- sample_num) {
-      if (occurrence >= target_threshold && !target_map.contains(target_id)) {
-        target_map.put(target_id, index)
-        index = index + 1
-        newTargetCount += 1
-      } else if (target_map.contains(target_id)) {
-        existingTargetCount += 1
-      } else {
-        ignoredTargetCount += 1
+    if (useTargetMap) {
+      var nextIndex = target_map.size
+      for ((targetId, occurrence) <- sample_num) {
+        totalOccurrences += occurrence
+        if (target_map.contains(targetId)) {
+          existingCount += 1
+        } else if (occurrence >= target_threshold) {
+          target_map.put(targetId, nextIndex)
+          nextIndex += 1
+          newCount += 1
+        } else {
+          ignoredCount += 1
+        }
       }
-      total_number += occurrence
+
+      green_println(s"target_map: new=${newCount}, existing=${existingCount}, belowThreshold=${ignoredCount}, total=${totalOccurrences}")
     }
-    green_println(s"new targets added: ${newTargetCount}")
-    green_println(s"existing targets reused: ${existingTargetCount}")
-    green_println(s"targets below threshold: ${ignoredTargetCount}")
-    green_println(s"total target number: ${total_number}")
 
     // Collect hash statistics across all samples: aggregates sum/powerSum/count per (field, hash) key
     val train_sample_hash_arr = trainingSample

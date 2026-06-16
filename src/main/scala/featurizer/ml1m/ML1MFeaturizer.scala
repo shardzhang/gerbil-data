@@ -12,7 +12,7 @@ import scala.collection.mutable
 /** Featurizes each ML1M sample before feeding to the model.
  * Reads feature registry from features.yaml; all parse() logic stays in Scala classes.
  */
-class ML1MFeaturizer(configPath: Option[String] = None) extends Featurizer[ML1MSample] {
+class ML1MFeaturizer(configPath: Option[String] = None, targetMode: String = "binary") extends Featurizer[ML1MSample] {
 
   private lazy val config: FeatureConfig = configPath match {
     case Some(path) => FeatureConfigLoader.loadFromFile(path)
@@ -36,7 +36,12 @@ class ML1MFeaturizer(configPath: Option[String] = None) extends Featurizer[ML1MS
     raw_cate_features.clear()
     raw_conti_features.clear()
     cross_features.clear()
-    target = new Target()
+    target = targetMode match {
+      case "binary" => new Label()
+      case "multi"  => new Target()
+      case "rating" => new Rating()
+      case _        => throw new IllegalArgumentException(s"Unknown target_mode: '$targetMode'. Expected 'binary', 'multi', or 'rating'")
+    }
 
     val featureDefs: Seq[FeatureDef] = config.features.filter(_.isEnabled)
     val featureInstances: mutable.Map[String, Any] = scala.collection.mutable.Map.empty

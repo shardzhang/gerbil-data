@@ -17,7 +17,7 @@ class Target extends RawTarget[ML1MSample] {
 /** Binary target: rating >= 3 → positive (1.0), rating < 3 → negative (0.0). */
 class Label extends RawTarget[ML1MSample] {
   override def parse(sample: ML1MSample): RawTarget[ML1MSample] = {
-    target = if (sample.rating >= 3) {
+    target = if (sample.rating > 3) {
       1.0F
     } else {
       0.0F
