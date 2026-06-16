@@ -5,6 +5,7 @@ import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 
+import java.util.concurrent.ThreadLocalRandom
 import featurizer.ml1m.ML1MSample
 import featurizer.ml1m.ML1MFeaturizer
 import featurizer.core.Featurizer
@@ -49,7 +50,7 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
   /** Extract target label:
    * binary mode → sample.label (0/1)
    * multi mode → sample.target (item_id).
-   * rating mode → sample.rating (0-5).
+   * rating mode → sample.rating (1-5).
    */
   override def getSampleTarget(sample: ML1MSample): Int = {
     targetMode match {
@@ -57,6 +58,24 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
       case "multi"  => sample.target
       case "rating" => sample.rating.toInt
       case _        => throw new IllegalArgumentException(s"Unknown target_mode: '$targetMode'. Expected 'binary', 'multi', or 'rating'")
+    }
+  }
+
+  /** Only multi mode needs target_map re-encoding (sparse item_id → dense index). */
+  override def useTargetMap: Boolean = targetMode == "multi"
+
+  /**
+   * Down-sampling by target value, mode-aware:
+   *   binary → down-sample negative (label=0) samples
+   *   multi  → keep all samples (all item_ids > 0)
+   *   rating → down-sample negative (rating=0) samples
+   */
+  override def keepSample(sample: ML1MSample, sample_ratio: Double): Boolean = {
+    targetMode match {
+      case "binary" => sample.label != 0 || ThreadLocalRandom.current().nextDouble() <= sample_ratio
+      case "multi"  => true
+      case "rating" => sample.rating.toInt != 0 || ThreadLocalRandom.current().nextDouble() <= sample_ratio
+      case _        => throw new IllegalArgumentException(s"Unknown target_mode: '$targetMode'")
     }
   }
 

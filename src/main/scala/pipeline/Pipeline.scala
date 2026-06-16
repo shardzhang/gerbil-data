@@ -57,6 +57,12 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
   /** Extracts the timestamp (millis) from a sample for time-based split. */
   def getSampleTimestamp(sample: T): Long
 
+  /**
+   * Whether to re-encode target values through target_map (sequential indexing).
+   * Override to return false when raw target values should be written directly.
+   */
+  def useTargetMap: Boolean = true
+
   /** Down-samples negative samples (target == 0) by `sample_ratio`. Positive samples are always kept. */
   def keepSample(sample: T, sample_ratio: Double): Boolean = {
     getSampleTarget(sample) != 0 || ThreadLocalRandom.current().nextDouble() <= sample_ratio
@@ -264,7 +270,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     val parquetSchema = parquet_schema
     val parquetFieldNames = parquetSchema.fieldNames.toSeq
     val posMapLocalImmutable: collection.Map[(Int, Long), Int] = pos_map_local
-    val targetMapImmutable: collection.Map[Int, Int] = target_map
+    val targetMapImmutable: collection.Map[Int, Int] = if (useTargetMap) target_map else null
 
     val splitsToWrite = if (valSample != null) {
       Seq(("train", trainingSample), ("val", valSample), ("test", testSample))

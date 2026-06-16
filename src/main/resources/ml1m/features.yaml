@@ -5,6 +5,9 @@
 
 pkg: featurizer.ml1m
 features:
+  # ── User ID ──
+  - {name: user_id, index: 1, type: 1, class: UserID, enabled: true}  # user ID
+
   # ── User demographics ──
   - {name: user_age, index: 2, type: 1, class: UserAge, enabled: true}  # age bucket (1/18/25/35/45/50/56)
   - {name: user_gender, index: 3, type: 1, class: UserGender, enabled: true}  # gender (M/F)
@@ -39,6 +42,9 @@ features:
   - {name: user_avg_rate_7day_continue, index: 24, type: 0, class: UserAvgRate7DayContinue, enabled: true}
   - {name: user_avg_rate_15day_continue, index: 25, type: 0, class: UserAvgRate15DayContinue, enabled: true}
   - {name: user_avg_rate_30day_continue, index: 26, type: 0, class: UserAvgRate30DayContinue, enabled: true}
+
+  # ── Item ID ──
+  - {name: movie_id, index: 101, type: 1, class: MovieID, enabled: true}  # movie ID
 
   # ── Item features ──
   - {name: movie_title, index: 102, type: 1, class: MovieTitle, enabled: true}  # tokenized title (multi-value)

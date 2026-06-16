@@ -50,7 +50,7 @@ class SampleWriter[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Lon
   /** Encodes samples into TensorFlow Example protobuf and writes TFRecord to `tfRecordPath`. */
   def writeTfrecord(trainingSample: RDD[(T, Boolean)],
                     posMapLocalImmutable: collection.Map[(Int, Long), Int],
-                    targetMapImmutable: collection.Map[Int, Int],
+                    targetMap: collection.Map[Int, Int],
                     tfRecordPath: String
                    ): Unit = {
     trainingSample
@@ -59,7 +59,7 @@ class SampleWriter[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Lon
         // Factory function ensures each Spark partition gets its own featurizer instance, avoiding shared mutable state
         val encoder = createEncoder()
         samples.flatMap(sample => {
-          val (example, has_feature, has_target) = parseTfrecord(sample, encoder, posMapLocalImmutable, targetMapImmutable)
+          val (example, has_feature, has_target) = parseTfrecord(sample, encoder, posMapLocalImmutable, targetMap)
           if (has_feature && has_target) {
             Some(example)
           } else {
