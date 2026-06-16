@@ -164,7 +164,20 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
 
     // Record train quality: total, parse success, target distribution
     qualityTracker.record("train_stats", totalCount, validCount, sample_num.toSeq)
-
+    /** binary
+     * Stage: train_stats
+     * Total:      800167
+     * Valid:      800167 (100.00%)
+     * Targets:    2 distinct
+     * Top-5:      1=463020, 0=337147
+     */
+    /** rating
+     * Stage: train_stats
+     * Total:      800167
+     * Valid:      800167 (100.00%)
+     * Targets:    5 distinct
+     * Top-5:      4=278240, 3=207190, 5=184780, 2=84619, 1=45338
+     */
     // Build target-map: assign a sequential index to each target value meeting the threshold
     // Only needed for multi-class mode to re-index sparse target IDs into dense indices
     var newCount = 0
