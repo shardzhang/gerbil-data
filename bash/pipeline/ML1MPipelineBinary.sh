@@ -1,16 +1,18 @@
 #!/bin/bash
 
 # name: shard zhang
-# date: 2026/6/6 14:42
+# date: 2026/6/16 11:36
 # note: Encode features and generate TFRecord + Parquet training samples for ML models
 
 cd "$(dirname "$0")"
 
 source ../conf/env.sh
 
-day="20260610"
+day="20260616"
 input_path=${ML_1M_PATH}
 output_path=${input_path}/train_sample
+echo "input_path: ${input_path}"
+echo "output_path: ${output_path}"
 
 "${SPARK_HOME}/bin/spark-submit" \
 --master 'local[*]' \
@@ -40,4 +42,5 @@ ${JAR_PATH} \
 --output_format tfrecord \
 --train_ratio 0.8 \
 --val_ratio 0.1 \
---feature_config ${PROJECT_HOME}/src/main/resources/ml1m/features.yaml
+--feature_config ${PROJECT_HOME}/src/main/resources/ml1m/features.yaml \
+--target_mode binary

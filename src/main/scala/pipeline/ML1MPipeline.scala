@@ -22,6 +22,9 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
   /** External feature config path; set by --feature_config in main(). */
   var featureConfigPath: Option[String] = None
 
+  /** Target mode: "binary" (default, uses sample.label) or "multi" (uses sample.target). */
+  var targetMode: String = "binary"
+
   override def feature_encoder: Featurizer[ML1MSample] = {
     new ML1MFeaturizer(featureConfigPath).setup()
   }
@@ -43,8 +46,19 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
       .map(r => ML1MSample.parseSample(r, movie_info))
   }
 
-  /** Extract target label from the sample's target field. */
-  override def getSampleTarget(sample: ML1MSample): Int = sample.target
+  /** Extract target label:
+   * binary mode → sample.label (0/1)
+   * multi mode → sample.target (item_id).
+   * rating mode → sample.rating (0-5).
+   */
+  override def getSampleTarget(sample: ML1MSample): Int = {
+    targetMode match {
+      case "binary" => sample.label
+      case "multi"  => sample.target
+      case "rating" => sample.rating.toInt
+      case _        => throw new IllegalArgumentException(s"Unknown target_mode: '$targetMode'. Expected 'binary', 'multi', or 'rating'")
+    }
+  }
 
   /** Extract timestamp (millis) from sample for time-based split. */
   override def getSampleTimestamp(sample: ML1MSample): Long = sample.time_stamp
@@ -92,10 +106,12 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
     opts.addOption(null, "train_ratio", true, "Fraction of data for training (default: 0.8)")
     opts.addOption(null, "val_ratio", true, "Fraction of data for validation (default: 0.1)")
     opts.addOption(null, "feature_config", true, "Path to external feature config YAML (default: classpath /ml1m/features.yaml)")
+    opts.addOption(null, "target_mode", true, "Target mode: 'binary' (label 0/1, default) or 'multi' (item_id)")
 
     val parser = new DefaultParser()
     val cl = parser.parse(opts, args)
     featureConfigPath = Option(cl.getOptionValue("feature_config"))
+    targetMode = Option(cl.getOptionValue("target_mode")).getOrElse("binary")
     val feature_threshold = cl.getOptionValue("feature_threshold").toInt
     val target_threshold = cl.getOptionValue("target_threshold").toInt
     val sample_ratio = cl.getOptionValue("sample_ratio").toDouble
