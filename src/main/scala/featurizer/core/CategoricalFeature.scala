@@ -19,9 +19,9 @@ import scala.collection.mutable.ArrayBuffer
  * embedding positions.
  *
  * Each feature produces three TFRecord fields:
- *  - `{field_name}:{field_index}_raw`: the original string value
- *  - `{field_name}:{field_index}_index`: the hashed embedding position (or pos-map lookup position)
- *  - `{field_name}:{field_index}_value`: the weight/importance (typically 1.0 for categorical)
+ *  - `{field_name}_raw`: the original string value
+ *  - `{field_name}_index`: the hashed embedding position (or pos-map lookup position)
+ *  - `{field_name}_value`: the weight/importance (typically 1.0 for categorical)
  *
  * @tparam T the raw sample type from which this feature is extracted
  */
@@ -109,9 +109,9 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FieldTyp
       }
     }
     builder.getFeaturesBuilder
-      .putFeature(field_name + ":" + field_index + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
-      .putFeature(field_name + ":" + field_index + "_index", Int64ListFeatureEncoder.encode(pos_buf))
-      .putFeature(field_name + ":" + field_index + "_value", FloatListFeatureEncoder.encode(value_buf))
+      .putFeature(field_name + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
+      .putFeature(field_name + "_index", Int64ListFeatureEncoder.encode(pos_buf))
+      .putFeature(field_name + "_value", FloatListFeatureEncoder.encode(value_buf))
   }
 
   /** Adds raw/feature/value tensors to a TF Example with pos-map lookup. Returns true if any feature survived filtering. */
@@ -143,9 +143,9 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FieldTyp
       }
     }
     builder.getFeaturesBuilder
-      .putFeature(field_name + ":" + field_index + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
-      .putFeature(field_name + ":" + field_index + "_index", Int64ListFeatureEncoder.encode(pos_buf))
-      .putFeature(field_name + ":" + field_index + "_value", FloatListFeatureEncoder.encode(value_buf))
+      .putFeature(field_name + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
+      .putFeature(field_name + "_index", Int64ListFeatureEncoder.encode(pos_buf))
+      .putFeature(field_name + "_value", FloatListFeatureEncoder.encode(value_buf))
     has_feature
   }
 
@@ -154,10 +154,10 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FieldTyp
     for (fea <- feature_list) {
       if (fea != 0) {
         val hash = computeHash(fea, dim)
-        if (encoded_map.contains(field_name + ":" + field_index)) {
-          encoded_map(field_name + ":" + field_index).append(hash)
+        if (encoded_map.contains(field_name)) {
+          encoded_map(field_name).append(hash)
         } else {
-          encoded_map(field_name + ":" + field_index) = ArrayBuffer(hash)
+          encoded_map(field_name) = ArrayBuffer(hash)
         }
       }
     }
@@ -171,10 +171,10 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FieldTyp
         val hash = computeHash(fea, dim)
         if (pos_map.contains((field_index, hash))) {
           val pos = pos_map((field_index, hash))
-          if (encoded_map.contains(field_name + ":" + field_index)) {
-            encoded_map(field_name + ":" + field_index).append(pos)
+          if (encoded_map.contains(field_name)) {
+            encoded_map(field_name).append(pos)
           } else {
-            encoded_map(field_name + ":" + field_index) = ArrayBuffer(pos)
+            encoded_map(field_name) = ArrayBuffer(pos)
           }
           has_feature = true
         }
@@ -204,9 +204,9 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FieldTyp
         }
       }
     }
-    columns.put(field_name + ":" + field_index + "_raw", raw_buf)
-    columns.put(field_name + ":" + field_index + "_index", pos_buf)
-    columns.put(field_name + ":" + field_index + "_value", value_buf)
+    columns.put(field_name + "_raw", raw_buf)
+    columns.put(field_name + "_index", pos_buf)
+    columns.put(field_name + "_value", value_buf)
     pos_buf.length > 1
   }
 }

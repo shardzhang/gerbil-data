@@ -76,10 +76,10 @@ class PosMapSerDe(val hadoopConf: Configuration) {
       var featureIndex = 0
       while (features != null && featureIndex < features.length()) {
         val feature = features.getJSONObject(featureIndex)
-        val f_name = feature.getString("field_name")
-        val f_index = feature.getInt("field_index")
-        val f_type = feature.getInt("field_type")
-        posDimMap.put((f_name, f_index, f_type), feature.getInt("dim"))
+        val field_name = feature.getString("field_name")
+        val field_index = feature.getInt("field_index")
+        val field_type = feature.getInt("field_type")
+        posDimMap.put((field_name, field_index, field_type), feature.getInt("dim"))
 
         val entries = feature.optJSONArray("entries")
         var entryIndex = 0
@@ -91,7 +91,7 @@ class PosMapSerDe(val hadoopConf: Configuration) {
             powerSum = entry.getDouble("power_sum"),
             count = entry.getLong("count")
           )
-          posMap.put((f_index, entry.getLong("hash")), posInfo)
+          posMap.put((field_index, entry.getLong("hash")), posInfo)
           entryIndex = entryIndex + 1
         }
         featureIndex = featureIndex + 1
@@ -151,16 +151,16 @@ class PosMapSerDe(val hadoopConf: Configuration) {
         green_println(s"pos_map size: ${size}")
 
         while (size > 0) {
-          val f_name = reader.readUTF()
-          val f_index = reader.readInt()
-          val f_type = reader.readInt()
+          val field_name = reader.readUTF()
+          val field_index = reader.readInt()
+          val field_type = reader.readInt()
           val dim = reader.readInt()
           val hash = reader.readLong()
           val pos = reader.readInt()
           val mean = reader.readDouble()
           val std = reader.readDouble()
-          posMap.put((f_index, hash), legacyPosInfo(pos, mean, std, 1L))
-          posDimMap.put((f_name, f_index, f_type), dim)
+          posMap.put((field_index, hash), legacyPosInfo(pos, mean, std, 1L))
+          posDimMap.put((field_name, field_index, field_type), dim)
           size = size - 1
         }
 
@@ -234,11 +234,10 @@ class PosMapSerDe(val hadoopConf: Configuration) {
     val fs = FileSystem.get(URI.create(binPath), hadoopConf)
     val writer = new LittleEndianDataOutputStream(new BufferedOutputStream(fs.create(new Path(binPath), true)))
 
-    val pos_dim_map = new mutable.HashMap[Int, (String, Int, Int)]()
-    val iter = posDim.iterator
-    while (iter.hasNext) {
-      val e = iter.next()
-      pos_dim_map.put(e._1._2, (e._1._1, e._1._3, e._2))
+    /** HashMap[f_index, Array[(f_name, f_type, dim)]] */
+    val posDimMap = new mutable.HashMap[Int, ArrayBuffer[(String, Int, Int)]]()
+    posDim.foreach { case ((field_name, field_index, field_type), dim) =>
+      posDimMap.getOrElseUpdate(field_index, ArrayBuffer.empty) += ((field_name, field_type, dim))
     }
     writer.writeLong(yesterday.replaceAll("-", "").toLong)
     writer.writeInt(posMap.size)
@@ -246,23 +245,23 @@ class PosMapSerDe(val hadoopConf: Configuration) {
     val iterator = posMap.iterator
     while (iterator.hasNext) {
       val kv = iterator.next()
-      val (f_name, f_type, dim) = pos_dim_map(kv._1._1)
-      val (mean, std) = {
-        if (f_type == FieldType.Categorical) {
-          (0.0D, 1.0D)
-        } else {
-          (kv._2.mean, kv._2.std)
+      for ((field_name, field_type, dim) <- posDimMap(kv._1._1)) {
+        val (mean, std) = {
+          if (field_type == FieldType.Categorical) {
+            (0.0D, 1.0D)
+          } else {
+            (kv._2.mean, kv._2.std)
+          }
         }
+        writer.writeUTF(field_name)
+        writer.writeInt(kv._1._1)
+        writer.writeInt(field_type)
+        writer.writeInt(dim)
+        writer.writeLong(kv._1._2)
+        writer.writeInt(kv._2.pos)
+        writer.writeDouble(mean)
+        writer.writeDouble(std)
       }
-
-      writer.writeUTF(f_name)
-      writer.writeInt(kv._1._1)
-      writer.writeInt(f_type)
-      writer.writeInt(dim)
-      writer.writeLong(kv._1._2)
-      writer.writeInt(kv._2.pos)
-      writer.writeDouble(mean)
-      writer.writeDouble(std)
     }
 
     writer.writeInt(targetMap.size)
@@ -315,12 +314,9 @@ class PosMapSerDe(val hadoopConf: Configuration) {
       root.put("yesterday", yesterday)
 
       val features = new JSONArray()
-      /** HashMap[f_index, (f_name, f_type, dim] */
-      val pos_dim_map = new mutable.HashMap[Int, (String, Int, Int)]()
-      val iter = posDim.iterator
-      while (iter.hasNext) {
-        val e = iter.next()
-        pos_dim_map.put(e._1._2, (e._1._1, e._1._3, e._2))
+      val posDimMap = new mutable.HashMap[Int, ArrayBuffer[(String, Int, Int)]]()
+      posDim.foreach { case ((field_name, field_index, field_type), dim) =>
+        posDimMap.getOrElseUpdate(field_index, ArrayBuffer.empty) += ((field_name, field_type, dim))
       }
 
       /** ArrayBuffer[(f_index, hash, PosInfo)] */
@@ -334,37 +330,37 @@ class PosMapSerDe(val hadoopConf: Configuration) {
       val iterator = pos_map_array.groupBy(s => s._1).toSeq.sortBy(_._1).iterator
       while (iterator.hasNext) {
         val e = iterator.next()
-        val f_index = e._1
+        val field_index = e._1
         val posArr = e._2.sortWith((a, b) => a._3.pos < b._3.pos)
-        val (f_name, f_type, dim) = pos_dim_map(f_index)
+        for ((field_name, field_type, dim) <- posDimMap(field_index)) {
+          val feature = new JSONObject()
+          feature.put("field_name", field_name)
+          feature.put("field_index", field_index)
+          feature.put("field_type", field_type)
+          feature.put("dim", dim)
 
-        val feature = new JSONObject()
-        feature.put("field_name", f_name)
-        feature.put("field_index", f_index)
-        feature.put("field_type", f_type)
-        feature.put("dim", dim)
-
-        val entries = new JSONArray()
-        for ((_, hash, posInfo) <- posArr) {
-          val entry = new JSONObject()
-          val (mean, std) = {
-            if (f_type == FieldType.Categorical) {
-              (0.0D, 1.0D)
-            } else {
-              (posInfo.mean, posInfo.std)
+          val entries = new JSONArray()
+          for ((_, hash, posInfo) <- posArr) {
+            val entry = new JSONObject()
+            val (mean, std) = {
+              if (field_type == FieldType.Categorical) {
+                (0.0D, 1.0D)
+              } else {
+                (posInfo.mean, posInfo.std)
+              }
             }
+            entry.put("hash", hash)
+            entry.put("pos", posInfo.pos)
+            entry.put("sum", posInfo.sum)
+            entry.put("power_sum", posInfo.powerSum)
+            entry.put("count", posInfo.count)
+            entry.put("mean", mean)
+            entry.put("std", std)
+            entries.put(entry)
           }
-          entry.put("hash", hash)
-          entry.put("pos", posInfo.pos)
-          entry.put("sum", posInfo.sum)
-          entry.put("power_sum", posInfo.powerSum)
-          entry.put("count", posInfo.count)
-          entry.put("mean", mean)
-          entry.put("std", std)
-          entries.put(entry)
+          feature.put("entries", entries)
+          features.put(feature)
         }
-        feature.put("entries", entries)
-        features.put(feature)
       }
       root.put("features", features)
       root.put("feature_size", features.length())

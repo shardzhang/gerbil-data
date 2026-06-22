@@ -20,7 +20,7 @@ Currently supports the [MovieLens 1M (ML-1M)](https://grouplens.org/datasets/mov
 
 2. **Negative Sampling Strategies**: For each positive instance, generates unobserved items as negative samples — a critical component for ranking model training. Supports uniform random, popularity-biased sampling, and hybrid strategies, preventing popular items from dominating training gradients and effectively mitigating the "Matthew effect", improving model generalization on long-tail items.
 
-3. **High-Order Cross Features**: Supports second-order and higher-order feature combinations to capture deeper patterns in data. All 58 features are encoded through a type-safe generic `Featurizer[T]` architecture — producing the standard embedding lookup schema for DeepFM, DIN, and similar models.
+3. **High-Order Cross Features**: Supports second-order and higher-order feature combinations to capture deeper patterns in data. All features (60 raw + 17 cross) are encoded through a type-safe generic `Featurizer[T]` architecture — producing the standard embedding lookup schema for DeepFM, DIN, and similar models.
 
 4. **Vocabulary Management**: Builds embedding vocabularies through frequency thresholding, assigning dedicated slots for each feature. Feature position maps are persisted in JSON (human-readable) and binary (with mean/std for online normalization).
 
@@ -144,14 +144,14 @@ flowchart LR
 ```mermaid
 flowchart TD
     subgraph Config[Configuration Layer]
-        YAML[features.yaml<br/>Feature registry<br/>Name · Index · Type · Class]
+        YAML[features.yaml<br/>Feature registry<br/>field_name · field_index · field_type · class_name]
         FC[FeatureConfig<br/>Case class model]
         CL[FeatureConfigLoader<br/>YAML → FeatureDef]
     end
 
     subgraph Core[Featurizer Core]
         FE["Featurizer[T]<br/>Generic abstract framework"]
-        CF["CategoricalFeature[T]<br/>Hash-based embedding<br/>(name_raw, _index, _value)"]
+        CF["CategoricalFeature[T]<br/>Hash-based embedding<br/>(field:idx_raw, _index, _value)"]
         COF["ContinuousFeature[T]<br/>Identity mapping"]
         XF["CrossFeature[T]<br/>Combinatory enumeration"]
         RT["RawTarget[T]"]
@@ -285,7 +285,8 @@ spark-submit --class pipeline.ML1MPipeline \
   --sample_ratio <ratio> \
   --input_dir ${ML1M_HOME} \
   --output_dir /path/to/output \
-  --output_format tfrecord
+  --output_format tfrecord \
+  --target_mode binary
 ```
 
 ### Or run with shell scripts
@@ -364,9 +365,13 @@ It covers raw data inspection, ETL pipeline execution, featurization, TFRecord o
 
 ### Targets
 
-- **Multi-class**: rating (1-5) as categorical target
-- **Binary**: rating >= 3 as positive, < 3 as negative
-- **Regression**: raw rating value
+Select the prediction target with `--target_mode` when running the pipeline:
+
+| Mode | CLI Value | Description |
+|------|-----------|-------------|
+| **Multi-class** | `multi` | Rating (1-5) as a multi-class categorical target; uses `target_map` for vocabulary |
+| **Binary** | `binary` | Rating >= 3 as positive, < 3 as negative; supports negative down-sampling via `sample_ratio` |
+| **Regression** | `rating` | Raw rating value as a regression target; disables `target_map` and outputs the float value directly |
 
 ## Output Formats
 
@@ -380,6 +385,39 @@ Columnar storage format compatible with Spark and many big data tools.
 - `pos_map.json` — Human-readable structured feature position mapping
 - `pos_map.bin` — Binary feature mapping with mean/std for online normalization
 - `pos_map.txt` — Field dimension summary in plain text
+
+## Feature Configuration
+
+Features are registered in YAML (`src/main/resources/ml1m/features.yaml`). Each feature entry specifies:
+
+| Key | Description |
+|-----|-------------|
+| `field_name` | Globally unique feature name (used as prefix for TFRecord fields) |
+| `field_index` | Numeric index; features sharing the same `field_index` share an embedding vocabulary |
+| `field_type` | `1` for categorical (hash-based), `0` for continuous (identity mapping) |
+| `class_name` | Scala class that implements the feature extraction logic |
+| `enabled` | Whether the feature is active (`true`/`false`) |
+
+```yaml
+features:
+  - {field_name: user_id,       field_index: 1,   field_type: 1, class_name: UserID,       enabled: true}
+  - {field_name: user_age,      field_index: 2,   field_type: 1, class_name: UserAge,      enabled: true}
+  - {field_name: movie_id,      field_index: 101, field_type: 1, class_name: MovieID,      enabled: true}
+  - {field_name: movie_title,   field_index: 102, field_type: 1, class_name: MovieTitle,   enabled: true}
+
+  # Behavior sequences share field_index 101 (same vocabulary as movie_id)
+  - {field_name: user_movie_rate,    field_index: 101, field_type: 1, class_name: UserMovieRate,    enabled: true}
+  - {field_name: user_movie_rate_1day, field_index: 101, field_type: 1, class_name: UserMovieRate1Day, enabled: true}
+```
+
+### Field Naming Convention
+
+Each feature produces three TFRecord fields:
+- `{field_name}:{field_index}_raw` — string representation
+- `{field_name}:{field_index}_index` — embedding position (hashed or identity)
+- `{field_name}:{field_index}_value` — embedding weight
+
+The `field_index` suffix guarantees field-name uniqueness and enables downstream models to identify which embedding table a field belongs to.
 
 ## Project Modules
 

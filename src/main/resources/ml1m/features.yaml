@@ -73,11 +73,11 @@ features:
   - {field_name: user_movie_rate_15day, field_index: 101, field_type: 1, class_name: UserMovieRate15Day, enabled: true}
 
   # ── User behavior: recent genre rating sequences ──
-  - {field_name: user_genres_rate, field_index: 102, field_type: 1, class_name: UserGenresRate, enabled: true}
-  - {field_name: user_genres_rate_1day, field_index: 102, field_type: 1, class_name: UserGenresRate1Day, enabled: true}
-  - {field_name: user_genres_rate_3day, field_index: 102, field_type: 1, class_name: UserGenresRate3Day, enabled: true}
-  - {field_name: user_genres_rate_7day, field_index: 102, field_type: 1, class_name: UserGenresRate7Day, enabled: true}
-  - {field_name: user_genres_rate_15day, field_index: 102, field_type: 1, class_name: UserGenresRate15Day, enabled: true}
+  - {field_name: user_genres_rate, field_index: 103, field_type: 1, class_name: UserGenresRate, enabled: true}
+  - {field_name: user_genres_rate_1day, field_index: 103, field_type: 1, class_name: UserGenresRate1Day, enabled: true}
+  - {field_name: user_genres_rate_3day, field_index: 103, field_type: 1, class_name: UserGenresRate3Day, enabled: true}
+  - {field_name: user_genres_rate_7day, field_index: 103, field_type: 1, class_name: UserGenresRate7Day, enabled: true}
+  - {field_name: user_genres_rate_15day, field_index: 103, field_type: 1, class_name: UserGenresRate15Day, enabled: true}
 
   # ── User behavior: recent genre rating counts ──
   - {field_name: user_genres_rate_cnts, field_index: 312, field_type: 1, class_name: UserGenresRateCnts, enabled: true}

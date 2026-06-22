@@ -18,7 +18,7 @@
 
 1. **数据清洗与特征提取**: 将原始交互日志加工为结构化训练样本，这是推荐系统特征工程的基石。基于 Spark SQL 完成去重、异常过滤、多表特征 Join，各个阶段内置列级数据质量检查，杜绝"garbage in, garbage out"。提取用户画像、物品属性、上下文信号、可配置时间窗口的行为序列——覆盖推荐模型所需的完整特征谱系。支持多种预测目标: 多分类、二分类、回归
 2. **负采样策略**: 为每条正样本生成该用户未交互的物品作为负样本，推荐系统排序模型训练的必备环节。支持均匀随机、流行度偏置采样、混合采样三种策略，防止热门物品主导训练梯度，有效缓解"马太效应"，提升模型对长尾物品的泛化能力。
-3. **高阶交叉特征**: 支持二阶及以上高阶特征组合，捕捉数据中更深层模式。全部 58 个特征通过类型安全的泛型 `Featurizer[T]` 架构编码 —— 产出DeepFM、DIN 等模型的标准 embedding lookup 格式。
+3. **高阶交叉特征**: 支持二阶及以上高阶特征组合，捕捉数据中更深层模式。全部特征（60 个原始特征 + 17 个交叉特征）通过类型安全的泛型 `Featurizer[T]` 架构编码 —— 产出 DeepFM、DIN 等模型的标准 embedding lookup 格式。
 4. **词表管理**: 基于频次阈值构建 embedding 词表，为每个特征分配独立位置。特征位置映射持久化为 JSON（人类可读）和二进制（含均值/标准差，用于在线归一化）。
 5. **特征配置化**: YAML 驱动的特征注册中心。新增或禁用特征只需编辑一个配置文件，无需改代码、无需重编译。支持 classpath 和外部文件两种加载方式。
 6. **多格式输出**：最终样本支持输出 TFRecord（TensorFlow Example protobuf）和 Parquet（列式存储）两种格式，按时间切分 train/val/test 用于通用推荐效果评估。
@@ -136,14 +136,14 @@ flowchart LR
 ```mermaid
 flowchart TD
     subgraph Config[配置层]
-        YAML[features.yaml<br/>特征注册中心]
+        YAML[features.yaml<br/>特征注册中心<br/>field_name · field_index · field_type · class_name]
         FC[FeatureConfig<br/>Case class 模型]
         CL[FeatureConfigLoader<br/>YAML → FeatureDef]
     end
 
     subgraph Core[特征化核心]
         FE["Featurizer[T]<br/>泛型抽象框架"]
-        CF["CategoricalFeature[T]<br/>哈希嵌入<br/>"]
+        CF["CategoricalFeature[T]<br/>哈希嵌入<br/>(field:idx_raw, _index, _value)"]
         COF["ContinuousFeature[T]<br/>恒等映射"]
         XF["CrossFeature[T]<br/>组合枚举"]
         RT["RawTarget[T]"]
@@ -277,7 +277,8 @@ spark-submit --class pipeline.ML1MPipeline \
   --sample_ratio <ratio> \
   --input_dir ${ML1M_HOME} \
   --output_dir /path/to/output \
-  --output_format tfrecord
+  --output_format tfrecord \
+  --target_mode binary
 ```
 
 ### 或使用 Shell 脚本运行
@@ -356,9 +357,13 @@ jupyter lab examples/gerbil-data-demo.ipynb
 
 ### 预测目标
 
-- **多分类**：评分（1-5 星）作为类别目标
-- **二分类**：评分 >= 3 为正样本，< 3 为负样本
-- **回归**：原始评分值
+通过 `--target_mode` 参数选择预测目标：
+
+| 模式 | CLI 值 | 说明 |
+|------|--------|------|
+| **多分类** | `multi` | 评分（1-5）作为类别目标，使用 `target_map` 构建词表 |
+| **二分类** | `binary` | 评分 >= 3 为正样本，< 3 为负样本；支持通过 `sample_ratio` 负采样下采样 |
+| **回归** | `rating` | 原始评分值作为回归目标，禁用 `target_map`，直接输出浮点值 |
 
 ## 输出格式
 
@@ -372,6 +377,39 @@ jupyter lab examples/gerbil-data-demo.ipynb
 - `pos_map.json` — 人类可读的结构化特征位置映射
 - `pos_map.bin` — 带均值/标准差的二进制特征映射，用于在线归一化
 - `pos_map.txt` — 字段维度汇总文本文件
+
+## 特征配置
+
+特征通过 YAML 注册（`src/main/resources/ml1m/features.yaml`），每个特征条目包含以下字段：
+
+| 键 | 说明 |
+|-----|-------------|
+| `field_name` | 全局唯一的特征名（作为 TFRecord 字段前缀） |
+| `field_index` | 数字索引；相同 `field_index` 的特征共享同一个 embedding 词表 |
+| `field_type` | `1` 为离散特征（哈希映射），`0` 为连续特征（恒等映射） |
+| `class_name` | 实现特征提取逻辑的 Scala 类名 |
+| `enabled` | 是否启用（`true`/`false`） |
+
+```yaml
+features:
+  - {field_name: user_id,       field_index: 1,   field_type: 1, class_name: UserID,       enabled: true}
+  - {field_name: user_age,      field_index: 2,   field_type: 1, class_name: UserAge,      enabled: true}
+  - {field_name: movie_id,      field_index: 101, field_type: 1, class_name: MovieID,      enabled: true}
+  - {field_name: movie_title,   field_index: 102, field_type: 1, class_name: MovieTitle,   enabled: true}
+
+  # 行为序列共享 field_index 101（与 movie_id 共用词表）
+  - {field_name: user_movie_rate,    field_index: 101, field_type: 1, class_name: UserMovieRate,    enabled: true}
+  - {field_name: user_movie_rate_1day, field_index: 101, field_type: 1, class_name: UserMovieRate1Day, enabled: true}
+```
+
+### 字段命名规范
+
+每个特征在 TFRecord 中产出三个字段：
+- `{field_name}:{field_index}_raw` — 原始字符串表示
+- `{field_name}:{field_index}_index` — 嵌入位置（哈希或恒等映射）
+- `{field_name}:{field_index}_value` — 嵌入权重
+
+`field_index` 后缀保证字段名唯一性，并帮助下游模型识别字段所属的 embedding 表。
 
 ## 项目模块
 
