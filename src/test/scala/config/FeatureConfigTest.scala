@@ -7,10 +7,10 @@ class FeatureConfigTest extends WordSpec with Matchers {
   "FeatureDef" should {
     "create with all fields" in {
       val f = FeatureDef("test_feat", 10, 1, "com.example.TestFeature", Some(true))
-      assert(f.name === "test_feat")
-      assert(f.index === 10)
-      assert(f.`type` === 1)
-      assert(f.className === "com.example.TestFeature")
+      assert(f.field_name === "test_feat")
+      assert(f.field_index === 10)
+      assert(f.`field_type` === 1)
+      assert(f.class_name === "com.example.TestFeature")
       assert(f.isEnabled === true)
       assert(f.isCategorical === true)
       assert(f.isContinuous === false)
@@ -37,8 +37,8 @@ class FeatureConfigTest extends WordSpec with Matchers {
   "CrossFeatureDef" should {
     "create and check enabled" in {
       val c = CrossFeatureDef("cross", 100, Some(true), Seq("a", "b"))
-      assert(c.name === "cross")
-      assert(c.index === 100)
+      assert(c.field_name === "cross")
+      assert(c.field_index === 100)
       assert(c.isEnabled === true)
       assert(c.depends === Seq("a", "b"))
     }
@@ -76,30 +76,30 @@ class FeatureConfigTest extends WordSpec with Matchers {
       assert(config.pkg === Some("featurizer.ml1m"))
       val feats = config.features
       assert(feats.size === 4)
-      assert(feats.exists(_.name === "user_age"))
-      assert(feats.exists(_.name === "user_gender"))
-      assert(feats.exists(_.name === "movie_avg_rate_continue"))
-      assert(feats.exists(_.name === "disabled_feat"))
+      assert(feats.exists(_.field_name === "user_age"))
+      assert(feats.exists(_.field_name === "user_gender"))
+      assert(feats.exists(_.field_name === "movie_avg_rate_continue"))
+      assert(feats.exists(_.field_name === "disabled_feat"))
     }
 
     "resolve className via pkg prefix" in {
       val config = FeatureConfigLoader.loadFromResource("/config/test_features.yaml")
-      val userAge = config.features.find(_.name === "user_age").get
-      assert(userAge.className === "featurizer.ml1m.UserAge")
+      val userAge = config.features.find(_.field_name === "user_age").get
+      assert(userAge.class_name === "featurizer.ml1m.UserAge")
     }
 
     "parse categorical and continuous types" in {
       val config = FeatureConfigLoader.loadFromResource("/config/test_features.yaml")
-      val catFeat = config.features.find(_.name === "user_age").get
-      val contFeat = config.features.find(_.name === "movie_avg_rate_continue").get
+      val catFeat = config.features.find(_.field_name === "user_age").get
+      val contFeat = config.features.find(_.field_name === "movie_avg_rate_continue").get
       assert(catFeat.isCategorical === true)
       assert(contFeat.isContinuous === true)
     }
 
     "parse enabled flag correctly" in {
       val config = FeatureConfigLoader.loadFromResource("/config/test_features.yaml")
-      val enabled = config.features.find(_.name === "user_age").get
-      val disabled = config.features.find(_.name === "disabled_feat").get
+      val enabled = config.features.find(_.field_name === "user_age").get
+      val disabled = config.features.find(_.field_name === "disabled_feat").get
       assert(enabled.isEnabled === true)
       assert(disabled.isEnabled === false)
     }
@@ -108,8 +108,8 @@ class FeatureConfigTest extends WordSpec with Matchers {
       val config = FeatureConfigLoader.loadFromResource("/config/test_features.yaml")
       val crosses = config.cross_features.get
       assert(crosses.size === 2)
-      val active = crosses.find(_.name === "cross_age_gender").get
-      val inactive = crosses.find(_.name === "cross_disabled").get
+      val active = crosses.find(_.field_name === "cross_age_gender").get
+      val inactive = crosses.find(_.field_name === "cross_disabled").get
       assert(active.isEnabled === true)
       assert(inactive.isEnabled === false)
       assert(active.depends === Seq("user_age", "user_gender"))

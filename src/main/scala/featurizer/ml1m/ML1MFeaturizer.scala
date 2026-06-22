@@ -21,14 +21,14 @@ class ML1MFeaturizer(configPath: Option[String] = None, targetMode: String = "bi
 
   private def instantiate(featureDef: FeatureDef): Any = {
     try {
-      val clazz = Class.forName(featureDef.className)
+      val clazz = Class.forName(featureDef.class_name)
       val ctor = clazz.getConstructor(classOf[Int], classOf[String])
-      ctor.newInstance(featureDef.index.asInstanceOf[AnyRef], featureDef.name)
+      ctor.newInstance(featureDef.field_index.asInstanceOf[AnyRef], featureDef.field_name)
     } catch {
       case e: RuntimeException => throw e
       case e: Exception =>
-        throw new RuntimeException("[Featurizer] failed to instantiate feature '" + featureDef.name +
-          "' (index=" + featureDef.index + "): " + featureDef.className, e)
+        throw new RuntimeException("[Featurizer] failed to instantiate feature '" + featureDef.field_name +
+          "' (index=" + featureDef.field_index + "): " + featureDef.class_name, e)
     }
   }
 
@@ -52,7 +52,7 @@ class ML1MFeaturizer(configPath: Option[String] = None, targetMode: String = "bi
       } else {
         raw_conti_features.append(inst.asInstanceOf[ContinuousFeature[ML1MSample]])
       }
-      featureInstances(defn.name) = inst
+      featureInstances(defn.field_name) = inst
     }
 
     if (config.cross_features.isDefined) {
@@ -63,9 +63,9 @@ class ML1MFeaturizer(configPath: Option[String] = None, targetMode: String = "bi
           }
           if (feats.size < cfd.depends.size) {
             val missing = cfd.depends.filterNot(featureInstances.contains).mkString(", ")
-            green_println("[Featurizer] WARN: cross feature " + cfd.name + " depends not found: " + missing)
+            green_println("[Featurizer] WARN: cross feature " + cfd.field_name + " depends not found: " + missing)
           } else {
-            cross_features.append(new CrossFeature(cfd.index, cfd.name, feats: _*))
+            cross_features.append(new CrossFeature(cfd.field_index, cfd.field_name, feats: _*))
           }
         }
       }

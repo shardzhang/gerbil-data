@@ -60,32 +60,31 @@ object FeatureConfigLoader {
     } else {
       None
     }
-
     FeatureConfig(pkg, features, crossConfig)
   }
 
-  /** Converts a single YAML feature map into a FeatureDef. Resolves className via pkg prefix. */
+  /** Converts a single YAML feature map into a FeatureDef. Resolves class_name via pkg prefix. */
   private def convertFeature(raw: util.Map[String, Any], pkg: Option[String]): FeatureDef = {
-    val name = raw.get("name").toString
-    val index = raw.get("index").toString.toInt
-    val rawClass = raw.get("class").toString
-    val className = if (pkg.isDefined && !rawClass.contains(".")) {
+    val field_name = raw.get("field_name").toString
+    val field_index = raw.get("field_index").toString.toInt
+    val rawClass = raw.get("class_name").toString
+    val class_name = if (pkg.isDefined && !rawClass.contains(".")) {
       pkg.get + "." + rawClass
     } else {
       rawClass
     }
     val enabled = Option(raw.get("enabled")).map(v => java.lang.Boolean.parseBoolean(v.toString))
-    val rawType = raw.get("type").toString.toInt
-    FeatureDef(name, index, rawType, className, enabled)
+    val field_type = raw.get("field_type").toString.toInt
+    FeatureDef(field_name, field_index, field_type, class_name, enabled)
   }
 
   /** Converts a single cross feature map into CrossFeatureDef. */
   private def convertCrossFeature(raw: util.Map[String, Any]): CrossFeatureDef = {
-    val name = raw.get("name").toString
-    val index = raw.get("index").toString.toInt
+    val field_name = raw.get("field_name").toString
+    val field_index = raw.get("field_index").toString.toInt
     val enabled = Option(raw.get("enabled")).map(v => java.lang.Boolean.parseBoolean(v.toString))
     val dependsRaw = raw.get("depends").asInstanceOf[util.List[Any]]
-    val depends = dependsRaw.asScala.map(_.toString).toSeq
-    CrossFeatureDef(name, index, enabled, depends)
+    val depends = dependsRaw.asScala.map(_.toString)
+    CrossFeatureDef(field_name, field_index, enabled, depends)
   }
 }
