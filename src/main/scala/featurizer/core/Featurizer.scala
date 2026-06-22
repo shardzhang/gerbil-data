@@ -39,13 +39,13 @@ abstract class Featurizer[T] extends Serializable {
   def getFieldInfo(): ArrayBuffer[(String, Int)] = {
     val buff = new ArrayBuffer[(String, Int)]()
     for (raw_f <- raw_cate_features) {
-      buff.append((raw_f.f_name, raw_f.f_index))
+      buff.append((raw_f.field_name, raw_f.field_index))
     }
     for (raw_f <- raw_conti_features) {
-      buff.append((raw_f.f_name, raw_f.f_index))
+      buff.append((raw_f.field_name, raw_f.field_index))
     }
     for (cross_f <- cross_features) {
-      buff.append((cross_f.f_name, cross_f.f_index))
+      buff.append((cross_f.field_name, cross_f.field_index))
     }
     buff
   }
@@ -136,7 +136,7 @@ abstract class Featurizer[T] extends Serializable {
   }
 
   /** Encodes a sample into a TF Example builder with pos-map lookup. Returns (has_feature, has_target). */
-  def encode(input: T, dim: Long, builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int], target_map: collection.Map[Int, Int]): (Boolean, Boolean) = {
+  def encode(input: T, dim: Long, builder: Example.Builder, posMap: collection.Map[(Int, Long), Int], targetMap: collection.Map[Int, Int]): (Boolean, Boolean) = {
     for (raw_f <- raw_cate_features) {
       raw_f.clear()
       raw_f.parse(input)
@@ -149,21 +149,21 @@ abstract class Featurizer[T] extends Serializable {
 
     val has_target = target
       .parse(input)
-      .add(builder, target_map)
+      .add(builder, targetMap)
 
     var has_feature = false
     for (raw_f <- raw_cate_features) {
-      if (raw_f.add(dim, builder, pos_map)) {
+      if (raw_f.add(dim, builder, posMap)) {
         has_feature = true
       }
     }
     for (raw_f <- raw_conti_features) {
-      if (raw_f.add(builder, pos_map)) {
+      if (raw_f.add(builder, posMap)) {
         has_feature = true
       }
     }
     for (cross_f <- cross_features) {
-      if (cross_f.add(dim, builder, pos_map)) {
+      if (cross_f.add(dim, builder, posMap)) {
         has_feature = true
       }
     }

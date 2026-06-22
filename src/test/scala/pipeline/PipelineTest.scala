@@ -3,6 +3,7 @@ package pipeline
 import org.scalatest.{Matchers, WordSpec}
 
 import java.io.{BufferedReader, StringReader}
+import java.util.concurrent.ThreadLocalRandom
 import pipeline.stats.{PosInfo, RunningValueStats}
 
 class PipelineTest extends WordSpec with Matchers {
@@ -87,6 +88,10 @@ class PipelineTest extends WordSpec with Matchers {
     override def getSampleTarget(sample: String): Int = sample.hashCode
 
     override def getSampleTimestamp(sample: String): Long = 0L
+
+    override def keepSample(sample: String, sample_ratio: Double): Boolean = {
+      getSampleTarget(sample) != 0 || ThreadLocalRandom.current().nextDouble() <= sample_ratio
+    }
 
     // Expose persistence methods for testing
     def testReadText(reader: BufferedReader): String = posMapSerDe.readText(reader)

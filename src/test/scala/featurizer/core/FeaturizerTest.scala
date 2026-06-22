@@ -233,7 +233,7 @@ class FeatureEncoderTest extends WordSpec with Matchers {
       info.foreach { case (name, idx, fType, fmt, hash, value) =>
         assert(name === "test_feat")
         assert(idx === 1)
-        assert(fType === FeatureType.Categorical)
+        assert(fType === FieldType.Categorical)
         assert(value === 1.0F)
       }
     }
@@ -320,7 +320,7 @@ class FeatureEncoderTest extends WordSpec with Matchers {
       val (name, idx, fType, fmt, hash, value) = info.head
       assert(name === "conti_feat")
       assert(idx === 1)
-      assert(fType === FeatureType.Continuous)
+      assert(fType === FieldType.Continuous)
       assert(hash === 10L)
       assert(value === 10.0F)
     }
@@ -449,7 +449,7 @@ class FeatureEncoderTest extends WordSpec with Matchers {
       val (name, idx, fType, fmt, _, _) = info.head
       assert(name === "cross_f")
       assert(idx === 100)
-      assert(fType === FeatureType.Categorical)
+      assert(fType === FieldType.Categorical)
       assert(fmt === "1:10__xx__2:20")
     }
   }

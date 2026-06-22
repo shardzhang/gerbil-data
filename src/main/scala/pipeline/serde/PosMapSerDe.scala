@@ -10,7 +10,7 @@ import java.net.URI
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import utils.LogUtils.green_println
-import featurizer.core.FeatureType
+import featurizer.core.FieldType
 import pipeline.stats.PosInfo
 
 /**
@@ -47,8 +47,11 @@ class PosMapSerDe(val hadoopConf: Configuration) {
   /** Restores pos-map, target-map, and dim-map from a JSON file. Returns false if file does not exist. */
   def restoreFromJson(path: String,
                       yesterday: String,
+                      /** HashMap[(f_index, hash), PosInfo] */
                       posMap: mutable.HashMap[(Int, Long), PosInfo],
+                      /** HashMap[target, pos] */
                       targetMap: mutable.HashMap[Int, Int],
+                      /** HashMap[(f_name, f_index, f_type), dim] */
                       posDimMap: mutable.HashMap[(String, Int, Int), Int]): Boolean = {
     val jsonPath = s"${path}/${yesterday}/pos_map.json"
     val fs = FileSystem.get(URI.create(jsonPath), hadoopConf)
@@ -102,6 +105,7 @@ class PosMapSerDe(val hadoopConf: Configuration) {
   /** Restores the dimension-map from a CSV text file. Returns false if file does not exist. */
   def restoreFromText(path: String,
                       yesterday: String,
+                      /** HashMap[(f_name, f_index, f_type), dim] */
                       posDimMap: mutable.HashMap[(String, Int, Int), Int]): Boolean = {
     val textPath = s"${path}/${yesterday}/pos_map.txt"
     val fs = FileSystem.get(URI.create(textPath), hadoopConf)
@@ -130,8 +134,11 @@ class PosMapSerDe(val hadoopConf: Configuration) {
   /** Restores pos-map, target-map, and dim-map from the legacy binary format. */
   def restoreFromBin(path: String,
                      yesterday: String,
+                     /** HashMap[(f_index, hash), PosInfo] */
                      posMap: mutable.HashMap[(Int, Long), PosInfo],
+                     /** HashMap[target, pos] */
                      targetMap: mutable.HashMap[Int, Int],
+                     /** HashMap[(f_name, f_index, f_type), dim] */
                      posDimMap: mutable.HashMap[(String, Int, Int), Int]): Unit = {
     val binPath = s"${path}/${yesterday}/pos_map.bin"
     try {
@@ -178,59 +185,70 @@ class PosMapSerDe(val hadoopConf: Configuration) {
 
   /** Restores all maps (pos, target, dim) from JSON (primary). Falls back gracefully if files are missing. */
   def restore(path: String, yesterday: String): (mutable.HashMap[(Int, Long), PosInfo], mutable.HashMap[Int, Int], mutable.HashMap[(String, Int, Int), Int]) = {
-    val pos_dim_map = new mutable.HashMap[(String, Int, Int), Int]()
-    val pos_map = new mutable.HashMap[(Int, Long), PosInfo]()
-    val target_map = new mutable.HashMap[Int, Int]()
+    /** HashMap[(f_name, f_index, f_type), dim] */
+    val posDimMap = new mutable.HashMap[(String, Int, Int), Int]()
+    /** HashMap[(f_index, hash), PosInfo] */
+    val posMap = new mutable.HashMap[(Int, Long), PosInfo]()
+    /** HashMap[target, pos] */
+    val targetMap = new mutable.HashMap[Int, Int]()
 
-    restoreFromJson(path, yesterday, pos_map, target_map, pos_dim_map)
-
-    green_println(s"read pos_map size = ${pos_map.size}")
-    green_println(s"read target_map size = ${target_map.size}")
-    green_println(s"read pos_dim_map size = ${pos_dim_map.size}")
-    (pos_map, target_map, pos_dim_map)
+    restoreFromJson(path, yesterday, posMap, targetMap, posDimMap)
+    green_println(s"read posMap size = ${posMap.size}")
+    green_println(s"read targetMap size = ${targetMap.size}")
+    green_println(s"read posDimMap size = ${posDimMap.size}")
+    (posMap, targetMap, posDimMap)
   }
 
-  /** Saves all maps in all three formats (JSON, text, binary). */
+  /** Saves all maps in all three formats (JSON, text, binary).
+   * @param posMap HashMap[(f_index, hash), PosInfo]
+   * @param targetMap  HashMap[target, pos]
+   * @param posDim HashMap[(f_name, f_index, f_type), dim]
+   */
   def save(path: String,
            yesterday: String,
-           pos_map: collection.Map[(Int, Long), PosInfo],
-           target_map: collection.Map[Int, Int],
-           pos_dim: collection.Map[(String, Int, Int), Int]): Unit = {
-    saveToJson(path, yesterday, pos_map, target_map, pos_dim)
-    saveToText(path, yesterday, pos_dim)
-    saveToBin(path, yesterday, pos_map, target_map, pos_dim)
-    green_println(s"write pos_map size: ${pos_map.size}")
-    green_println(s"write target_map size: ${target_map.size}")
-    green_println(s"write pos_dim size: ${pos_dim.size}")
+           /** HashMap[(f_index, hash), PosInfo] */
+           posMap: collection.Map[(Int, Long), PosInfo],
+           /** HashMap[target, pos] */
+           targetMap: collection.Map[Int, Int],
+           /** HashMap[(f_name, f_index, f_type), dim] */
+           posDim: collection.Map[(String, Int, Int), Int]): Unit = {
+    saveToJson(path, yesterday, posMap, targetMap, posDim)
+    saveToText(path, yesterday, posDim)
+    saveToBin(path, yesterday, posMap, targetMap, posDim)
+    green_println(s"write pos_map size: ${posMap.size}")
+    green_println(s"write target_map size: ${targetMap.size}")
+    green_println(s"write pos_dim size: ${posDim.size}")
   }
 
   /** Saves pos-map, target-map, and dim-map in compact binary format (used for online inference). */
   def saveToBin(path: String,
                 yesterday: String,
-                pos_map: collection.Map[(Int, Long), PosInfo],
-                target_map: collection.Map[Int, Int],
-                pos_dim: collection.Map[(String, Int, Int), Int]): Unit = {
+                /** HashMap[(f_index, hash), PosInfo] */
+                posMap: collection.Map[(Int, Long), PosInfo],
+                /** HashMap[target, pos] */
+                targetMap: collection.Map[Int, Int],
+                /** HashMap[(f_name, f_index, f_type), dim] */
+                posDim: collection.Map[(String, Int, Int), Int]): Unit = {
     val binPath = s"${path}/${yesterday}/pos_map.bin"
     green_println(s"write pos_map.bin path = ${binPath}")
     val fs = FileSystem.get(URI.create(binPath), hadoopConf)
     val writer = new LittleEndianDataOutputStream(new BufferedOutputStream(fs.create(new Path(binPath), true)))
 
     val pos_dim_map = new mutable.HashMap[Int, (String, Int, Int)]()
-    val iter = pos_dim.iterator
+    val iter = posDim.iterator
     while (iter.hasNext) {
       val e = iter.next()
       pos_dim_map.put(e._1._2, (e._1._1, e._1._3, e._2))
     }
-
     writer.writeLong(yesterday.replaceAll("-", "").toLong)
-    writer.writeInt(pos_map.size)
+    writer.writeInt(posMap.size)
 
-    val iterator = pos_map.iterator
+    val iterator = posMap.iterator
     while (iterator.hasNext) {
       val kv = iterator.next()
       val (f_name, f_type, dim) = pos_dim_map(kv._1._1)
       val (mean, std) = {
-        if (f_type == FeatureType.Categorical) {
+        if (f_type == FieldType.Categorical) {
           (0.0D, 1.0D)
         } else {
           (kv._2.mean, kv._2.std)
@@ -247,8 +265,8 @@ class PosMapSerDe(val hadoopConf: Configuration) {
       writer.writeDouble(std)
     }
 
-    writer.writeInt(target_map.size)
-    val it = target_map.iterator
+    writer.writeInt(targetMap.size)
+    val it = targetMap.iterator
     while (it.hasNext) {
       val kv = it.next()
       writer.writeInt(kv._1)
@@ -260,14 +278,15 @@ class PosMapSerDe(val hadoopConf: Configuration) {
   /** Saves field dimension map as human-readable CSV. */
   def saveToText(path: String,
                  yesterday: String,
-                 pos_dim: collection.Map[(String, Int, Int), Int]): Unit = {
+                 /** HashMap[(f_name, f_index, f_type), dim] */
+                 posDim: collection.Map[(String, Int, Int), Int]): Unit = {
     val textPath = s"${path}/${yesterday}/pos_map.txt"
     green_println(s"write pos_map.text path = ${textPath}")
     val fs = FileSystem.get(URI.create(textPath), hadoopConf)
     val writer = new BufferedWriter(new OutputStreamWriter(fs.create(new Path(textPath), true), "utf-8"))
     try {
       writer.write("field_name,field_index,field_type,dim\n")
-      pos_dim.toSeq
+      posDim.toSeq
         .sortBy { case ((fieldName, fieldIndex, fieldType), _) => (fieldIndex, fieldType, fieldName) }
         .foreach { case ((fieldName, fieldIndex, fieldType), dim) =>
           writer.write(s"${fieldName},${fieldIndex},${fieldType},${dim}\n")
@@ -280,9 +299,12 @@ class PosMapSerDe(val hadoopConf: Configuration) {
   /** Saves pos-map, target-map, and dim-map as a structured JSON file (primary readable format). */
   def saveToJson(path: String,
                  yesterday: String,
-                 pos_map: collection.Map[(Int, Long), PosInfo],
-                 target_map: collection.Map[Int, Int],
-                 pos_dim: collection.Map[(String, Int, Int), Int]): Unit = {
+                 /** HashMap[(f_index, hash), PosInfo] */
+                 posMap: collection.Map[(Int, Long), PosInfo],
+                 /** HashMap[target, pos] */
+                 targetMap: collection.Map[Int, Int],
+                 /** HashMap[(f_name, f_index, f_type), dim] */
+                 posDim: collection.Map[(String, Int, Int), Int]): Unit = {
     val jsonPath = s"${path}/${yesterday}/pos_map.json"
     green_println(s"write pos_map.json path = ${jsonPath}")
     val fs = FileSystem.get(URI.create(jsonPath), hadoopConf)
@@ -293,15 +315,17 @@ class PosMapSerDe(val hadoopConf: Configuration) {
       root.put("yesterday", yesterday)
 
       val features = new JSONArray()
+      /** HashMap[f_index, (f_name, f_type, dim] */
       val pos_dim_map = new mutable.HashMap[Int, (String, Int, Int)]()
-      val iter = pos_dim.iterator
+      val iter = posDim.iterator
       while (iter.hasNext) {
         val e = iter.next()
         pos_dim_map.put(e._1._2, (e._1._1, e._1._3, e._2))
       }
 
+      /** ArrayBuffer[(f_index, hash, PosInfo)] */
       val pos_map_array = new ArrayBuffer[(Int, Long, PosInfo)]()
-      val it = pos_map.iterator
+      val it = posMap.iterator
       while (it.hasNext) {
         val e = it.next()
         pos_map_array.append((e._1._1, e._1._2, e._2))
@@ -311,7 +335,7 @@ class PosMapSerDe(val hadoopConf: Configuration) {
       while (iterator.hasNext) {
         val e = iterator.next()
         val f_index = e._1
-        val pos_info = e._2.sortWith((a, b) => a._3.pos < b._3.pos)
+        val posArr = e._2.sortWith((a, b) => a._3.pos < b._3.pos)
         val (f_name, f_type, dim) = pos_dim_map(f_index)
 
         val feature = new JSONObject()
@@ -321,20 +345,20 @@ class PosMapSerDe(val hadoopConf: Configuration) {
         feature.put("dim", dim)
 
         val entries = new JSONArray()
-        for ((_, hash, stat) <- pos_info) {
+        for ((_, hash, posInfo) <- posArr) {
           val entry = new JSONObject()
           val (mean, std) = {
-            if (f_type == FeatureType.Categorical) {
+            if (f_type == FieldType.Categorical) {
               (0.0D, 1.0D)
             } else {
-              (stat.mean, stat.std)
+              (posInfo.mean, posInfo.std)
             }
           }
           entry.put("hash", hash)
-          entry.put("pos", stat.pos)
-          entry.put("sum", stat.sum)
-          entry.put("power_sum", stat.powerSum)
-          entry.put("count", stat.count)
+          entry.put("pos", posInfo.pos)
+          entry.put("sum", posInfo.sum)
+          entry.put("power_sum", posInfo.powerSum)
+          entry.put("count", posInfo.count)
           entry.put("mean", mean)
           entry.put("std", std)
           entries.put(entry)
@@ -344,10 +368,10 @@ class PosMapSerDe(val hadoopConf: Configuration) {
       }
       root.put("features", features)
       root.put("feature_size", features.length())
-      root.put("target_size", target_map.size)
+      root.put("target_size", targetMap.size)
 
       val targets = new JSONObject()
-      target_map.toSeq.sortBy(_._2)
+      targetMap.toSeq.sortBy(_._2)
         .foreach { case (target_id, pos) =>
           targets.put(target_id.toString, pos)
         }

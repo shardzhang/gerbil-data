@@ -28,7 +28,7 @@ import scala.collection.mutable.ArrayBuffer
  * @tparam T the raw sample type
  * @param rnfs the constituent categorical features to cross
  */
-class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) extends RawFeature(f_i, f_n, f_t = FeatureType.Categorical) {
+class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) extends RawFeature(f_i, f_n, f_t = FieldType.Categorical) {
   /** Current combination indices for iterating over the Cartesian product. */
   val indexes: Array[Int] = new Array[Int](rnfs.length)
 
@@ -41,7 +41,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
     val bb = ByteBuffer.allocate(key_len).order(ByteOrder.LITTLE_ENDIAN)
     var shift = 0
     for (i <- 0 until rnfs.length) {
-      bb.putInt(shift, rnfs(i).f_index)
+      bb.putInt(shift, rnfs(i).field_index)
       shift += 4
       bb.putLong(shift, rnfs(i).feature_list(indexes(i)))
       shift += 8
@@ -56,7 +56,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
   /** Formats the current combination as a human-readable string (e.g. "1:action__xx__3:male"). */
   def formatCombination: String = {
     rnfs.indices.map(
-      i => s"${rnfs(i).f_index}:${rnfs(i).raw_list(indexes(i))}"
+      i => s"${rnfs(i).field_index}:${rnfs(i).raw_list(indexes(i))}"
     ).mkString("__xx__")
   }
 
@@ -97,7 +97,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
   override def getHashInfo(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     val buf = ArrayBuffer[(String, Int, Byte, String, Long, Float)]()
     foreachCombination {
-      buf.append((f_name, f_index, f_type, formatCombination, computeHash(dim), 1.0F))
+      buf.append((field_name, field_index, field_type, formatCombination, computeHash(dim), 1.0F))
     }
     buf
   }
@@ -136,9 +136,9 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
       has_feature = true
     }
     builder.getFeaturesBuilder
-      .putFeature(f_name + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
-      .putFeature(f_name + "_index", Int64ListFeatureEncoder.encode(pos_buf))
-      .putFeature(f_name + "_value", FloatListFeatureEncoder.encode(value_buf))
+      .putFeature(field_name + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
+      .putFeature(field_name + "_index", Int64ListFeatureEncoder.encode(pos_buf))
+      .putFeature(field_name + "_value", FloatListFeatureEncoder.encode(value_buf))
     has_feature
   }
 
@@ -164,8 +164,8 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
     foreachCombination {
       val fmt = formatCombination
       val hash = computeHash(dim)
-      if (pos_map.contains((f_index, hash))) {
-        val pos = pos_map((f_index, hash))
+      if (pos_map.contains((field_index, hash))) {
+        val pos = pos_map((field_index, hash))
         raw_buf.append(fmt)
         pos_buf.append(pos)
         value_buf.append(1.0F)
@@ -173,9 +173,9 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
       }
     }
     builder.getFeaturesBuilder
-      .putFeature(f_name + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
-      .putFeature(f_name + "_index", Int64ListFeatureEncoder.encode(pos_buf))
-      .putFeature(f_name + "_value", FloatListFeatureEncoder.encode(value_buf))
+      .putFeature(field_name + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
+      .putFeature(field_name + "_index", Int64ListFeatureEncoder.encode(pos_buf))
+      .putFeature(field_name + "_value", FloatListFeatureEncoder.encode(value_buf))
     has_feature
   }
 
@@ -191,7 +191,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
   /** Adds hashed positions to an encoded map (no pos-map lookup). */
   def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]]): Unit = {
     foreachCombination {
-      encoded_map.getOrElseUpdate(f_name, ArrayBuffer.empty[Long]).append(computeHash(dim))
+      encoded_map.getOrElseUpdate(field_name, ArrayBuffer.empty[Long]).append(computeHash(dim))
     }
   }
 
@@ -199,8 +199,8 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
   def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     var has_feature = false
     foreachCombination {
-      pos_map.get((f_index, computeHash(dim))).foreach { pos =>
-        encoded_map.getOrElseUpdate(f_name, ArrayBuffer.empty[Long]).append(pos)
+      pos_map.get((field_index, computeHash(dim))).foreach { pos =>
+        encoded_map.getOrElseUpdate(field_name, ArrayBuffer.empty[Long]).append(pos)
         has_feature = true
       }
     }
@@ -218,15 +218,15 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
     foreachCombination {
       val fmt = formatCombination
       val hash = computeHash(dim)
-      if (pos_map.contains((f_index, hash))) {
+      if (pos_map.contains((field_index, hash))) {
         raw_buf.append(fmt)
-        pos_buf.append(pos_map((f_index, hash)).toLong)
+        pos_buf.append(pos_map((field_index, hash)).toLong)
         value_buf.append(1.0F)
       }
     }
-    columns.put(f_name + "_raw", raw_buf)
-    columns.put(f_name + "_index", pos_buf)
-    columns.put(f_name + "_value", value_buf)
+    columns.put(field_name + "_raw", raw_buf)
+    columns.put(field_name + "_index", pos_buf)
+    columns.put(field_name + "_value", value_buf)
     pos_buf.length > 1
   }
 }

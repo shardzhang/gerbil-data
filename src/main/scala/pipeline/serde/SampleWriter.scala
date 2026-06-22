@@ -18,14 +18,14 @@ import featurizer.core.Featurizer
 class SampleWriter[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Long) extends Serializable {
 
   /** Encodes samples into Parquet columnar format and writes to `parquetPath`. */
-  def writeParquet(trainingSample: RDD[(T, Boolean)],
-                   spark: SparkSession,
+  def writeParquet(spark: SparkSession,
+                   trainingSample: RDD[(T, Boolean)],
                    parquetSchema: StructType,
-                   parquetFieldNames: Seq[String],
                    posMapLocalImmutable: collection.Map[(Int, Long), Int],
                    targetMapImmutable: collection.Map[Int, Int],
                    parquetPath: String
                   ): Unit = {
+    val parquetFieldNames = parquetSchema.fieldNames.toSeq
     val parquetRows: RDD[Row] = trainingSample
       .map { case (sample, _) => sample }
       .mapPartitions(samples => {
@@ -49,7 +49,9 @@ class SampleWriter[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Lon
 
   /** Encodes samples into TensorFlow Example protobuf and writes TFRecord to `tfRecordPath`. */
   def writeTfrecord(trainingSample: RDD[(T, Boolean)],
+                    /** HashMap[(f_index, hash), PosInfo] */
                     posMapLocalImmutable: collection.Map[(Int, Long), Int],
+                    /** HashMap[target, pos] */
                     targetMap: collection.Map[Int, Int],
                     tfRecordPath: String
                    ): Unit = {

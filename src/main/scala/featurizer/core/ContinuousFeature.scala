@@ -15,13 +15,13 @@ import scala.collection.mutable.ArrayBuffer
  * This preserves the ordinal relationship between values in embedding space.
  *
  * Each feature produces three TFRecord fields:
- *  - `{name}_raw`: the original string representation
- *  - `{name}_index`: the numerical value itself (used as embedding position)
- *  - `{name}_value`: the numerical value (used as embedding weight)
+ *  - `{field_name}:{field_index}_raw`: the original string representation
+ *  - `{field_name}:{field_index}_index`: the numerical value itself (used as embedding position)
+ *  - `{field_name}:{field_index}_value`: the numerical value (used as embedding weight)
  *
  * @tparam T the raw sample type from which this feature is extracted
  */
-abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureType.Continuous) extends RawFeature(f_i, f_n, f_t) {
+abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FieldType.Continuous) extends RawFeature(f_i, f_n, f_t) {
 
   /** Parses the sample and populates raw/feature/value buffers. */
   def parse(sample: T): RawFeature
@@ -57,8 +57,8 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
       val value = value_list(i)
       val raw_fea = raw_list(i)
       if (fea != 0) {
-        val fmt = f_index.toString + ":" + raw_fea.toString
-        pos_info_list.append((f_name, f_index, f_type, fmt, fea, value))
+        val fmt = field_index.toString + ":" + raw_fea.toString
+        pos_info_list.append((field_name, field_index, field_type, fmt, fea, value))
       }
     }
     pos_info_list
@@ -86,9 +86,9 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
       }
     }
     builder.getFeaturesBuilder
-      .putFeature(f_name + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
-      .putFeature(f_name + "_index", Int64ListFeatureEncoder.encode(pos_buf))
-      .putFeature(f_name + "_value", FloatListFeatureEncoder.encode(value_buf))
+      .putFeature(field_name + ":" + field_index + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
+      .putFeature(field_name + ":" + field_index + "_index", Int64ListFeatureEncoder.encode(pos_buf))
+      .putFeature(field_name + ":" + field_index + "_value", FloatListFeatureEncoder.encode(value_buf))
   }
 
   /** Adds raw/feature/value tensors to a TF Example with pos-map lookup. Returns true if any feature survived filtering. */
@@ -110,17 +110,17 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
       val raw_fea = raw_list(i)
       val fea = feature_list(i)
       val value = value_list(i)
-      if (fea != 0 && pos_map.contains((f_index, fea))) {
+      if (fea != 0 && pos_map.contains((field_index, fea))) {
         raw_buf.append(raw_fea)
-        pos_buf.append(pos_map((f_index, fea)).toLong)
+        pos_buf.append(pos_map((field_index, fea)).toLong)
         value_buf.append(value)
         has_feature = true
       }
     }
     builder.getFeaturesBuilder
-      .putFeature(f_name + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
-      .putFeature(f_name + "_index", Int64ListFeatureEncoder.encode(pos_buf))
-      .putFeature(f_name + "_value", FloatListFeatureEncoder.encode(value_buf))
+      .putFeature(field_name + ":" + field_index + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
+      .putFeature(field_name + ":" + field_index + "_index", Int64ListFeatureEncoder.encode(pos_buf))
+      .putFeature(field_name + ":" + field_index + "_value", FloatListFeatureEncoder.encode(value_buf))
     has_feature
   }
 
@@ -133,7 +133,7 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
       }
     }
     if (pos_buf.nonEmpty) {
-      encoded_map(f_name) = pos_buf
+      encoded_map(field_name + ":" + field_index) = pos_buf
     }
   }
 
@@ -147,13 +147,13 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
     val pos_buf = new ArrayBuffer[Long]()
     var has_feature = false
     for (fea <- feature_list) {
-      if (fea != 0 && pos_map.contains((f_index, fea))) {
-        pos_buf.append(pos_map((f_index, fea)).toLong)
+      if (fea != 0 && pos_map.contains((field_index, fea))) {
+        pos_buf.append(pos_map((field_index, fea)).toLong)
         has_feature = true
       }
     }
     if (has_feature) {
-      encoded_map(f_name) = pos_buf
+      encoded_map(field_name + ":" + field_index) = pos_buf
     }
     has_feature
   }
@@ -170,15 +170,15 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FeatureTy
       val raw_fea = raw_list(i)
       val fea = feature_list(i)
       val value = value_list(i)
-      if (fea != 0 && pos_map.contains((f_index, fea))) {
+      if (fea != 0 && pos_map.contains((field_index, fea))) {
         raw_buf.append(raw_fea)
-        pos_buf.append(pos_map((f_index, fea)).toLong)
+        pos_buf.append(pos_map((field_index, fea)).toLong)
         value_buf.append(value)
       }
     }
-    columns.put(f_name + "_raw", raw_buf.toSeq)
-    columns.put(f_name + "_index", pos_buf)
-    columns.put(f_name + "_value", value_buf)
+    columns.put(field_name + ":" + field_index + "_raw", raw_buf)
+    columns.put(field_name + ":" + field_index + "_index", pos_buf)
+    columns.put(field_name + ":" + field_index + "_value", value_buf)
     pos_buf.length > 1
   }
 }
