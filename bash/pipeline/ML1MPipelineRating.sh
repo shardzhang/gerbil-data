@@ -30,8 +30,8 @@ output_path=${input_path}/train_sample/rating
 --conf spark.driver.extraJavaOptions='-XX:ReservedCodeCacheSize=512m -XX:+UseCodeCacheFlushing -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log' \
 --conf spark.executor.extraJavaOptions='-XX:ReservedCodeCacheSize=512m -XX:+UseCodeCacheFlushing -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps' \
 ${JAR_PATH} \
---feature_threshold 10 \
---target_threshold 1 \
+--feature_threshold 5 \
+--target_threshold 0 \
 --input_dir ${input_path} \
 --output_dir ${output_path} \
 --yesterday ${day} \
