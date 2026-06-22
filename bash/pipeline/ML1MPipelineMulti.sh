@@ -12,6 +12,11 @@ day="20260623"
 input_path=${ML_1M_PATH}
 output_path=${input_path}/train_sample/multi
 
+log_path="${output_path}"
+mkdir -p "${log_path}"
+timestamp=$(date +"%Y%m%d_%H%M%S")
+exec > >(tee "${log_path}/${timestamp}.log") 2>&1
+
 "${SPARK_HOME}/bin/spark-submit" \
 --master 'local[*]' \
 --class pipeline.ML1MPipeline \

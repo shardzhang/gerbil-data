@@ -6,7 +6,6 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types.{ArrayType, FloatType, LongType, StringType, StructField, StructType}
 import org.apache.spark.storage.StorageLevel
 
-import java.util.concurrent.ThreadLocalRandom
 import scala.collection.mutable
 import scala.collection.mutable.{ArrayBuffer, HashMap}
 import scala.reflect.ClassTag
@@ -69,6 +68,23 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
   /** Computes hash info (field name, index, type, raw value, hash, value) for vocabulary building. */
   def getHashInfo(sample: T, encoder: Featurizer[T]): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     encoder.getHashInfo(sample, max_dim)
+  }
+
+  /** Aligns posDim entries so all features sharing the same (f_index, f_type) use the same dim. */
+  def alignPosDim(posDim: HashMap[(String, Int, Int), Int],
+                           posCounter: HashMap[(Int, Int), Int],
+                           featurizer: Featurizer[_]): Unit = {
+    val nameIndexMap = featurizer.getFieldInfo()
+      .groupBy(_._2)
+      .map { case (idx, entries) => (idx, entries.map(_._1)) }
+
+    posDim.clear()
+    posCounter.foreach { case ((f_index, f_type), dim) =>
+      val f_names = nameIndexMap.getOrElse(f_index, Nil)
+      f_names.foreach { f_name =>
+        posDim.put((f_name, f_index, f_type), dim)
+      }
+    }
   }
 
   /** Builds the Parquet schema with (target, *_raw, *_index, *_value) columns for each feature. */
@@ -135,9 +151,9 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
       indexed.unpersist()
       allSamples.unpersist()
       green_println(s"train/val/test split: ${total} total, " +
-        s"train=${trainCount} (${trainRatio*100}%), " +
-        s"val=${valCount} (${valRatio*100}%), " +
-        s"test=${testCount} (${(1.0-trainRatio-valRatio)*100}%)")
+        s"train=${trainCount} (${trainRatio * 100}%), " +
+        s"val=${valCount} (${valRatio * 100}%), " +
+        s"test=${testCount} (${(1.0 - trainRatio - valRatio) * 100}%)")
       // Record split counts to quality tracker
       qualityTracker.recordCounts("train_split", trainCount)
       qualityTracker.recordCounts("val_split", valCount)
@@ -213,15 +229,15 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
       .map { case (sample, _) => sample }
       .mapPartitions(samples => {
         val encoder = feature_encoder
-        val pos_hash: mutable.Map[(String, Int, Byte, Long), RunningValueStats] = new mutable.HashMap[(String, Int, Byte, Long), RunningValueStats]()
+        val posHash: mutable.Map[(String, Int, Byte, Long), RunningValueStats] = new mutable.HashMap[(String, Int, Byte, Long), RunningValueStats]()
         for (sample <- samples) {
-          val one_sample_hash_array = getHashInfo(sample, encoder)
-          for ((f_name, f_index, f_type, _, hash, value) <- one_sample_hash_array) {
-            val key = (f_name, f_index, f_type, hash)
-            pos_hash.getOrElseUpdate(key, new RunningValueStats()).add(value)
+          val oneSampleHashArr = getHashInfo(sample, encoder)
+          for ((field_name, field_index, field_type, _, hash, value) <- oneSampleHashArr) {
+            val key = (field_name, field_index, field_type, hash)
+            posHash.getOrElseUpdate(key, new RunningValueStats()).add(value)
           }
         }
-        pos_hash.iterator
+        posHash.iterator
       })
       .reduceByKey((a, b) => a.merge(b))
       .collect()
@@ -234,23 +250,30 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
 
     /** HashMap[(f_index, hash), pos] */
     val posMapLocal = new HashMap[(Int, Long), Int]
+
+    /** Shared counter per (f_index, f_type) — ensures features sharing field_index get unique positions */
+    val posCounter = new HashMap[(Int, Int), Int]()
+    posDim.foreach { case ((_, f_index, f_type), dim) =>
+      val key = (f_index, f_type)
+      posCounter.put(key, math.max(posCounter.getOrElse(key, 0), dim))
+    }
     for (posInfo <- trainSample) {
       val (f_name, f_index, f_type, hash) = posInfo._1
-      val fieldKey = (f_name, f_index, f_type.toInt)
+      val dimKey = (f_index, f_type.toInt)
       val stat = posInfo._2
       if (stat.count < featureThreshold) {
         posMap.get((f_index, hash)) match {
           case Some(history) =>
             posMapLocal.put((f_index, hash), history.pos)
-            val currentDim = posDim.getOrElse(fieldKey, 1)
-            posDim.put(fieldKey, math.max(currentDim, history.pos + 1))
+            val currentDim = posCounter.getOrElse(dimKey, 1)
+            posCounter.put(dimKey, math.max(currentDim, history.pos + 1))
             reusedHistoryPosCount += 1
           case None =>
             ignoredPosCount += 1
         }
       } else {
-        if (!posDim.contains(fieldKey)) {
-          posDim.put(fieldKey, 1)
+        if (!posCounter.contains(dimKey)) {
+          posCounter.put(dimKey, 1)
           posMap.put((f_index, 0L), PosInfo(0))
         }
         val pos = if (f_type == FieldType.Continuous) {
@@ -261,7 +284,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
         } else if (posMap.contains((f_index, hash))) {
           posMap((f_index, hash)).pos
         } else {
-          posDim(fieldKey)
+          posCounter(dimKey)
         }
         val merged: PosInfo = posMap.get((f_index, hash)) match {
           case Some(history) => history.copy(pos = pos).merge(stat)
@@ -269,10 +292,12 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
         }
         posMap.put((f_index, hash), merged)
         posMapLocal.put((f_index, hash), pos)
-        val currentDim = posDim.getOrElse(fieldKey, 1)
-        posDim.put(fieldKey, math.max(currentDim, pos + 1))
+        val currentDim = posCounter.getOrElse(dimKey, 1)
+        posCounter.put(dimKey, math.max(currentDim, pos + 1))
       }
     }
+    alignPosDim(posDim, posCounter, feature_encoder)
+
     green_println(s"ignored_pos_count: ${ignoredPosCount}. total filtered feature value count")
     green_println(s"reused_history_pos_count: ${reusedHistoryPosCount}. low-frequency feature values reusing historical vocabulary")
     green_println(s"posMapLocal: ${posMapLocal.size}. valid feature value count")

@@ -1,7 +1,6 @@
 package featurizer.ml1m
 import org.scalatest.{Matchers, WordSpec}
 import org.tensorflow.example.Example
-import featurizer.ml1m.ML1MSample
 
 import scala.collection.mutable.ArrayBuffer
 import scala.jdk.CollectionConverters._
@@ -42,15 +41,14 @@ class ML1MFeaturizerTest extends WordSpec with Matchers {
   "ML1MFeaturizer" should {
     "setup correctly with all features registered" in {
       val encoder = new ML1MFeaturizer().setup()
-      val fields = encoder.getFieldInfo()
+      val fields: ArrayBuffer[(String, Int)] = encoder.getFieldInfo()
 
       assert(fields.exists(_._2 == 2))   // user_age
       assert(fields.exists(_._2 == 3))   // user_gender
       assert(fields.exists(_._2 == 4))   // user_occupation
-      assert(fields.exists(_._2 == 102)) // movie_title
-      assert(fields.exists(_._2 == 103)) // movie_genres
       assert(fields.exists(_._2 == 201)) // context_time_hour
-      assert(fields.exists(_._2 == 301)) // user_movie_rate
+      assert(fields.exists(_._2 == 6))   // user_rate_std
+      assert(fields.exists(_._2 == 10))  // user_movie_rate_cnt
 
       assert(encoder.raw_cate_features.nonEmpty)
       assert(encoder.raw_conti_features.nonEmpty)
@@ -92,24 +90,6 @@ class ML1MFeaturizerTest extends WordSpec with Matchers {
       // First value is 0 (R:), then age=25
       assert(indices.size === 2)
       assert(indices(0) === 0L)
-    }
-
-    "encode movie_title as multi-value feature" in {
-      val encoder = new ML1MFeaturizer().setup()
-      val sample = createSample()
-
-      val builder = Example.newBuilder()
-      encoder.encode(sample, 1L << 20, builder)
-      val example = builder.build()
-      val featMap = example.getFeatures.getFeatureMap.asScala
-
-      assert(featMap.contains("movie_title_raw"))
-      assert(featMap.contains("movie_title_index"))
-      assert(featMap.contains("movie_title_value"))
-
-      val rawFeat = featMap("movie_title_raw")
-      // Should have R: plus individual words from title
-      assert(rawFeat.getBytesList.getValueCount >= 2)
     }
 
     "encode with pos_map and target_map" in {
@@ -163,6 +143,60 @@ class ML1MFeaturizerTest extends WordSpec with Matchers {
       val result = encoder.encode(sample, 1L << 20, ",", ":")
       assert(result.nonEmpty)
       assert(result.contains("user_age:"))
+    }
+
+    // mvn test -pl . -Dtest=featurizer.ml1m.ML1MFeaturizerTest -DfailIfNoTests=false 2>&1 | tail -80
+    "reproduce genre hash collision with production max_dim" in {
+      val encoder = new ML1MFeaturizer().setup()
+      val sample: ML1MSample = new ML1MSample()
+      sample.user_id = "1"
+      sample.item_id = "1"
+      sample.rating = 4.0F
+      sample.target = 1
+      sample.time_hour = 14
+      sample.time_area = 2
+      sample.week_day = 3
+      sample.user_genres_rate_15days = ArrayBuffer(
+        ("war", 3.75F),
+        ("action", 4.0F),
+        ("horror", 4.0F),
+        ("fantasy", 3.0F),
+        ("children's", 3.6666667F),
+        ("sci-fi", 4.0F),
+        ("animation", 4.0F),
+        ("drama", 3.8571429F),
+        ("thriller", 3.8F),
+        ("romance", 3.6470587F),
+        ("adventure", 4.0F),
+        ("western", 4.5F),
+        ("mystery", 3.5F),
+        ("musical", 3.75F),
+        ("comedy", 3.72F),
+        ("film-noir", 4.0F)
+      )
+
+      val max_dim = 1L << 60
+      val hashInfo: ArrayBuffer[(String, Int, Byte, String, Long, Float)] = encoder.getHashInfo(sample, max_dim)
+      val genreHashes = hashInfo.filter(_._1 == "user_genres_rate_15day")
+
+      println(s"user_genres_rate_15day entries: ${genreHashes.size}")
+      val byHash: Map[Long, ArrayBuffer[(String, Int, Byte, String, Long, Float)]] = genreHashes.groupBy(_._5)
+      println(s"Unique hashes: ${byHash.size}")
+      println("\nHash -> Genres mapping:")
+      byHash.toSeq.sortBy(_._1).foreach { case (hash, entries) =>
+        val genres = entries.map(_._4).mkString(", ")
+        println(s"  hash=%-5d → %s".format(hash, genres))
+      }
+
+      val collisions = byHash.filter(_._2.size > 1)
+      if (collisions.isEmpty) {
+        println("\nNO collisions in computeHash itself.")
+      } else {
+        println(s"\n*** FOUND ${collisions.size} computeHash collisions! ***")
+        collisions.foreach { case (hash, entries) =>
+          println(s"  hash=$hash collides: ${entries.map(_._4).mkString(", ")}")
+        }
+      }
     }
   }
 }

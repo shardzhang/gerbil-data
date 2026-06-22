@@ -331,7 +331,7 @@ class PosMapSerDe(val hadoopConf: Configuration) {
       while (iterator.hasNext) {
         val e = iterator.next()
         val field_index = e._1
-        val posArr = e._2.sortWith((a, b) => a._3.pos < b._3.pos)
+        val posArr: ArrayBuffer[(Int, Long, PosInfo)] = e._2.sortWith((a, b) => a._3.pos < b._3.pos)
         for ((field_name, field_type, dim) <- posDimMap(field_index)) {
           val feature = new JSONObject()
           feature.put("field_name", field_name)
