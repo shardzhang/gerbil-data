@@ -13,8 +13,8 @@ import scala.collection.mutable.ArrayBuffer
 /** Loads FeatureConfig from a YAML file. */
 object FeatureConfigLoader {
 
-  /** Loads config from a classpath resource (e.g. "/ml1m/features.yaml"). */
-  def loadFromResource(resourcePath: String = "/features.yaml"): FeatureConfig = {
+  /** Loads config from a classpath resource (e.g. "/ml1m/multi_features.yaml"). */
+  def loadFromResource(resourcePath: String = "/multi_features.yaml"): FeatureConfig = {
     val is = getClass.getResourceAsStream(resourcePath)
     if (is == null) {
       throw new RuntimeException("Feature config not found on classpath: " + resourcePath)

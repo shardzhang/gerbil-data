@@ -6,17 +6,17 @@ import utils.LogUtils.green_println
 import scala.collection.mutable
 
 /**
- * ML-1M featurizer orchestrator — reads features.yaml, instantiates and registers all feature extractors
+ * ML-1M featurizer orchestrator — reads multi_features.yaml, instantiates and registers all feature extractors
  */
 
 /** Featurizes each ML1M sample before feeding to the model.
- * Reads feature registry from features.yaml; all parse() logic stays in Scala classes.
+ * Reads feature registry from multi_features.yaml; all parse() logic stays in Scala classes.
  */
 class ML1MFeaturizer(configPath: Option[String] = None, targetMode: String = "binary") extends Featurizer[ML1MSample] {
 
   private lazy val config: FeatureConfig = configPath match {
     case Some(path) => FeatureConfigLoader.loadFromFile(path)
-    case None => FeatureConfigLoader.loadFromResource("/ml1m/features.yaml")
+    case None => FeatureConfigLoader.loadFromResource("/ml1m/multi_features.yaml")
   }
 
   private def instantiate(featureDef: FeatureDef): Any = {
@@ -70,7 +70,6 @@ class ML1MFeaturizer(configPath: Option[String] = None, targetMode: String = "bi
         }
       }
     }
-
     this
   }
 }

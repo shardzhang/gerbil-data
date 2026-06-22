@@ -124,7 +124,7 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
     opts.addOption(null, "output_format", true, "Output format: tfrecord, parquet, both (default: tfrecord)")
     opts.addOption(null, "train_ratio", true, "Fraction of data for training (default: 0.8)")
     opts.addOption(null, "val_ratio", true, "Fraction of data for validation (default: 0.1)")
-    opts.addOption(null, "feature_config", true, "Path to external feature config YAML (default: classpath /ml1m/features.yaml)")
+    opts.addOption(null, "feature_config", true, "Path to external feature config YAML (default: classpath /ml1m/multi_features.yaml)")
     opts.addOption(null, "target_mode", true, "Target mode: 'binary' (label 0/1, default) or 'multi' (item_id)")
 
     val parser = new DefaultParser()

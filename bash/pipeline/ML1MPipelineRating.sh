@@ -8,7 +8,7 @@ cd "$(dirname "$0")"
 
 source ../conf/env.sh
 
-day="20260622"
+day="20260623"
 input_path=${ML_1M_PATH}
 output_path=${input_path}/train_sample/rating
 
@@ -39,5 +39,5 @@ ${JAR_PATH} \
 --output_format tfrecord \
 --train_ratio 0.8 \
 --val_ratio 0.1 \
---feature_config ${PROJECT_HOME}/src/main/resources/ml1m/features.yaml \
+--feature_config ${PROJECT_HOME}/src/main/resources/ml1m/binary_features.yaml \
 --target_mode rating

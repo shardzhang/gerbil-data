@@ -42,5 +42,5 @@ ${JAR_PATH} \
 --output_format tfrecord \
 --train_ratio 0.8 \
 --val_ratio 0.1 \
---feature_config ${PROJECT_HOME}/src/main/resources/ml1m/features.yaml \
+--feature_config ${PROJECT_HOME}/src/main/resources/ml1m/binary_features.yaml \
 --target_mode binary
