@@ -410,14 +410,18 @@ features:
   - {field_name: user_movie_rate_1day, field_index: 101, field_type: 1, class_name: UserMovieRate1Day, enabled: true}
 ```
 
+### Shared Vocabulary
+
+Features sharing the same `field_index` share a single embedding vocabulary (pos-map). The position counter is unified across all features using that `field_index`, ensuring each unique feature value gets a unique embedding slot — even when the value appears in multiple related features.
+
+For example, `movie_id`, `user_movie_rate`, and `user_movie_rate_1day` all share `field_index=101`. The item "Toy Story" maps to the same embedding position whether it appears as the target movie, the user's recent 1-day history, or the full history. This enables parameter sharing and cross-feature generalization.
+
 ### Field Naming Convention
 
 Each feature produces three TFRecord fields:
-- `{field_name}:{field_index}_raw` — string representation
-- `{field_name}:{field_index}_index` — embedding position (hashed or identity)
-- `{field_name}:{field_index}_value` — embedding weight
-
-The `field_index` suffix guarantees field-name uniqueness and enables downstream models to identify which embedding table a field belongs to.
+- `{field_name}_raw` — string representation
+- `{field_name}_index` — embedding position (pos-map lookup or hashed)
+- `{field_name}_value` — embedding weight (e.g., avg rating for genre-rate features)
 
 ## Project Modules
 

@@ -15,8 +15,9 @@ output_path=${input_path}/train_sample/multi
 log_path="${output_path}"
 mkdir -p "${log_path}"
 timestamp=$(date +"%Y%m%d_%H%M%S")
-exec > >(tee "${log_path}/${timestamp}.log") 2>&1
+log_file="${log_path}/${timestamp}.log"
 
+(
 "${SPARK_HOME}/bin/spark-submit" \
 --master 'local[*]' \
 --class pipeline.ML1MPipeline \
@@ -46,3 +47,4 @@ ${JAR_PATH} \
 --val_ratio 0.1 \
 --feature_config ${PROJECT_HOME}/src/main/resources/ml1m/multi_features.yaml \
 --target_mode multi
+) 2>&1 | tee "${log_file}"

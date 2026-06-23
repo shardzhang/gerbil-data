@@ -14,6 +14,12 @@ output_path=${input_path}/train_sample/binary
 echo "input_path: ${input_path}"
 echo "output_path: ${output_path}"
 
+log_path="${output_path}"
+mkdir -p "${log_path}"
+timestamp=$(date +"%Y%m%d_%H%M%S")
+log_file="${log_path}/${timestamp}.log"
+
+(
 "${SPARK_HOME}/bin/spark-submit" \
 --master 'local[*]' \
 --class pipeline.ML1MPipeline \
@@ -44,3 +50,4 @@ ${JAR_PATH} \
 --val_ratio 0.1 \
 --feature_config ${PROJECT_HOME}/src/main/resources/ml1m/binary_features.yaml \
 --target_mode binary
+) 2>&1 | tee "${log_file}"

@@ -402,14 +402,18 @@ features:
   - {field_name: user_movie_rate_1day, field_index: 101, field_type: 1, class_name: UserMovieRate1Day, enabled: true}
 ```
 
+### 词表共享
+
+相同 `field_index` 的特征共享同一张 embedding 词表（pos-map）。位置计数器在所有使用该 `field_index` 的特征间统一，确保每个唯一特征值获得独立的 embedding 槽位——即使该值出现在多个关联特征中。
+
+例如 `movie_id`、`user_movie_rate`、`user_movie_rate_1day` 共享 `field_index=101`。"Toy Story" 无论作为目标物品、用户近 1 天行为还是全量历史出现，都映射到同一个 embedding 位置。这实现了参数共享和跨特征泛化。
+
 ### 字段命名规范
 
 每个特征在 TFRecord 中产出三个字段：
-- `{field_name}:{field_index}_raw` — 原始字符串表示
-- `{field_name}:{field_index}_index` — 嵌入位置（哈希或恒等映射）
-- `{field_name}:{field_index}_value` — 嵌入权重
-
-`field_index` 后缀保证字段名唯一性，并帮助下游模型识别字段所属的 embedding 表。
+- `{field_name}_raw` — 原始字符串表示
+- `{field_name}_index` — 嵌入位置（pos-map 查找或哈希映射）
+- `{field_name}_value` — 嵌入权重（如类型偏好特征中为该类型的平均评分）
 
 ## 项目模块
 
