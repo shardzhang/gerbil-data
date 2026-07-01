@@ -1,4 +1,4 @@
-package processing.alictr
+package processing.feature
 
 import org.apache.spark.sql.SparkSession
 import processing.stats.DataQualityChecker

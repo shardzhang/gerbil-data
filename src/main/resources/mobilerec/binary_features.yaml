@@ -1,0 +1,83 @@
+# MobileRec dataset binary mode feature configuration.
+# field_name: globally unique
+# field_index: can be shared across features (shared vocabulary)
+# field_type: 1 = categorical, 0 = continuous
+# class_name: Scala feature implementation class name (appended to pkg prefix)
+# enabled: whether the feature is active; false to skip registration
+
+pkg: featurizer.mobilerec
+features:
+  # ── User ID ──
+  - {field_name: user_id, field_index: 1, field_type: 1, class_name: MobileRecUserID, enabled: true}
+
+  # ── User statistical features (bucketed) ──
+  - {field_name: user_rate_std, field_index: 6, field_type: 1, class_name: MobileRecUserRateStd, enabled: true}
+  - {field_name: user_rate_std_7day, field_index: 7, field_type: 1, class_name: MobileRecUserRateStd7Day, enabled: true}
+  - {field_name: user_rate_std_15day, field_index: 8, field_type: 1, class_name: MobileRecUserRateStd15Day, enabled: true}
+  - {field_name: user_rate_std_30day, field_index: 9, field_type: 1, class_name: MobileRecUserRateStd30Day, enabled: true}
+
+  - {field_name: user_rate_std_continue, field_index: 18, field_type: 0, class_name: MobileRecUserRateStdContinue, enabled: true}
+  - {field_name: user_rate_std_7day_continue, field_index: 19, field_type: 0, class_name: MobileRecUserRateStd7DayContinue, enabled: true}
+  - {field_name: user_rate_std_15day_continue, field_index: 21, field_type: 0, class_name: MobileRecUserRateStd15DayContinue, enabled: true}
+  - {field_name: user_rate_std_30day_continue, field_index: 22, field_type: 0, class_name: MobileRecUserRateStd30DayContinue, enabled: true}
+
+  - {field_name: user_rate_cnt, field_index: 10, field_type: 1, class_name: MobileRecUserMovieRateCnt, enabled: true}
+  - {field_name: user_rate_cnt_7day, field_index: 11, field_type: 1, class_name: MobileRecUserMovieRateCnt7Day, enabled: true}
+  - {field_name: user_rate_cnt_15day, field_index: 12, field_type: 1, class_name: MobileRecUserMovieRateCnt15Day, enabled: true}
+  - {field_name: user_rate_cnt_30day, field_index: 13, field_type: 1, class_name: MobileRecUserMovieRateCnt30Day, enabled: true}
+
+  - {field_name: user_avg_rate, field_index: 14, field_type: 1, class_name: MobileRecUserAvgRate, enabled: true}
+  - {field_name: user_avg_rate_7day, field_index: 15, field_type: 1, class_name: MobileRecUserAvgRate7Day, enabled: true}
+  - {field_name: user_avg_rate_15day, field_index: 16, field_type: 1, class_name: MobileRecUserAvgRate15Day, enabled: true}
+  - {field_name: user_avg_rate_30day, field_index: 17, field_type: 1, class_name: MobileRecUserAvgRate30Day, enabled: true}
+
+  - {field_name: user_avg_rate_continue, field_index: 23, field_type: 0, class_name: MobileRecUserAvgRateContinue, enabled: true}
+  - {field_name: user_avg_rate_7day_continue, field_index: 24, field_type: 0, class_name: MobileRecUserAvgRate7DayContinue, enabled: true}
+  - {field_name: user_avg_rate_15day_continue, field_index: 25, field_type: 0, class_name: MobileRecUserAvgRate15DayContinue, enabled: true}
+  - {field_name: user_avg_rate_30day_continue, field_index: 26, field_type: 0, class_name: MobileRecUserAvgRate30DayContinue, enabled: true}
+
+  # ── Item features ──
+  - {field_name: app_package, field_index: 101, field_type: 1, class_name: AppPackage, enabled: true}
+  - {field_name: app_category, field_index: 103, field_type: 1, class_name: AppCategory, enabled: true}
+  - {field_name: app_price_bucket, field_index: 104, field_type: 1, class_name: AppPriceBucket, enabled: true}
+  - {field_name: app_price, field_index: 105, field_type: 0, class_name: AppPrice, enabled: true}
+  - {field_name: app_avg_rate, field_index: 106, field_type: 1, class_name: AppAvgRate, enabled: true}
+  - {field_name: app_avg_rate_continue, field_index: 107, field_type: 0, class_name: AppAvgRateContinue, enabled: true}
+  - {field_name: app_review_cnt, field_index: 108, field_type: 1, class_name: AppReviewCnt, enabled: true}
+  - {field_name: app_content_rating, field_index: 109, field_type: 1, class_name: AppContentRating, enabled: true}
+
+  # ── Context features ──
+  - {field_name: context_time_hour, field_index: 201, field_type: 1, class_name: MobileRecTimeHour, enabled: true}
+  - {field_name: context_time_area, field_index: 202, field_type: 1, class_name: MobileRecTimeArea, enabled: true}
+  - {field_name: context_time_week, field_index: 203, field_type: 1, class_name: MobileRecWeekDay, enabled: true}
+  - {field_name: context_is_weekend, field_index: 204, field_type: 1, class_name: MobileRecIsWeekend, enabled: true}
+
+  # ── User behavior: app rating sequences ──
+  - {field_name: user_apps_rate, field_index: 101, field_type: 1, class_name: MobileRecUserAppsRate, enabled: true}
+  - {field_name: user_apps_rate_1day, field_index: 101, field_type: 1, class_name: MobileRecUserAppsRate1Day, enabled: true}
+  - {field_name: user_apps_rate_3day, field_index: 101, field_type: 1, class_name: MobileRecUserAppsRate3Day, enabled: true}
+  - {field_name: user_apps_rate_7day, field_index: 101, field_type: 1, class_name: MobileRecUserAppsRate7Day, enabled: true}
+  - {field_name: user_apps_rate_15day, field_index: 101, field_type: 1, class_name: MobileRecUserAppsRate15Day, enabled: true}
+  - {field_name: user_apps_rate_30day, field_index: 101, field_type: 1, class_name: MobileRecUserAppsRate30Day, enabled: true}
+
+  - {field_name: user_categories_rate, field_index: 103, field_type: 1, class_name: MobileRecUserCategoriesRate, enabled: true}
+  - {field_name: user_categories_rate_1day, field_index: 103, field_type: 1, class_name: MobileRecUserCategoriesRate1Day, enabled: true}
+  - {field_name: user_categories_rate_3day, field_index: 103, field_type: 1, class_name: MobileRecUserCategoriesRate3Day, enabled: true}
+  - {field_name: user_categories_rate_7day, field_index: 103, field_type: 1, class_name: MobileRecUserCategoriesRate7Day, enabled: true}
+  - {field_name: user_categories_rate_15day, field_index: 103, field_type: 1, class_name: MobileRecUserCategoriesRate15Day, enabled: true}
+  - {field_name: user_categories_rate_30day, field_index: 103, field_type: 1, class_name: MobileRecUserCategoriesRate30Day, enabled: true}
+
+  - {field_name: user_categories_rate_cnts, field_index: 103, field_type: 1, class_name: MobileRecUserCategoriesRateCnts, enabled: true}
+  - {field_name: user_categories_rate_cnt_1days, field_index: 103, field_type: 1, class_name: MobileRecUserCategoriesRateCnt1Days, enabled: true}
+  - {field_name: user_categories_rate_cnt_3days, field_index: 103, field_type: 1, class_name: MobileRecUserCategoriesRateCnt3Days, enabled: true}
+  - {field_name: user_categories_rate_cnt_7days, field_index: 103, field_type: 1, class_name: MobileRecUserCategoriesRateCnt7Days, enabled: true}
+  - {field_name: user_categories_rate_cnt_15days, field_index: 103, field_type: 1, class_name: MobileRecUserCategoriesRateCnt15Days, enabled: true}
+  - {field_name: user_categories_rate_cnt_30days, field_index: 103, field_type: 1, class_name: MobileRecUserCategoriesRateCnt30Days, enabled: true}
+
+  - {field_name: user_top3_categories, field_index: 317, field_type: 1, class_name: MobileRecUserTop3Categories, enabled: true}
+  - {field_name: user_active_day, field_index: 20, field_type: 1, class_name: MobileRecUserActiveDay, enabled: true}
+
+cross_features:
+  - {field_name: app_category_xx_user_categories_rate, field_index: 401, depends: [app_category, user_categories_rate], enabled: false}
+  - {field_name: app_category_xx_user_categories_rate_1day, field_index: 402, depends: [app_category, user_categories_rate_1day], enabled: false}
+  - {field_name: app_price_bucket_xx_user_avg_rate, field_index: 403, depends: [app_price_bucket, user_avg_rate], enabled: false}

@@ -1,4 +1,4 @@
-package processing.mobilerec
+package processing.feature
 
 import org.apache.spark.sql.SparkSession
 import processing.stats.DataQualityChecker

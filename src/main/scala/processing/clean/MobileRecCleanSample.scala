@@ -1,4 +1,4 @@
-package processing.mobilerec
+package processing.clean
 
 import org.apache.spark.sql.SparkSession
 import processing.stats.DataQualityChecker
@@ -21,6 +21,8 @@ object MobileRecCleanSample {
     spark.sparkContext.setLogLevel("WARN")
 
     try {
+      // app_package,review,rating,votes,date,uid,formated_date,unix_timestamp,app_category
+      // com.cleverapps.heroes,It's really a fun game,5,1,"October 21, 2018",shqoc6X1fcJRLEmx,2018-10-21,1540094400.0,Casual
       spark.read
         .option("header", "true")
         .option("inferSchema", "true")
@@ -29,23 +31,25 @@ object MobileRecCleanSample {
 
       val sql =
         s"""
-           |select
-           |  uid as user_id,
-           |  app_package as item_id,
-           |  cast(rating as int) as rating,
-           |  cast(unix_timestamp as bigint) as time_stamp,
-           |  formated_date as day,
-           |  app_category,
-           |  review
-           |from interactions_raw
-           |where uid is not null and length(uid) > 0
-           |  and app_package is not null and length(app_package) > 0
-           |  and rating is not null and rating >= 1 and rating <= 5
-           |  and unix_timestamp is not null
+           | select
+           |    uid as user_id,
+           |    app_package as item_id,
+           |    cast(rating as int) as rating,
+           |    cast(unix_timestamp as bigint) as time_stamp,
+           |    formated_date as day,
+           |    app_category,
+           |    review
+           | from interactions_raw
+           | where uid is not null and length(uid) > 0
+           | and app_package is not null and length(app_package) > 0
+           | and rating is not null and rating >= 1 and rating <= 5
+           | and unix_timestamp is not null
            |""".stripMargin
+      green_println(f"sql: ${sql}")
 
       val cleanSample = spark.sql(sql).cache()
       green_println(s"cleanSample.count() = ${cleanSample.count()}")
+
       DataQualityChecker.check(cleanSample, "clean_sample", outputPath)
       cleanSample.show()
       cleanSample.printSchema()
