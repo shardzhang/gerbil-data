@@ -32,13 +32,14 @@ object MobileRecCleanSample {
       val sql =
         s"""
            | select
-           |    uid as user_id,
-           |    app_package as item_id,
+           |    cast(uid as string) as user_id,
+           |    cast(app_package as string) as item_id,
            |    cast(rating as int) as rating,
+           |    cast(votes as int) as votes,
            |    cast(unix_timestamp as bigint) as time_stamp,
            |    formated_date as day,
-           |    app_category,
-           |    review
+           |    app_category as category,
+           |    cast(review as string) as review
            | from interactions_raw
            | where uid is not null and length(uid) > 0
            | and app_package is not null and length(app_package) > 0
@@ -55,7 +56,7 @@ object MobileRecCleanSample {
       cleanSample.printSchema()
 
       cleanSample
-        .selectExpr("user_id", "item_id", "rating", "time_stamp", "day", "app_category", "review")
+        .selectExpr("user_id", "item_id", "rating", "votes", "time_stamp", "day", "category", "review")
         .write
         .mode("overwrite")
         .option("sep", SEP)
