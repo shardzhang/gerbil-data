@@ -1,0 +1,48 @@
+# Ali Display Ad Click dataset feature configuration.
+# field_name: globally unique
+# field_index: can be shared across features (shared vocabulary)
+# field_type: 1 = categorical, 0 = continuous
+# class_name: Scala feature implementation class name (appended to pkg prefix)
+# enabled: whether the feature is active; false to skip registration
+
+pkg: featurizer.alictr
+features:
+  # ── User ID ──
+  - {field_name: user_id, field_index: 1, field_type: 1, class_name: AliCtrUserID, enabled: false}
+
+  # ── User profile features ──
+  - {field_name: cms_segid, field_index: 201, field_type: 1, class_name: AliCtrCmsSegID, enabled: true}
+  - {field_name: cms_group_id, field_index: 202, field_type: 1, class_name: AliCtrCmsGroupID, enabled: true}
+  - {field_name: gender, field_index: 203, field_type: 1, class_name: AliCtrGender, enabled: true}
+  - {field_name: age_level, field_index: 204, field_type: 1, class_name: AliCtrAgeLevel, enabled: true}
+  - {field_name: pvalue_level, field_index: 205, field_type: 1, class_name: AliCtrPvalueLevel, enabled: true}
+  - {field_name: shopping_level, field_index: 206, field_type: 1, class_name: AliCtrShoppingLevel, enabled: true}
+  - {field_name: occupation, field_index: 207, field_type: 1, class_name: AliCtrOccupation, enabled: true}
+  - {field_name: new_user_class_level, field_index: 208, field_type: 1, class_name: AliCtrNewUserClass, enabled: true}
+
+  # ── User behavior statistics ──
+  - {field_name: user_history_ad_cnt, field_index: 401, field_type: 1, class_name: AliCtrUserHistoryAdCnt, enabled: true}
+  - {field_name: user_history_clk_rate, field_index: 402, field_type: 0, class_name: AliCtrUserHistoryClkRate, enabled: true}
+
+  # ── Item / Ad features ──
+  - {field_name: adgroup_id, field_index: 101, field_type: 1, class_name: AliCtrAdgroupID, enabled: true}
+  - {field_name: cate_id, field_index: 102, field_type: 1, class_name: AliCtrCateID, enabled: true}
+  - {field_name: campaign_id, field_index: 103, field_type: 1, class_name: AliCtrCampaignID, enabled: true}
+  - {field_name: customer, field_index: 104, field_type: 1, class_name: AliCtrCustomer, enabled: true}
+  - {field_name: brand, field_index: 105, field_type: 1, class_name: AliCtrBrand, enabled: true}
+  - {field_name: price, field_index: 106, field_type: 0, class_name: AliCtrPrice, enabled: true}
+  - {field_name: price_bucket, field_index: 107, field_type: 1, class_name: AliCtrPriceBucket, enabled: true}
+
+  # ── Context features ──
+  - {field_name: pid, field_index: 301, field_type: 1, class_name: AliCtrPid, enabled: true}
+  - {field_name: context_time_hour, field_index: 302, field_type: 1, class_name: AliCtrTimeHour, enabled: true}
+  - {field_name: context_time_area, field_index: 303, field_type: 1, class_name: AliCtrTimeArea, enabled: true}
+  - {field_name: context_time_week, field_index: 304, field_type: 1, class_name: AliCtrWeekDay, enabled: true}
+
+  # ── User behavior: history ad sequence (shared index 101 = adgroup_id vocab) ──
+  - {field_name: user_history_ad_seq, field_index: 101, field_type: 1, class_name: AliCtrUserHistoryAdSeq, enabled: true}
+
+# Cross features (all disabled by default)
+cross_features:
+  - {field_name: gender_xx_age_level, field_index: 501, depends: [gender, age_level], enabled: false}
+  - {field_name: cate_id_xx_user_history_ad_seq, field_index: 502, depends: [cate_id, user_history_ad_seq], enabled: false}
