@@ -137,7 +137,8 @@ class UserID(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, 
     val user_id = try {
       sample.user_id.toInt
     } catch {
-      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}"); 0
+      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}");
+        0
     }
     raw_list.append(sample.user_id)
     feature_list.append(user_id)
