@@ -1,9 +1,9 @@
 package featurizer.ml1m
 
-import featurizer.core.{CategoricalFeature, ContinuousFeature, CrossFeature, Featurizer, RawTarget}
-import config.{FeatureConfig, FeatureConfigLoader, FeatureDef}
-import utils.LogUtils.green_println
 import scala.collection.mutable
+import config.{FeatureConfig, FeatureConfigLoader, FeatureDef}
+import featurizer.{CategoricalFeature, ContinuousFeature, CrossFeature, Featurizer, RawTarget}
+import utils.LogUtils.green_println
 
 /**
  * ML-1M featurizer orchestrator — reads multi_features.yaml, instantiates and registers all feature extractors
@@ -25,9 +25,7 @@ class ML1MFeaturizer(configPath: Option[String] = None, targetMode: String = "bi
       val ctor = clazz.getConstructor(classOf[Int], classOf[String])
       ctor.newInstance(featureDef.field_index.asInstanceOf[AnyRef], featureDef.field_name)
     } catch {
-      case e: RuntimeException => throw e
-      case e: Exception =>
-        throw new RuntimeException("[Featurizer] failed to instantiate feature '" + featureDef.field_name +
+      case e: Exception => throw new RuntimeException("[Featurizer] failed to instantiate feature '" + featureDef.field_name +
           "' (index=" + featureDef.field_index + "): " + featureDef.class_name, e)
     }
   }
@@ -44,7 +42,7 @@ class ML1MFeaturizer(configPath: Option[String] = None, targetMode: String = "bi
     }
 
     val featureDefs: Seq[FeatureDef] = config.features.filter(_.isEnabled)
-    val featureInstances: mutable.Map[String, Any] = scala.collection.mutable.Map.empty
+    val featureInstances: mutable.Map[String, Any] = mutable.Map.empty
     for (defn <- featureDefs) {
       val inst = instantiate(defn)
       if (defn.isCategorical) {
@@ -61,8 +59,9 @@ class ML1MFeaturizer(configPath: Option[String] = None, targetMode: String = "bi
           val feats = cfd.depends.flatMap { name =>
             featureInstances.get(name).map(_.asInstanceOf[CategoricalFeature[ML1MSample]])
           }
+          // fixme: 是否有必要?
           if (feats.size < cfd.depends.size) {
-            val missing = cfd.depends.filterNot(featureInstances.contains).mkString(", ")
+            val missing = cfd.depends.filterNot(featureInstances.contains).mkString(",")
             green_println("[Featurizer] WARN: cross feature " + cfd.field_name + " depends not found: " + missing)
           } else {
             cross_features.append(new CrossFeature(cfd.field_index, cfd.field_name, feats: _*))

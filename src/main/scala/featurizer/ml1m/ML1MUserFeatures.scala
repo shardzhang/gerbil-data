@@ -1,10 +1,10 @@
 package featurizer.ml1m
 
+import scala.collection.mutable.ArrayBuffer
+import featurizer.{CategoricalFeature, ContinuousFeature, RawFeature}
 import utils.MurmurHash3
 import utils.LogUtils.green_println
-import featurizer.core.{CategoricalFeature, ContinuousFeature, RawFeature}
 
-import scala.collection.mutable.ArrayBuffer
 
 trait BucketedStdLike {
   this: CategoricalFeature[ML1MSample] =>

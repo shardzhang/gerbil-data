@@ -1,5 +1,6 @@
 package pipeline.serde
 
+import scala.reflect.ClassTag
 import org.apache.hadoop.io.{BytesWritable, NullWritable}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Row, SparkSession}
@@ -7,8 +8,8 @@ import org.apache.spark.sql.types.StructType
 import org.tensorflow.hadoop.io.TFRecordFileOutputFormat
 import org.tensorflow.example.Example
 
-import scala.reflect.ClassTag
-import featurizer.core.Featurizer
+import featurizer.Featurizer
+
 
 /**
  * Training sample serializer — writes encoded features to TFRecord or Parquet
@@ -49,8 +50,8 @@ class SampleWriter[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Lon
 
   /** Encodes samples into TensorFlow Example protobuf and writes TFRecord to `tfRecordPath`. */
   def writeTfrecord(trainingSample: RDD[(T, Boolean)],
-                    /** HashMap[(f_index, hash), PosInfo] */
-                    posMapLocalImmutable: collection.Map[(Int, Long), Int],
+                    /** HashMap[(f_index, hash), pos] */
+                    posMap: collection.Map[(Int, Long), Int],
                     /** HashMap[target, pos] */
                     targetMap: collection.Map[Int, Int],
                     tfRecordPath: String
@@ -61,7 +62,7 @@ class SampleWriter[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Lon
         // Factory function ensures each Spark partition gets its own featurizer instance, avoiding shared mutable state
         val encoder = createEncoder()
         samples.flatMap(sample => {
-          val (example, has_feature, has_target) = parseTfrecord(sample, encoder, posMapLocalImmutable, targetMap)
+          val (example, has_feature, has_target) = parseTfrecord(sample, encoder, posMap, targetMap)
           if (has_feature && has_target) {
             Some(example)
           } else {
@@ -80,10 +81,10 @@ class SampleWriter[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Lon
   /** Encodes a single sample into a TensorFlow Example. Returns (example, has_feature, has_target). */
   private def parseTfrecord(sample: T,
                             encoder: Featurizer[T],
-                            pos_map: collection.Map[(Int, Long), Int],
-                            target_map: collection.Map[Int, Int]): (Example, Boolean, Boolean) = {
+                            posMap: collection.Map[(Int, Long), Int],
+                            targetMap: collection.Map[Int, Int]): (Example, Boolean, Boolean) = {
     val builder = Example.newBuilder()
-    val (has_feature, has_target) = encoder.encode(sample, max_dim, builder, pos_map, target_map)
+    val (has_feature, has_target) = encoder.encode(sample, max_dim, builder, posMap, targetMap)
     (builder.build(), has_feature, has_target)
   }
 

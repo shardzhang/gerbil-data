@@ -1,12 +1,11 @@
-package pipeline.mobilerec
+package pipeline
 
+import featurizer.Featurizer
+import featurizer.mobilerec.{MobileRecFeaturizer, MobileRecSample}
 import org.apache.commons.cli.{DefaultParser, Options}
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
-import featurizer.mobilerec.{MobileRecFeaturizer, MobileRecSample}
-import featurizer.core.Featurizer
-import pipeline.Pipeline
 import utils.LogUtils.{green_println, setLogLevel}
 
 import java.util.concurrent.ThreadLocalRandom
@@ -17,7 +16,7 @@ object MobileRecPipeline extends Pipeline[MobileRecSample] {
   var featureConfigPath: Option[String] = None
   var targetMode: String = "binary"
 
-  override def feature_encoder: Featurizer[MobileRecSample] = {
+  override def featurizer: Featurizer[MobileRecSample] = {
     new MobileRecFeaturizer(featureConfigPath, targetMode).setup()
   }
 
@@ -61,7 +60,7 @@ object MobileRecPipeline extends Pipeline[MobileRecSample] {
       }
   }
 
-  override def getSampleTarget(sample: MobileRecSample): Int = {
+  override def parseTarget(sample: MobileRecSample): Int = {
     targetMode match {
       case "binary" => sample.label
       case "multi"  => sample.target
@@ -81,7 +80,7 @@ object MobileRecPipeline extends Pipeline[MobileRecSample] {
     }
   }
 
-  override def getSampleTimestamp(sample: MobileRecSample): Long = sample.time_stamp
+  override def parseTimestamp(sample: MobileRecSample): Long = sample.time_stamp
 
   def main(args: Array[String]): Unit = {
     val opts = new Options()

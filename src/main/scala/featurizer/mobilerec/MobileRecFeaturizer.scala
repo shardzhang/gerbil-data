@@ -1,7 +1,7 @@
 package featurizer.mobilerec
 
 import config.{FeatureConfig, FeatureConfigLoader, FeatureDef}
-import featurizer.core.{CategoricalFeature, ContinuousFeature, CrossFeature, Featurizer, RawTarget}
+import featurizer.{CategoricalFeature, ContinuousFeature, CrossFeature, Featurizer, RawTarget}
 import utils.LogUtils.green_println
 
 import scala.collection.mutable

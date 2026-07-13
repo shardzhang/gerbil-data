@@ -1,6 +1,6 @@
 package featurizer.mobilerec
 
-import featurizer.core.{CategoricalFeature, RawFeature}
+import featurizer.{CategoricalFeature, RawFeature}
 
 class MobileRecTimeHour(f_i: Int, f_n: String) extends CategoricalFeature[MobileRecSample](f_i, f_n) {
   override def parse(sample: MobileRecSample): RawFeature = {

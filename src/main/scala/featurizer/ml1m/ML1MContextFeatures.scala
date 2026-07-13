@@ -1,6 +1,6 @@
 package featurizer.ml1m
 
-import featurizer.core.{CategoricalFeature, RawFeature}
+import featurizer.{CategoricalFeature, RawFeature}
 
 /**
  * ML-1M context features — hour, time area, day of week, weekend flag
@@ -16,6 +16,7 @@ class ContextTimeHour(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSamp
   }
 }
 
+// fixme
 class ContextTimeArea(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
   override def parse(sample: ML1MSample): RawFeature = {
     raw_list.append(sample.time_area.toString)

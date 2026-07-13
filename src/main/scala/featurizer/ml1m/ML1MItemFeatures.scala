@@ -1,8 +1,8 @@
 package featurizer.ml1m
 
+import featurizer.{CategoricalFeature, ContinuousFeature, RawFeature}
 import utils.MurmurHash3
 import utils.LogUtils.green_println
-import featurizer.core.{CategoricalFeature, ContinuousFeature, RawFeature}
 
 /**
  * ML-1M item features — movie title, genres, rating count, avg rating, hot rank, publish year
@@ -25,6 +25,7 @@ class MovieID(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i,
   }
 }
 
+// fixme
 class MovieTitle(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
   override def parse(sample: ML1MSample): RawFeature = {
     try {

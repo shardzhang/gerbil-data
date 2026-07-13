@@ -1,13 +1,12 @@
-package pipeline.alictr
+package pipeline
 
 import com.alibaba.fastjson.JSON
+import featurizer.Featurizer
+import featurizer.alictr.{AliCtrFeaturizer, AliCtrSample}
 import org.apache.commons.cli.{DefaultParser, Options}
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
-import featurizer.alictr.{AliCtrFeaturizer, AliCtrSample}
-import featurizer.core.Featurizer
-import pipeline.Pipeline
 import utils.LogUtils.{green_println, setLogLevel}
 
 import java.util.concurrent.ThreadLocalRandom
@@ -18,7 +17,7 @@ object AliCtrPipeline extends Pipeline[AliCtrSample] {
   var featureConfigPath: Option[String] = None
   var targetMode: String = "binary"
 
-  override def feature_encoder: Featurizer[AliCtrSample] = {
+  override def featurizer: Featurizer[AliCtrSample] = {
     new AliCtrFeaturizer(featureConfigPath, targetMode).setup()
   }
 
@@ -87,7 +86,7 @@ object AliCtrPipeline extends Pipeline[AliCtrSample] {
       }
   }
 
-  override def getSampleTarget(sample: AliCtrSample): Int = {
+  override def parseTarget(sample: AliCtrSample): Int = {
     targetMode match {
       case "binary" => sample.label
       case "multi"  => sample.target
@@ -105,7 +104,7 @@ object AliCtrPipeline extends Pipeline[AliCtrSample] {
     }
   }
 
-  override def getSampleTimestamp(sample: AliCtrSample): Long = sample.time_stamp
+  override def parseTimestamp(sample: AliCtrSample): Long = sample.time_stamp
 
   def main(args: Array[String]): Unit = {
     val opts = new Options()

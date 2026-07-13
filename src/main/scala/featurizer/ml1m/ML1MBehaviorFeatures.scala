@@ -1,10 +1,10 @@
 package featurizer.ml1m
 
-import utils.MurmurHash3
-import featurizer.core.{CategoricalFeature, RawFeature}
-
 import scala.collection.mutable.ArrayBuffer
+import featurizer.{CategoricalFeature, RawFeature}
+import utils.MurmurHash3
 
+// fixme
 trait UserMovieRateLike {
   this: CategoricalFeature[ML1MSample] =>
   def getSeq(sample: ML1MSample): ArrayBuffer[(Int, Int)]

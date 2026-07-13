@@ -1,7 +1,7 @@
 package featurizer.alictr
 
 import config.{FeatureConfig, FeatureConfigLoader, FeatureDef}
-import featurizer.core.{CategoricalFeature, ContinuousFeature, CrossFeature, Featurizer}
+import featurizer.{CategoricalFeature, ContinuousFeature, CrossFeature, Featurizer}
 import utils.LogUtils.green_println
 
 import scala.collection.mutable

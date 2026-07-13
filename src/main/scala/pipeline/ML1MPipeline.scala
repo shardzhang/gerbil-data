@@ -4,11 +4,11 @@ import org.apache.commons.cli.{DefaultParser, Options}
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
-
 import java.util.concurrent.ThreadLocalRandom
+
+import featurizer.Featurizer
 import featurizer.ml1m.ML1MSample
 import featurizer.ml1m.ML1MFeaturizer
-import featurizer.core.Featurizer
 import utils.LogUtils.green_println
 import utils.LogUtils.setLogLevel
 
@@ -26,7 +26,7 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
   /** Target mode: "binary" (default, uses sample.label) or "multi" (uses sample.target). */
   var targetMode: String = "binary"
 
-  override def feature_encoder: Featurizer[ML1MSample] = {
+  override def featurizer: Featurizer[ML1MSample] = {
     new ML1MFeaturizer(featureConfigPath, targetMode).setup()
   }
 
@@ -52,7 +52,7 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
    * multi mode → sample.target (item_id).
    * rating mode → sample.rating (1-5).
    */
-  override def getSampleTarget(sample: ML1MSample): Int = {
+  override def parseTarget(sample: ML1MSample): Int = {
     targetMode match {
       case "binary" => sample.label
       case "multi"  => sample.target
@@ -61,7 +61,7 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
     }
   }
 
-  /** Only multi mode needs target_map re-encoding (sparse item_id → dense index). */
+  /** Only multi-class mode needs target_map re-encoding (sparse item_id → dense index). */
   override def useTargetMap: Boolean = targetMode == "multi"
 
   /**
@@ -80,7 +80,7 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
   }
 
   /** Extract timestamp (millis) from sample for time-based split. */
-  override def getSampleTimestamp(sample: ML1MSample): Long = sample.time_stamp
+  override def parseTimestamp(sample: ML1MSample): Long = sample.time_stamp
 
   /** Load movie metadata (title, genres) from item_feature CSV, keyed by movie_id. */
   def getMovieInfo(spark: SparkSession, path: String): collection.Map[Int, (String, Array[String])] = {

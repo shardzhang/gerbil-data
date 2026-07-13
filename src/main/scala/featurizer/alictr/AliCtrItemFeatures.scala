@@ -1,6 +1,6 @@
 package featurizer.alictr
 
-import featurizer.core.{CategoricalFeature, ContinuousFeature, RawFeature}
+import featurizer.{CategoricalFeature, ContinuousFeature, RawFeature}
 import utils.MurmurHash3
 
 class AliCtrAdgroupID(f_i: Int, f_n: String) extends CategoricalFeature[AliCtrSample](f_i, f_n) {

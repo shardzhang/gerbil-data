@@ -1,6 +1,7 @@
 package pipeline.serde
 
 import com.google.common.io.{LittleEndianDataInputStream, LittleEndianDataOutputStream}
+import featurizer.FieldType
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.json.{JSONArray, JSONObject}
@@ -10,7 +11,6 @@ import java.net.URI
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import utils.LogUtils.green_println
-import featurizer.core.FieldType
 import pipeline.stats.PosInfo
 
 /**

@@ -1,6 +1,6 @@
 package featurizer.mobilerec
 
-import featurizer.core.RawTarget
+import featurizer.RawTarget
 
 class MobileRecTarget extends RawTarget[MobileRecSample] {
   override def parse(sample: MobileRecSample): RawTarget[MobileRecSample] = {

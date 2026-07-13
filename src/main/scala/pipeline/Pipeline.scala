@@ -1,16 +1,16 @@
 package pipeline
 
+import scala.collection.mutable
+import scala.collection.mutable.{ArrayBuffer, HashMap}
+import scala.reflect.ClassTag
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types.{ArrayType, FloatType, LongType, StringType, StructField, StructType}
 import org.apache.spark.storage.StorageLevel
 
-import scala.collection.mutable
-import scala.collection.mutable.{ArrayBuffer, HashMap}
-import scala.reflect.ClassTag
+import featurizer.{Featurizer, FieldType}
 import utils.LogUtils.green_println
-import featurizer.core.{FieldType, Featurizer}
 import pipeline.serde.{PosMapSerDe, SampleWriter}
 import pipeline.stats.{DataQualityTracker, PosInfo, RunningValueStats}
 
@@ -37,7 +37,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
   /** Persists/restores position-map and target-map across runs. */
   @transient val posMapSerDe: PosMapSerDe = new PosMapSerDe(hadoopConf)
   /** Serializes featurized samples to TFRecord or Parquet. */
-  @transient lazy val writer: SampleWriter[T] = new SampleWriter[T](() => feature_encoder, max_dim)
+  @transient lazy val writer: SampleWriter[T] = new SampleWriter[T](() => featurizer, max_dim)
   /** Tracks record counts, parse success rates, and target distributions at each ETL stage. */
   @transient lazy val qualityTracker: DataQualityTracker = new DataQualityTracker()
 
@@ -45,16 +45,16 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
   def max_dim: Long
 
   /** The featurizer that converts raw samples into encoded features. */
-  def feature_encoder: Featurizer[T]
+  def featurizer: Featurizer[T]
 
   /** Loads and parses raw training samples from the given input directory. */
   def loadTrainingSamples(spark: SparkSession, inputDir: String, parts: Int): RDD[(T, Boolean)]
 
   /** Extracts the target label (as Int) from a sample for threshold statistics. */
-  def getSampleTarget(sample: T): Int
+  def parseTarget(sample: T): Int
 
   /** Extracts the timestamp (millis) from a sample for time-based split. */
-  def getSampleTimestamp(sample: T): Long
+  def parseTimestamp(sample: T): Long
 
   /**
    * Whether to re-encode target values through target_map (sequential indexing).
@@ -65,21 +65,23 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
   /** Down-samples negative samples (target == 0) by `sample_ratio`. Positive samples are always kept. */
   def keepSample(sample: T, sample_ratio: Double): Boolean
 
-  /** Computes hash info (field name, index, type, raw value, hash, value) for vocabulary building. */
+  /** Computes hash info (field name, index, type, raw, hash, value) for vocabulary building. */
   def getHashInfo(sample: T, encoder: Featurizer[T]): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     encoder.getHashInfo(sample, max_dim)
   }
 
-  /** Aligns posDim entries so all features sharing the same (f_index, f_type) use the same dim. */
-  def alignPosDim(posDim: HashMap[(String, Int, Int), Int],
-                           posCounter: HashMap[(Int, Int), Int],
-                           featurizer: Featurizer[_]): Unit = {
+  /** Aligns posDim entries so all features sharing the same (f_index, f_type) use the same dim, used for vocabulary sharing. */
+  def alignFieldDim(posDim: HashMap[(String, Int, Int), Int],
+                    fieldDim: HashMap[(Int, Int), Int],
+                    featurizer: Featurizer[_]): Unit = {
     val nameIndexMap = featurizer.getFieldInfo()
       .groupBy(_._2)
-      .map { case (idx, entries) => (idx, entries.map(_._1)) }
+      .map {
+        case (idx, entries) => (idx, entries.map(_._1))
+      }
 
     posDim.clear()
-    posCounter.foreach { case ((f_index, f_type), dim) =>
+    fieldDim.foreach { case ((f_index, f_type), dim) =>
       val f_names = nameIndexMap.getOrElse(f_index, Nil)
       f_names.foreach { f_name =>
         posDim.put((f_name, f_index, f_type), dim)
@@ -87,16 +89,253 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     }
   }
 
-  /** Builds the Parquet schema with (target, *_raw, *_index, *_value) columns for each feature. */
-  def parquet_schema: StructType = {
-    val fields = new ArrayBuffer[StructField]()
-    fields.append(StructField("target", FloatType, nullable = true))
-    for ((f_name, _) <- feature_encoder.getFieldInfo()) {
-      fields.append(StructField(f_name + "_raw", ArrayType(StringType, containsNull = false), nullable = true))
-      fields.append(StructField(f_name + "_index", ArrayType(LongType, containsNull = false), nullable = true))
-      fields.append(StructField(f_name + "_value", ArrayType(FloatType, containsNull = false), nullable = true))
+
+  /**
+   *
+   * @param allSamples
+   * @param trainRatio
+   * @param valRatio
+   * @return
+   */
+  def splitSamples(allSamples: RDD[(T, Boolean)],
+                   trainRatio: Double,
+                   valRatio: Double
+                  ): (RDD[(T, Boolean)], RDD[(T, Boolean)], RDD[(T, Boolean)]) = {
+
+    if (trainRatio >= 1.0) {
+      return (allSamples, null, null)
     }
-    StructType(fields)
+
+    val sorted: RDD[(T, Boolean)] = allSamples.sortBy {
+      case (sample, _) => parseTimestamp(sample)
+    }
+    val indexed: RDD[((T, Boolean), Long)] = sorted.zipWithIndex().persist(StorageLevel.MEMORY_AND_DISK_SER)
+    val total = indexed.count()
+    val trainEnd = (total * trainRatio).toLong
+    val valEnd = trainEnd + (total * valRatio).toLong
+
+    // train sample
+    val train: RDD[(T, Boolean)] = indexed.filter {
+        case (_, idx) => idx < trainEnd
+      }
+      .map(_._1)
+      .persist(StorageLevel.MEMORY_AND_DISK_SER)
+    val trainCount = train.count()
+
+    // validation sample
+    val valid: RDD[(T, Boolean)] = indexed.filter {
+        case (_, idx) => idx >= trainEnd && idx < valEnd
+      }
+      .map(_._1)
+      .persist(StorageLevel.MEMORY_AND_DISK_SER)
+    val valCount = valid.count()
+
+    // test sample
+    val test: RDD[(T, Boolean)] = indexed.filter {
+        case (_, idx) => idx >= valEnd
+      }
+      .map(_._1)
+      .persist(StorageLevel.MEMORY_AND_DISK_SER)
+    val testCount = test.count()
+
+    indexed.unpersist()
+    green_println(s"train/val/test split: ${total}=total, train=${trainCount} (${trainRatio * 100}%), val=${valCount} (${valRatio * 100}%), test=${testCount} (${(1.0 - trainRatio - valRatio) * 100}%)")
+
+    // Record split counts to quality tracker
+    qualityTracker.recordCounts("train_split", trainCount)
+    qualityTracker.recordCounts("val_split", valCount)
+    qualityTracker.recordCounts("test_split", testCount)
+
+    (train, valid, test)
+  }
+
+
+  /**
+   * Build target-map: assign a sequential index to each target value meeting the threshold
+   * Build position-map: assign embedding indices to categorical feature values;
+   *
+   * @param targetOccurs fixme
+   * @param targetThreshold
+   * @param targetMap
+   */
+  def generateVocabulary(trainingSample: RDD[(T, Boolean)],
+                         targetThreshold: Int,
+                         featureThreshold: Int,
+                         targetMap: mutable.HashMap[Int, Int],
+                         posMap: mutable.HashMap[(Int, Long), PosInfo],
+                         posDim: mutable.HashMap[(String, Int, Int), Int]
+                        ): Unit = {
+    green_println(s"old targetMap: ${targetMap.size}.")
+
+    // Aggregate sample counts per target value
+    val targetOccurs: Array[(Int, Int)] = trainingSample
+      .filter(r => r._2)                        // 仅取出有效样本
+      .map { case (sample, _) => sample }
+      .map(sample => (parseTarget(sample), 1))
+      .reduceByKey(_ + _)
+      .collect()
+      .sortWith((a, b) => a._2 > b._2)
+
+    // data check. Count parse success vs. failure
+    val retCounts: Array[(Boolean, Int)] = trainingSample
+      .map(s => (s._2, 1))
+      .reduceByKey(_ + _)
+      .collect()
+    val totalCount = retCounts.map(_._2).sum
+    val validCount = retCounts.find(_._1).map(_._2.toLong).getOrElse(0L)  // count of successfully parsed samples
+    qualityTracker.record("train_stats", totalCount, validCount, targetOccurs.toSeq)
+
+    // Only needed for multi-class mode to re-index sparse target IDs into dense indices
+    if (!useTargetMap) {
+      targetMap.clear()
+    }
+
+    var newCount = 0 // 本次样本中新增target个数(冷启动物品)
+    var existingCount = 0 // 历史累计样本中已存在target个数(老物品)
+    var ignoredCount = 0 // 本次样本中新增但被忽略target个数
+    var totalOccurrences = 0L // 本次样本中新增样本条数
+    var nextIndex = targetMap.size
+    for ((targetId, occurrence) <- targetOccurs) {
+      totalOccurrences += occurrence
+      if (targetMap.contains(targetId)) {
+        existingCount += 1
+      } else if (occurrence >= targetThreshold) {
+        targetMap.put(targetId, nextIndex)
+        nextIndex += 1
+        newCount += 1
+      } else {
+        ignoredCount += 1
+      }
+    }
+    green_println(s"target_map: new=${newCount}, existing=${existingCount}, belowThreshold=${ignoredCount}, totalOccurrences=${totalOccurrences}")
+    green_println(s"new targetMap: ${targetMap.size}.")
+
+    green_println(s"old posMap: ${posMap.size}.")
+    green_println(s"old posDim: ${posDim.size}.")
+
+    /** Collect hash statistics across all samples: aggregates sum/powerSum/count per (f_name, f_index, f_type, hash) key */
+    val trainSample: Array[((String, Int, Byte, Long), RunningValueStats)] = trainingSample
+      .filter(r => r._2)
+      .map { case (sample, _) => sample }
+      .mapPartitions(samples => {
+        val encoder = featurizer
+        val posInfo = new mutable.HashMap[(String, Int, Byte, Long), RunningValueStats]()
+        for (sample <- samples) {
+          val oneSampleHashArr = getHashInfo(sample, encoder)
+          for ((field_name, field_index, field_type, raw, hash, value) <- oneSampleHashArr) {
+            val key = (field_name, field_index, field_type, hash)
+            posInfo.getOrElseUpdate(key, new RunningValueStats()).add(value)
+          }
+        }
+        posInfo.iterator
+      })
+      .reduceByKey((a, b) => a.merge(b))
+      .collect()
+    green_println(s"trainSample.size = ${trainSample.length}")
+
+    // low-frequency values reuse historical positions or are dropped
+    var ignoredPosCount = 0 // 本次样本中忽略编码的样本条数
+    var reusedHistoryPosCount = 0 // 本次样本中复用编码的样本条数
+
+    /** Shared counter per (f_index, f_type) — ensures features sharing field_index get unique positions */
+    val fieldDim = new mutable.HashMap[(Int, Int), Int]()
+    posDim.foreach { case ((f_name, f_index, f_type), dim) =>
+      val key = (f_index, f_type)
+      fieldDim.put(key, math.max(fieldDim.getOrElse(key, 0), dim))
+    }
+    for (posInfo <- trainSample) {
+      val (f_name, f_index, f_type, hash) = posInfo._1
+      val dimKey = (f_index, f_type.toInt)
+      val stat = posInfo._2
+      if (stat.count < featureThreshold) {
+        posMap.get((f_index, hash)) match {
+          case Some(history) =>
+            val currentDim = fieldDim.getOrElse(dimKey, 1)
+            fieldDim.put(dimKey, math.max(currentDim, history.pos + 1))
+            reusedHistoryPosCount += 1
+          case None =>
+            ignoredPosCount += 1
+        }
+      } else {
+        if (!fieldDim.contains(dimKey)) {
+          posMap.put((f_index, 0L), PosInfo(0))
+          fieldDim.put(dimKey, 1)
+        }
+        val pos: Int = if (f_type == FieldType.Continuous) {
+          hash.toInt
+        } else if (posMap.contains((f_index, hash))) {
+          posMap((f_index, hash)).pos
+        } else {
+          fieldDim(dimKey)
+        }
+        val merged: PosInfo = posMap.get((f_index, hash)) match {
+          case Some(history) => history.copy(pos = pos).merge(stat)
+          case None => PosInfo(pos, stat.sum, stat.powerSum, stat.count)
+        }
+        posMap.put((f_index, hash), merged)
+        val currentDim = fieldDim.getOrElse(dimKey, 1)
+        fieldDim.put(dimKey, math.max(currentDim, pos + 1))
+      }
+    }
+    alignFieldDim(posDim, fieldDim, featurizer)
+    green_println(s"ignored_pos_count: ${ignoredPosCount}. total filtered feature value count")
+    green_println(s"reused_history_pos_count: ${reusedHistoryPosCount}. low-frequency feature values reusing historical vocabulary")
+    green_println(s"new posMap: ${posMap.size}.")
+    green_println(s"new posDim: ${posDim.size}.")
+  }
+
+
+  /**
+   *
+   * @param spark
+   * @param yesterday
+   * @param trainingSample
+   * @param valSample
+   * @param testSample
+   * @param posMap
+   * @param targetMap
+   * @param outputDir
+   * @param output_format
+   */
+  def generateSample(spark: SparkSession,
+                     yesterday: String,
+                     trainingSample: RDD[(T, Boolean)],
+                     valSample: RDD[(T, Boolean)],
+                     testSample: RDD[(T, Boolean)],
+                     posMap: mutable.HashMap[(Int, Long), PosInfo],
+                     targetMap: mutable.HashMap[Int, Int],
+                     outputDir: String,
+                     output_format: String): Unit = {
+    val localPosMap = posMap.map { case (k, v) => (k, v.pos) }
+    val localTargetMap = if (useTargetMap) targetMap else null
+    val basePath = s"${outputDir.stripSuffix("/")}/${yesterday}"
+    val splitsToWrite = if (valSample != null) {
+      Seq(("train", trainingSample), ("val", valSample), ("test", testSample))
+    } else {
+      Seq(("", trainingSample))
+    }
+    for ((suffix, data) <- splitsToWrite) {
+      val filterdData = data.filter(r => r._2) // 过滤有效样本
+      val subdir = if (suffix.isEmpty) "" else s"/${suffix}"
+      if (output_format == "tfrecord" || output_format == "both") {
+        writer.writeTfrecord(filterdData, localPosMap, targetMap, s"${basePath}${subdir}/tfrecord")
+      }
+
+      if (output_format == "parquet" || output_format == "both") {
+        /** Builds the Parquet schema with (target, *_raw, *_index, *_value) columns for each feature. */
+        val parquet_schema: StructType = {
+          val fields = new ArrayBuffer[StructField]()
+          fields.append(StructField("target", FloatType, nullable = true))
+          for ((f_name, _) <- featurizer.getFieldInfo()) {
+            fields.append(StructField(f_name + "_raw", ArrayType(StringType, containsNull = false), nullable = true))
+            fields.append(StructField(f_name + "_index", ArrayType(LongType, containsNull = false), nullable = true))
+            fields.append(StructField(f_name + "_value", ArrayType(FloatType, containsNull = false), nullable = true))
+          }
+          StructType(fields)
+        }
+        writer.writeParquet(spark, filterdData, parquet_schema, localPosMap, localTargetMap, s"${basePath}${subdir}/parquet")
+      }
+    }
   }
 
   /** Runs the full pipeline: load samples, build target-map, build pos-map (vocabulary), and write encoded output.
@@ -121,210 +360,30 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
           inputDir: String,
           outputDir: String,
           parts: Int,
-          output_format: String = "tfrecord",
-          trainRatio: Double = 1.0,
-          valRatio: Double = 0.0
+          outputFormat: String = "tfrecord",
+          trainRatio: Double = 0.8,
+          valRatio: Double = 0.1
          ): (HashMap[(Int, Long), PosInfo], HashMap[Int, Int], HashMap[(String, Int, Int), Int]) = {
 
-    val allSamples: RDD[(T, Boolean)] = loadTrainingSamples(spark, inputDir, parts)
-      .filter {
+    // 1. negative sampling (if necessary)
+    val allSamples: RDD[(T, Boolean)] = loadTrainingSamples(spark, inputDir, parts).filter {
         case (sample, _) => keepSample(sample, sampleRatio)
       }
       .persist(StorageLevel.MEMORY_AND_DISK_SER)
 
-    // Time-based split into train/val/test
-    val (trainingSample, valSample, testSample) = if (trainRatio >= 1.0) {
-      (allSamples, null, null)
-    } else {
-      val sorted = allSamples.sortBy { case (sample, _) => getSampleTimestamp(sample) }
-      val indexed = sorted.zipWithIndex().persist(StorageLevel.MEMORY_AND_DISK_SER)
-      val total = indexed.count()
-      val trainEnd = (total * trainRatio).toLong
-      val valEnd = trainEnd + (total * valRatio).toLong
+    // 2. Time-based split into train/val/test
+    val (trainingSample, valSample, testSample) = splitSamples(allSamples, trainRatio, valRatio)
+    allSamples.unpersist()
 
-      val train = indexed.filter { case (_, idx) => idx < trainEnd }.map(_._1).persist(StorageLevel.MEMORY_AND_DISK_SER)
-      val valid = indexed.filter { case (_, idx) => idx >= trainEnd && idx < valEnd }.map(_._1).persist(StorageLevel.MEMORY_AND_DISK_SER)
-      val test = indexed.filter { case (_, idx) => idx >= valEnd }.map(_._1).persist(StorageLevel.MEMORY_AND_DISK_SER)
-      val trainCount = train.count()
-      val valCount = valid.count()
-      val testCount = test.count()
-      indexed.unpersist()
-      allSamples.unpersist()
-      green_println(s"train/val/test split: ${total} total, " +
-        s"train=${trainCount} (${trainRatio * 100}%), " +
-        s"val=${valCount} (${valRatio * 100}%), " +
-        s"test=${testCount} (${(1.0 - trainRatio - valRatio) * 100}%)")
-      // Record split counts to quality tracker
-      qualityTracker.recordCounts("train_split", trainCount)
-      qualityTracker.recordCounts("val_split", valCount)
-      qualityTracker.recordCounts("test_split", testCount)
-      (train, valid, test)
-    }
+    // 3. load and update vocabulary
+    generateVocabulary(trainingSample, targetThreshold, featureThreshold, targetMap, posMap, posDim)
 
-    // Count parse success vs. failure
-    val ret_counts = trainingSample
-      .map(s => (s._2, 1))
-      .reduceByKey(_ + _)
-      .collect()
-
-    val totalCount = ret_counts.map(_._2).sum
-    val validCount = ret_counts.find(_._1).map(_._2.toLong).getOrElse(0L)  // count of successfully parsed samples
-    for (ret <- ret_counts) {
-      green_println(s"ret_counts ${ret._1} ${ret._2}")
-    }
-
-    // Aggregate sample counts per target value
-    val sample_num: Array[(Int, Int)] = trainingSample
-      .map { case (sample, _) => sample }
-      .map(sample => (getSampleTarget(sample), 1))
-      .reduceByKey(_ + _)
-      .collect()
-      .sortWith((a, b) => a._2 > b._2)
-
-    // Record train quality: total, parse success, target distribution
-    qualityTracker.record("train_stats", totalCount, validCount, sample_num.toSeq)
-    /** binary
-     * Stage: train_stats
-     * Total:      800167
-     * Valid:      800167 (100.00%)
-     * Targets:    2 distinct
-     * Top-5:      1=463020, 0=337147
-     */
-    /** rating
-     * Stage: train_stats
-     * Total:      800167
-     * Valid:      800167 (100.00%)
-     * Targets:    5 distinct
-     * Top-5:      4=278240, 3=207190, 5=184780, 2=84619, 1=45338
-     */
-    // Build target-map: assign a sequential index to each target value meeting the threshold
-    // Only needed for multi-class mode to re-index sparse target IDs into dense indices
-    var newCount = 0
-    var existingCount = 0
-    var ignoredCount = 0
-    var totalOccurrences = 0L
-
-    if (!useTargetMap) {
-      targetMap.clear()
-    } else {
-      var nextIndex = targetMap.size
-      for ((targetId, occurrence) <- sample_num) {
-        totalOccurrences += occurrence
-        if (targetMap.contains(targetId)) {
-          existingCount += 1
-        } else if (occurrence >= targetThreshold) {
-          targetMap.put(targetId, nextIndex)
-          nextIndex += 1
-          newCount += 1
-        } else {
-          ignoredCount += 1
-        }
-      }
-      green_println(s"target_map: new=${newCount}, existing=${existingCount}, belowThreshold=${ignoredCount}, total=${totalOccurrences}")
-    }
-
-    // Collect hash statistics across all samples: aggregates sum/powerSum/count per (field, hash) key
-    /** Array[(f_name, f_index, f_type, hash)] */
-    val trainSample: Array[((String, Int, Byte, Long), RunningValueStats)] = trainingSample
-      .map { case (sample, _) => sample }
-      .mapPartitions(samples => {
-        val encoder = feature_encoder
-        val posHash: mutable.Map[(String, Int, Byte, Long), RunningValueStats] = new mutable.HashMap[(String, Int, Byte, Long), RunningValueStats]()
-        for (sample <- samples) {
-          val oneSampleHashArr = getHashInfo(sample, encoder)
-          for ((field_name, field_index, field_type, _, hash, value) <- oneSampleHashArr) {
-            val key = (field_name, field_index, field_type, hash)
-            posHash.getOrElseUpdate(key, new RunningValueStats()).add(value)
-          }
-        }
-        posHash.iterator
-      })
-      .reduceByKey((a, b) => a.merge(b))
-      .collect()
-    green_println(s"pos_arr.size = ${trainSample.length}")
-
-    // Build position-map: assign embedding indices to frequent feature values;
-    // low-frequency values reuse historical positions or are dropped
-    var ignoredPosCount = 0
-    var reusedHistoryPosCount = 0
-
-    /** HashMap[(f_index, hash), pos] */
-    val posMapLocal = new HashMap[(Int, Long), Int]
-
-    /** Shared counter per (f_index, f_type) — ensures features sharing field_index get unique positions */
-    val posCounter = new HashMap[(Int, Int), Int]()
-    posDim.foreach { case ((_, f_index, f_type), dim) =>
-      val key = (f_index, f_type)
-      posCounter.put(key, math.max(posCounter.getOrElse(key, 0), dim))
-    }
-    for (posInfo <- trainSample) {
-      val (f_name, f_index, f_type, hash) = posInfo._1
-      val dimKey = (f_index, f_type.toInt)
-      val stat = posInfo._2
-      if (stat.count < featureThreshold) {
-        posMap.get((f_index, hash)) match {
-          case Some(history) =>
-            posMapLocal.put((f_index, hash), history.pos)
-            val currentDim = posCounter.getOrElse(dimKey, 1)
-            posCounter.put(dimKey, math.max(currentDim, history.pos + 1))
-            reusedHistoryPosCount += 1
-          case None =>
-            ignoredPosCount += 1
-        }
-      } else {
-        if (!posCounter.contains(dimKey)) {
-          posCounter.put(dimKey, 1)
-          posMap.put((f_index, 0L), PosInfo(0))
-        }
-        val pos = if (f_type == FieldType.Continuous) {
-          if (hash <= 0L || hash > Int.MaxValue.toLong) {
-            throw new IllegalArgumentException(s"Continuous feature ${f_name}[${f_index}] position must be in [1, ${Int.MaxValue}], got ${hash}")
-          }
-          hash.toInt
-        } else if (posMap.contains((f_index, hash))) {
-          posMap((f_index, hash)).pos
-        } else {
-          posCounter(dimKey)
-        }
-        val merged: PosInfo = posMap.get((f_index, hash)) match {
-          case Some(history) => history.copy(pos = pos).merge(stat)
-          case None => PosInfo(pos, stat.sum, stat.powerSum, stat.count)
-        }
-        posMap.put((f_index, hash), merged)
-        posMapLocal.put((f_index, hash), pos)
-        val currentDim = posCounter.getOrElse(dimKey, 1)
-        posCounter.put(dimKey, math.max(currentDim, pos + 1))
-      }
-    }
-    alignPosDim(posDim, posCounter, feature_encoder)
-
-    green_println(s"ignored_pos_count: ${ignoredPosCount}. total filtered feature value count")
-    green_println(s"reused_history_pos_count: ${reusedHistoryPosCount}. low-frequency feature values reusing historical vocabulary")
-    green_println(s"posMapLocal: ${posMapLocal.size}. valid feature value count")
-    green_println(s"pos_map: ${posMap.size}. accumulated feature value count")
-    green_println(s"target_map: ${targetMap.size}. accumulated target count")
-    green_println(s"pos_dim: ${posDim.size}. accumulated feature domain count")
-
-    val basePath = s"${outputDir.stripSuffix("/")}/${yesterday}"
-    val posMapLocalImmutable: collection.Map[(Int, Long), Int] = posMapLocal
-    val targetMapImmutable: collection.Map[Int, Int] = if (useTargetMap) targetMap else null
-
-    val splitsToWrite = if (valSample != null) {
-      Seq(("train", trainingSample), ("val", valSample), ("test", testSample))
-    } else {
-      Seq(("", trainingSample))
-    }
-    for ((suffix, data) <- splitsToWrite) {
-      val subdir = if (suffix.isEmpty) "" else s"/${suffix}"
-      if (output_format == "tfrecord" || output_format == "both") {
-        writer.writeTfrecord(data, posMapLocalImmutable, targetMapImmutable, s"${basePath}${subdir}/tfrecord")
-      }
-      if (output_format == "parquet" || output_format == "both") {
-        writer.writeParquet(spark, data, parquet_schema, posMapLocalImmutable, targetMapImmutable, s"${basePath}${subdir}/parquet")
-      }
-    }
+    // 4. generate final train sample
+    generateSample(spark, yesterday, trainingSample, valSample, testSample, posMap, targetMap, outputDir, outputFormat)
     // Print consolidated quality report before returning
     qualityTracker.printReport()
+
+    // 5. return new vocabulary
     (posMap, targetMap, posDim)
   }
 }

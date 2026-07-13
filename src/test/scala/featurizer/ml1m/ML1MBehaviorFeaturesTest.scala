@@ -1,7 +1,7 @@
 package featurizer.ml1m
 
+import featurizer.FieldType
 import org.scalatest.{Matchers, WordSpec}
-import featurizer.core.FieldType
 
 import scala.collection.mutable.ArrayBuffer
 

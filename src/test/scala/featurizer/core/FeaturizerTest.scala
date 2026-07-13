@@ -1,5 +1,6 @@
 package featurizer.core
 
+import featurizer.{CategoricalFeature, ContinuousFeature, CrossFeature, Featurizer, FieldType, RawFeature, RawTarget}
 import org.scalatest.{Matchers, WordSpec}
 import org.tensorflow.example.Example
 import tfrecords.serde.{BytesListFeatureEncoder, FloatListFeatureEncoder, Int64ListFeatureEncoder}

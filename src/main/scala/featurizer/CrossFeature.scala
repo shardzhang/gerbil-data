@@ -1,12 +1,11 @@
-package featurizer.core
+package featurizer
 
-import java.nio.{ByteBuffer, ByteOrder}
-import java.nio.charset.StandardCharsets.UTF_8
 import org.tensorflow.example.Example
 import tfrecords.serde.{BytesListFeatureEncoder, FloatListFeatureEncoder, Int64ListFeatureEncoder}
 import utils.MurmurHash3
-import utils.MurmurHash3.LongPair
 
+import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.{ByteBuffer, ByteOrder}
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
@@ -15,7 +14,7 @@ import scala.collection.mutable.ArrayBuffer
  *
  * Computes the Cartesian product of constituent categorical features and hashes
  * each combination into an embedding index. Supports second-order (2 features)
- * and third-order (3 features) crosses.
+ * , third-order (3 features) crosses and higher-order features crosses.
  *
  * The hash key concatenates all constituent `(f_index || feature_value)` pairs
  * in little-endian byte order, e.g. `1:action__xx__3:male` for a gender × genre cross.
@@ -37,7 +36,6 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
 
   /** Computes MurmurHash3 over the concatenation of all constituent feature values. */
   def computeHash(dim: Long): Long = {
-    if (dim <= 0) return 0L
     val bb = ByteBuffer.allocate(key_len).order(ByteOrder.LITTLE_ENDIAN)
     var shift = 0
     for (i <- 0 until rnfs.length) {
@@ -46,7 +44,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
       bb.putLong(shift, rnfs(i).feature_list(indexes(i)))
       shift += 8
     }
-    val p: LongPair = new MurmurHash3.LongPair()
+    val p = new MurmurHash3.LongPair()
     MurmurHash3.murmurhash3_x64_128(bb.array(), 0, key_len, SEED, p)
     var hash = p.val1 % dim
     if (hash < 0) hash += dim
@@ -54,14 +52,14 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
   }
 
   /** Formats the current combination as a human-readable string (e.g. "1:action__xx__3:male"). */
-  def formatCombination: String = {
+  private def formatCombination: String = {
     rnfs.indices.map(
       i => s"${rnfs(i).field_index}:${rnfs(i).raw_list(indexes(i))}"
     ).mkString("__xx__")
   }
 
   /** Iterates over the Cartesian product of all constituent feature values, skipping zero entries. */
-  def foreachCombination(body: => Unit): Unit = {
+  private def featureCombination(body: => Unit): Unit = {
     for (i <- 0 until rnfs.length) {
       indexes(i) = 0
     }
@@ -88,22 +86,21 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
           added = true
         }
       }
-      if (!added) {
-        done = true
-      }
+      if (!added) done = true
     }
   }
 
-  override def getHashInfo(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
-    val buf = ArrayBuffer[(String, Int, Byte, String, Long, Float)]()
-    foreachCombination {
+  // fixme
+  override def getHashInfo(dim: Long): mutable.ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
+    val buf = mutable.ArrayBuffer[(String, Int, Byte, String, Long, Float)]()
+    featureCombination {
       buf.append((field_name, field_index, field_type, formatCombination, computeHash(dim), 1.0F))
     }
     buf
   }
 
   /** Convenience overload: parses input, then computes hash info for all combinations. */
-  def getHashInfo(input: T, dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
+  def getHashInfo(input: T, dim: Long): mutable.ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     for (c_f <- rnfs) {
       c_f.clear()
       c_f.parse(input)
@@ -111,15 +108,16 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
     getHashInfo(dim)
   }
 
-  override def getHash(dim: Long): ArrayBuffer[Long] = {
+  // fixme
+  override def getHash(dim: Long): mutable.ArrayBuffer[Long] = {
     val buf = new ArrayBuffer[Long]
-    foreachCombination {
+    featureCombination {
       buf.append(computeHash(dim))
     }
     buf
   }
 
-  /** Adds all combinations to a TF Example (no pos-map lookup). */
+  /** Adds all combinations to a TF Example (no pos-map vocabulary lookup). */
   def add(dim: Long, builder: Example.Builder): Unit = {
     val raw_buf = new ArrayBuffer[String]()
     val pos_buf = new ArrayBuffer[Long]()
@@ -129,7 +127,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
     value_buf.append(1.0F)
 
     var has_feature = false
-    foreachCombination {
+    featureCombination {
       raw_buf.append(formatCombination)
       pos_buf.append(computeHash(dim))
       value_buf.append(1.0F)
@@ -139,7 +137,6 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
       .putFeature(field_name + "_raw", BytesListFeatureEncoder.encode(raw_buf.map(_.getBytes(UTF_8))))
       .putFeature(field_name + "_index", Int64ListFeatureEncoder.encode(pos_buf))
       .putFeature(field_name + "_value", FloatListFeatureEncoder.encode(value_buf))
-    has_feature
   }
 
   /** Convenience overload: parses input, then adds all combinations to a TF Example. */
@@ -151,7 +148,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
     add(dim, builder)
   }
 
-  /** Adds all combinations to a TF Example with pos-map lookup. Returns true if any combination survived filtering. */
+  /** Adds all combinations to a TF Example with pos-map vocabulary lookup. Returns true if any combination survived filtering. */
   def add(dim: Long, builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     val raw_buf = new ArrayBuffer[String]()
     val pos_buf = new ArrayBuffer[Long]()
@@ -161,7 +158,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
     value_buf.append(1.0F)
 
     var has_feature = false
-    foreachCombination {
+    featureCombination {
       val fmt = formatCombination
       val hash = computeHash(dim)
       if (pos_map.contains((field_index, hash))) {
@@ -179,7 +176,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
     has_feature
   }
 
-  /** Convenience overload: parses input, then adds all combinations with pos-map lookup. */
+  /** Convenience overload: parses input, then adds all combinations with pos-map vocabulary lookup. */
   def add(input: T, dim: Long, builder: Example.Builder, pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     for (c_f <- rnfs) {
       c_f.clear()
@@ -188,26 +185,26 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
     add(dim, builder, pos_map)
   }
 
-  /** Adds hashed positions to an encoded map (no pos-map lookup). */
-  def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]]): Unit = {
-    foreachCombination {
-      encoded_map.getOrElseUpdate(field_name, ArrayBuffer.empty[Long]).append(computeHash(dim))
+  /** Adds hashed positions to an encoded map (no pos-map vocabulary lookup). */
+  def add(dim: Long, encoded_map: mutable.HashMap[String, mutable.ArrayBuffer[Long]]): Unit = {
+    featureCombination {
+      encoded_map.getOrElseUpdate(field_name, mutable.ArrayBuffer.empty[Long]).append(computeHash(dim))
     }
   }
 
-  /** Adds positions to an encoded map with pos-map lookup. Returns true if any combination survived filtering. */
-  def add(dim: Long, encoded_map: mutable.HashMap[String, ArrayBuffer[Long]], pos_map: collection.Map[(Int, Long), Int]): Boolean = {
+  /** Adds positions to an encoded map with pos-map vocabulary lookup. Returns true if any combination survived filtering. */
+  def add(dim: Long, encoded_map: mutable.HashMap[String, mutable.ArrayBuffer[Long]], pos_map: collection.Map[(Int, Long), Int]): Boolean = {
     var has_feature = false
-    foreachCombination {
+    featureCombination {
       pos_map.get((field_index, computeHash(dim))).foreach { pos =>
-        encoded_map.getOrElseUpdate(field_name, ArrayBuffer.empty[Long]).append(pos)
+        encoded_map.getOrElseUpdate(field_name, mutable.ArrayBuffer.empty[Long]).append(pos)
         has_feature = true
       }
     }
     has_feature
   }
 
-  /** Adds raw/position/value arrays to a Parquet columns map with pos-map lookup. Returns true if any combination survived filtering. */
+  /** Adds raw/position/value arrays to a Parquet columns map with pos-map vocabulary lookup. Returns true if any combination survived filtering. */
   def add(dim: Long, pos_map: collection.Map[(Int, Long), Int], columns: mutable.Map[String, Any]): Boolean = {
     val raw_buf = new ArrayBuffer[String]()
     val pos_buf = new ArrayBuffer[Long]()
@@ -215,7 +212,7 @@ class CrossFeature[T](f_i: Int, f_n: String, rnfs: CategoricalFeature[T]*) exten
     raw_buf.append("R:")
     pos_buf.append(0L)
     value_buf.append(1.0F)
-    foreachCombination {
+    featureCombination {
       val fmt = formatCombination
       val hash = computeHash(dim)
       if (pos_map.contains((field_index, hash))) {

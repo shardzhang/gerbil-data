@@ -1,6 +1,6 @@
 package featurizer.ml1m
 
-import featurizer.core.RawTarget
+import featurizer.RawTarget
 
 /**
  * ML-1M target — multi-class using raw rating value (1-5) as class ID

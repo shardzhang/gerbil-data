@@ -1,9 +1,11 @@
-package featurizer.core
+package featurizer
+
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 import org.tensorflow.example.Example
 import pipeline.serde.ParquetRecord.ParquetRecordBuilder
-import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
+
 
 /**
  * Orchestrates feature encoding across categorical, continuous, and cross features.
@@ -18,7 +20,7 @@ import scala.collection.mutable.ArrayBuffer
  *
  * Supports two encoding modes:
  *  1. Hash-only: embeds features via MurmurHash3 (no vocabulary needed)
- *  2. PosMap lookup: looks up pre-built vocabulary positions (production serving)
+ *  2. PosMap vocabulary lookup: looks up pre-built vocabulary positions (production serving)
  *
  * @tparam T the raw sample type
  */
@@ -86,7 +88,7 @@ abstract class Featurizer[T] extends Serializable {
     buf
   }
 
-  /** Computes detailed hash info (field name, index, type, raw value, hash, value) for vocabulary building. */
+  /** Computes detailed hash info (field name, index, type, raw, hash, value) for vocabulary building. */
   def getHashInfo(input: T, dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     val buf = new ArrayBuffer[(String, Int, Byte, String, Long, Float)]
     for (raw_f <- raw_cate_features) {
@@ -112,7 +114,7 @@ abstract class Featurizer[T] extends Serializable {
     buf
   }
 
-  /** Encodes a sample into a TF Example builder using raw hashing (no pos-map lookup). */
+  /** Encodes a sample into a TF Example builder using raw hashing (no pos-map vocabulary lookup). */
   def encode(input: T, dim: Long, builder: Example.Builder): Unit = {
     for (raw_f <- raw_cate_features) {
       raw_f.clear()
@@ -135,7 +137,7 @@ abstract class Featurizer[T] extends Serializable {
     }
   }
 
-  /** Encodes a sample into a TF Example builder with pos-map lookup. Returns (has_feature, has_target). */
+  /** Encodes a sample into a TF Example builder with pos-map vocabulary lookup. Returns (has_feature, has_target). */
   def encode(input: T, dim: Long, builder: Example.Builder, posMap: collection.Map[(Int, Long), Int], targetMap: collection.Map[Int, Int]): (Boolean, Boolean) = {
     for (raw_f <- raw_cate_features) {
       raw_f.clear()

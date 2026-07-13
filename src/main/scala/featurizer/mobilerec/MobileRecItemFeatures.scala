@@ -1,6 +1,6 @@
 package featurizer.mobilerec
 
-import featurizer.core.{CategoricalFeature, ContinuousFeature, RawFeature}
+import featurizer.{CategoricalFeature, ContinuousFeature, RawFeature}
 import utils.MurmurHash3
 
 import scala.collection.mutable.ArrayBuffer

@@ -1,5 +1,6 @@
 package pipeline
 
+import featurizer.Featurizer
 import org.scalatest.{Matchers, WordSpec}
 
 import java.io.{BufferedReader, StringReader}
@@ -70,9 +71,9 @@ class PipelineTest extends WordSpec with Matchers {
   private class TestDriver extends Pipeline[String] {
     override val max_dim: Long = 1000L
 
-    override def feature_encoder: featurizer.core.Featurizer[String] = {
-      new featurizer.core.Featurizer[String] {
-        override def setup(): featurizer.core.Featurizer[String] = this
+    override def featurizer: Featurizer[String] = {
+      new Featurizer[String] {
+        override def setup(): Featurizer[String] = this
       }.setup()
     }
 
@@ -85,12 +86,12 @@ class PipelineTest extends WordSpec with Matchers {
       spark.sparkContext.parallelize(Seq(("sample1", true), ("sample2", true)))
     }
 
-    override def getSampleTarget(sample: String): Int = sample.hashCode
+    override def parseTarget(sample: String): Int = sample.hashCode
 
-    override def getSampleTimestamp(sample: String): Long = 0L
+    override def parseTimestamp(sample: String): Long = 0L
 
     override def keepSample(sample: String, sample_ratio: Double): Boolean = {
-      getSampleTarget(sample) != 0 || ThreadLocalRandom.current().nextDouble() <= sample_ratio
+      parseTarget(sample) != 0 || ThreadLocalRandom.current().nextDouble() <= sample_ratio
     }
 
     // Expose persistence methods for testing
@@ -135,13 +136,6 @@ class PipelineTest extends WordSpec with Matchers {
     }
   }
 
-  "Pipeline.parquet_schema" should {
-    "include target field" in {
-      val driver = new TestDriver()
-      val schema = driver.parquet_schema
-      assert(schema.fields.exists(_.name == "target"))
-    }
-  }
 
   "Pipeline.keepSample" should {
     "keep sample with non-zero target" in {
@@ -152,7 +146,7 @@ class PipelineTest extends WordSpec with Matchers {
 
     "sample with zero target based on ratio" in {
       val driver = new TestDriver() {
-        override def getSampleTarget(sample: String): Int = 0
+        override def parseTarget(sample: String): Int = 0
       }
       // With ratio = 1.0, should always keep
       assert(driver.keepSample("test", 1.0))

@@ -1,6 +1,6 @@
 package featurizer.alictr
 
-import featurizer.core.RawTarget
+import featurizer.RawTarget
 
 class AliCtrLabel extends RawTarget[AliCtrSample] {
   override def parse(sample: AliCtrSample): RawTarget[AliCtrSample] = {

@@ -1,6 +1,6 @@
 package featurizer.alictr
 
-import featurizer.core.{CategoricalFeature, RawFeature}
+import featurizer.{CategoricalFeature, RawFeature}
 
 class AliCtrPid(f_i: Int, f_n: String) extends CategoricalFeature[AliCtrSample](f_i, f_n) {
   override def parse(sample: AliCtrSample): RawFeature = {

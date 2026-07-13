@@ -408,8 +408,8 @@ object ML1MSample {
               train_sample.user_rate_30day_cnt += 1
             }
 
-            for (g <- genres) {
-              val gen = g.trim.toLowerCase()
+            for (genre <- genres) {
+              val gen = genre.trim.toLowerCase()
               if (dur > 0) {
                 user_genres_rate_cnt_map(gen) += 1
                 user_genres_rate_map(gen) += rate
