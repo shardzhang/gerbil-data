@@ -82,12 +82,20 @@ gerbil-data/
 │   │       │   ├── join/        #   Multi-table joining (all datasets)
 │   │       │   └── sampling/    #   Negative sampling
 │   │       ├── featurizer/      # ML encoding: features → embedding indices
-│   │       │   ├── *.scala      #   Abstract featurization framework
+│   │       │   ├── Featurizer.scala
+│   │       │   ├── RawFeature.scala
+│   │       │   ├── RawTarget.scala
+│   │       │   ├── CategoricalFeature.scala
+│   │       │   ├── ContinuousFeature.scala
+│   │       │   ├── CrossFeature.scala
 │   │       │   ├── ml1m/        #   ML-1M feature implementations
 │   │       │   ├── mobilerec/   #   MobileRec feature implementations
 │   │       │   └── alictr/      #   AliCtr feature implementations
 │   │       ├── pipeline/        # Orchestration & training sample generation
-│   │       │   ├── *.scala      #   Pipeline base class + dataset drivers
+│   │       │   ├── Pipeline.scala
+│   │       │   ├── ML1MPipeline.scala
+│   │       │   ├── MobileRecPipeline.scala
+│   │       │   ├── AliCtrPipeline.scala
 │   │       │   ├── serde/       #   Serialization (TFRecord, Parquet, pos-map)
 │   │       │   ├── stats/       #   Online statistics
 │   │       │   └── eval/        #   AUC / GAUC evaluation

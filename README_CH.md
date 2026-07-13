@@ -74,12 +74,20 @@ gerbil-data/
 │   │       │   ├── feature/     #   特征衍生
 │   │       │   └── join/        #   多表关联
 │   │       ├── featurizer/      # 特征编码器
-│   │       │   ├── *.scala      #   抽象框架
+│   │       │   ├── Featurizer.scala
+│   │       │   ├── RawFeature.scala
+│   │       │   ├── RawTarget.scala
+│   │       │   ├── CategoricalFeature.scala
+│   │       │   ├── ContinuousFeature.scala
+│   │       │   ├── CrossFeature.scala
 │   │       │   ├── ml1m/        #   ML-1M 实现
 │   │       │   ├── mobilerec/   #   MobileRec 实现
 │   │       │   └── alictr/      #   AliCtr 实现
 │   │       ├── pipeline/        # 编排与训练样本生成
-│   │       │   ├── *.scala      #   基类 + 数据集驱动
+│   │       │   ├── Pipeline.scala
+│   │       │   ├── ML1MPipeline.scala
+│   │       │   ├── MobileRecPipeline.scala
+│   │       │   ├── AliCtrPipeline.scala
 │   │       │   ├── serde/       #   序列化
 │   │       │   ├── stats/       #   统计
 │   │       │   └── eval/        #   AUC / GAUC 评估
