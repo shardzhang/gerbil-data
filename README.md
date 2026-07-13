@@ -10,27 +10,33 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/shardzhang/gerbil-data/ci.yml?branch=main)](https://github.com/shardzhang/gerbil-data/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/codecov/c/github/shardzhang/gerbil-data?branch=main)](https://codecov.io/gh/shardzhang/gerbil-data)
 
-A production-grade feature engineering pipeline for recommender systems, built on Apache Spark. It processes raw user-item interaction data through an ETL pipeline, extracts rich features (user demographics, item attributes, context signals, multi-window behavior sequences), and outputs featurized training samples in **TFRecord** and **Parquet** formats — ready for TensorFlow deep learning models.
+A production-grade feature engineering pipeline for recommender systems, built on Apache Spark. It processes raw user-item interaction data through an ETL pipeline, extracts rich features (user profiles, item attributes, context signals, multi-window behavior sequences), and outputs featurized training samples in **TFRecord** and **Parquet** formats — ready for TensorFlow deep learning models.
 
-Currently supports the [MovieLens 1M (ML-1M)](https://grouplens.org/datasets/movielens/1m/) dataset with a modular, extensible architecture designed for easy adaptation to other datasets.
+Currently supports **three datasets** with a modular, extensible architecture:
+
+| Dataset | Domain | Scale (interactions) | Label |
+|---------|--------|----------------------|-------|
+| [MovieLens 1M (ML-1M)](https://grouplens.org/datasets/movielens/1m/) | Movie ratings | 1M | rating >= 4 → binary / multi-class / regression |
+| [MobileRec](https://github.com/mhmaqbool/mobilerec) | App recommendation | 19.3M | rating >= 4 → binary |
+| [Ali_Display_Ad_Click](https://tianchi.aliyun.com/dataset/56) | Display ad CTR | 26.6M | native click (0/1) |
 
 ## Features
 
-1. **Data Cleaning and Feature Extraction**: Transforms raw interaction logs into structured training samples — the foundation of recommender system feature engineering. Handles deduplication, anomaly filtering, and multi-table feature joining through Spark SQL, with column-level data quality checks at every stage to eliminate "garbage in, garbage out". Extracts user profiles, item attributes, context signals, and behavior sequences with configurable time windows — covering the full spectrum of features needed for recommendation models. Supports multiple prediction targets: multi-class classification, binary classification, and regression.
+1. **Multi-Dataset Framework**: Modular `Pipeline[T]` abstract class with dataset-specific sample types, featurizers, and ETL processing. Three production datasets supported out of the box: ML-1M (movie recommendations), MobileRec (app install prediction), and Ali_Display_Ad_Click (CTR prediction). Each dataset has its own YAML feature configuration, Scala featurizer classes, and ETL pipeline scripts.
 
-2. **Negative Sampling Strategies**: For each positive instance, generates unobserved items as negative samples — a critical component for ranking model training. Supports uniform random, popularity-biased sampling, and hybrid strategies, preventing popular items from dominating training gradients and effectively mitigating the "Matthew effect", improving model generalization on long-tail items.
+2. **Data Cleaning and Feature Extraction**: Transforms raw interaction logs into structured training samples — the foundation of recommender system feature engineering. Handles deduplication, anomaly filtering, and multi-table feature joining through Spark SQL, with column-level data quality checks at every stage to eliminate "garbage in, garbage out". Extracts user profiles, item attributes, context signals, and behavior sequences with configurable time windows — covering the full spectrum of features needed for recommendation models. Supports multiple prediction targets: multi-class classification, binary classification, and regression.
 
-3. **High-Order Cross Features**: Supports second-order and higher-order feature combinations to capture deeper patterns in data. All features (60 raw + 17 cross) are encoded through a type-safe generic `Featurizer[T]` architecture — producing the standard embedding lookup schema for DeepFM, DIN, and similar models.
+3. **Negative Sampling Strategies** (ML-1M): For each positive instance, generates unobserved items as negative samples — a critical component for ranking model training. Supports uniform random, popularity-biased sampling, and hybrid strategies, preventing popular items from dominating training gradients and effectively mitigating the "Matthew effect", improving model generalization on long-tail items.
 
-4. **Vocabulary Management**: Builds embedding vocabularies through frequency thresholding, assigning dedicated slots for each feature. Feature position maps are persisted in JSON (human-readable) and binary (with mean/std for online normalization).
+4. **High-Order Cross Features**: Supports second-order and higher-order feature combinations to capture deeper patterns in data. All features are encoded through a type-safe generic `Featurizer[T]` architecture — producing the standard embedding lookup schema for DeepFM, DIN, Wide&Deep, and similar models.
 
-5. **Feature Configuration**: YAML-driven feature registry. Adding or disabling features requires editing a single config file — no code changes, no recompilation. Supports classpath and external file loading.
+5. **Vocabulary Management**: Builds embedding vocabularies through frequency thresholding, assigning dedicated slots for each feature. Feature position maps are persisted in JSON (human-readable) and binary (with mean/std for online normalization). Supports incremental vocabulary updates across training runs and shared vocabularies across features via `field_index`.
 
-6. **Multi-Format Output**: Outputs training samples in TFRecord (TensorFlow Example protobuf) and Parquet (columnar storage) formats, with time-based train/val/test split for standard recommendation evaluation.
+6. **Feature Configuration**: YAML-driven feature registry. Adding or disabling features requires editing a single config file — no code changes, no recompilation. Supports classpath and external file loading. Each dataset has its own YAML config with mode-specific variants (binary/multi).
 
-7. **Data Quality Monitoring**: Guards against the two silent killers of production recommender systems — training-serving skew and data drift. Automatically detects column-level metrics (null ratios, cardinality, numeric distributions) across ETL stages; tracks parse success rates and target distribution during featurization. Cross-run drift detection compares against historical baselines and alerts when volume, null ratios, or means exceed preset thresholds.
+7. **Multi-Format Output**: Outputs training samples in TFRecord (TensorFlow Example protobuf) and Parquet (columnar storage) formats, with time-based train/val/test split for standard recommendation evaluation.
 
-8. **Pipeline Orchestration and Scheduling**: Dual-mode pipeline execution engine. Airflow DAG for production scheduling with automatic retries and monitoring; standalone Python runner for local development and CI. Topological sort ensures stage dependencies are honored. `--dry-run` mode supports execution plan preview.
+8. **Data Quality Monitoring**: Guards against the two silent killers of production recommender systems — training-serving skew and data drift. Automatically detects column-level metrics (null ratios, cardinality, numeric distributions) across ETL stages; tracks parse success rates and target distribution during featurization. Cross-run drift detection compares against historical baselines and alerts when volume, null ratios, or means exceed preset thresholds.
 
 9. **C++ Online Inference**: A bit-exact C++ reimplementation of the Scala featurizer for latency-critical serving scenarios. Loads the identical vocabulary binary and executes the same MurmurHash3 with matching key concatenation — fundamentally eliminating training-serving skew in production systems. Correctness is verified by golden data diff across tens of thousands of rows.
 
@@ -43,48 +49,51 @@ gerbil-data/
 ├── bash/                        # Shell scripts for running pipeline steps
 │   ├── conf/                    # Environment configuration
 │   ├── pipeline/                # Training sample generation scripts
-│   │   └── eval/                #   Offline evaluation
+│   │   └── eval/                #   Offline evaluation (AUC / GAUC)
 │   ├── processing/              # Data preprocessing scripts
 │   │   ├── clean/               #   Data cleaning
 │   │   ├── feature/             #   Feature extraction
 │   │   ├── join/                #   Feature joining
-│   │   └── sampling/            #   Negative sampling
-│   ├── proto/                   # Protobuf compilation
-│   └── tools/                   # Utility scripts
+│   │   ├── sampling/            #   Negative sampling
+│   │   ├── proto/               # Protobuf compilation
+│   │   └── tools/               # Utility scripts
+│   └── pipeline/                # Pipeline shell scripts
 ├── dag/                         # Pipeline DAG (Airflow + standalone)
 │   ├── ml1m_pipeline_dag.py     # Airflow DAG definition
 │   └── run_pipeline.py          # Standalone runner (no Airflow required)
 ├── docs/                        # Documentation
+│   └── dataset/
+│       ├── ml_1m/               # ML-1M dataset documentation
+│       └── mobile_rec/          # MobileRec dataset documentation
 ├── proto/                       # TensorFlow Example protobuf definitions
 ├── sql/                         # Hive/Spark SQL scripts
 ├── src/
 │   ├── main/
 │   │   ├── java/                # Java utilities (TensorFlow Hadoop I/O)
-│   │   ├── resources/           # Configuration files (features.yaml)
+│   │   ├── resources/           # Configuration files
+│   │   │   ├── ml1m/            #   ML-1M YAML configs
+│   │   │   ├── mobilerec/       #   MobileRec YAML configs
+│   │   │   └── alictr/          #   Ali_Display_Ad_Click YAML configs
 │   │   └── scala/
 │   │       ├── config/          # Config loading & parsing
 │   │       ├── processing/      # ETL: raw data → flat intermediate tables
-│   │       │   ├── clean/       #   Data cleaning & validation
-│   │       │   ├── feature/     #   Feature derivation (stats, sequences)
-│   │       │   └── join/        #   Multi-table feature joining
+│   │       │   ├── clean/       #   Data cleaning (ML1M/MobileRec/AliCtr)
+│   │       │   ├── feature/     #   Feature derivation (all datasets)
+│   │       │   ├── join/        #   Multi-table joining (all datasets)
+│   │       │   └── sampling/    #   Negative sampling
 │   │       ├── featurizer/      # ML encoding: features → embedding indices
-│   │       │   ├── core/        #   Abstract featurization framework
-│   │       │   └── ml1m/        #   ML-1M concrete implementations
+│   │       │   ├── *.scala      #   Abstract featurization framework
+│   │       │   ├── ml1m/        #   ML-1M feature implementations
+│   │       │   ├── mobilerec/   #   MobileRec feature implementations
+│   │       │   └── alictr/      #   AliCtr feature implementations
 │   │       ├── pipeline/        # Orchestration & training sample generation
+│   │       │   ├── *.scala      #   Pipeline base class + dataset drivers
 │   │       │   ├── serde/       #   Serialization (TFRecord, Parquet, pos-map)
-│   │       │   └── stats/       #   Online statistics (running value, pos info)
+│   │       │   ├── stats/       #   Online statistics
+│   │       │   └── eval/        #   AUC / GAUC evaluation
 │   │       ├── tfrecords/       # Custom Spark SQL TFRecord data source
-│   │       │   ├── serde/       #   Serialization/deserialization
-│   │       │   └── udf/         #   User-defined functions
 │   │       └── utils/           # Utility functions
 │   └── test/                    # Unit tests (mirroring main structure)
-│       ├── scala/
-│       │   ├── config/
-│       │   ├── featurizer/
-│       │   ├── pipeline/
-│       │   ├── tfrecords/
-│       │   └── utils/
-│       └── resources/
 ├── tools/                       # C++ Online Inference Featurizer
 │   └── cpp_featurizer/          #   Bit-exact C++ reimplementation
 ├── Dockerfile                   # Docker build
@@ -98,24 +107,24 @@ gerbil-data/
 flowchart LR
     subgraph Raw[Raw Data]
         direction TB
-        R1[ratings.dat] --- R2[users.dat] --- R3[movies.dat]
+        R1[ratings.dat /<br/>mobilerec_final.csv /<br/>raw_sample.csv]
     end
 
     subgraph ETL[ETL Processing]
-        C[ML1MCleanSample<br/>Filter · Dedup · Validate]
-        U[ML1MUserMovieRateSequence<br/>User behavior sequences<br/>1d / 3d / 7d / 15d / all]
-        M[ML1MMovieStatFeature<br/>Movie stats: count,<br/>avg rate, hot rank]
-        P[User Profile<br/>Parse users.dat]
-        J[ML1MJoinSample<br/>Join all features]
+        C[CleanSample<br/>Filter · Dedup · Validate]
+        S[ItemStatFeature<br/>Item stats: avg, count, price…]
+        B[UserBehaviorSequence<br/>Behavior sequences<br/>1d / 3d / 7d / 15d / 30d / all]
+        P[UserProfile<br/>Parse user attributes]
+        J[JoinSample<br/>Join all features]
     end
 
     subgraph Sampling[Negative Sampling]
-        N[ML1MNegativeSampler<br/>Random / Popular / Mixed]
+        N[NegativeSampler<br/>Random / Popular / Mixed]
     end
 
     subgraph Encoding[Feature Encoding]
-        F[ML1MFeaturizer<br/>YAML config<br/>Categorical + Continuous]
-        H[Hash → Embedding Index<br/>MurmurHash3 x64_128<br/>f_index #124;#124; value as key]
+        F[Featurizer<br/>YAML config<br/>Categorical + Continuous]
+        H[Hash → Embedding Index<br/>MurmurHash3 x64_128<br/>f_index || value as key]
         V[Vocabulary<br/>Frequency threshold<br/>Pos-map / Target-map]
     end
 
@@ -125,18 +134,15 @@ flowchart LR
         Pm[Pos-map<br/>JSON + Binary]
     end
 
-    subgraph Serving[C++ Inference]
+    subgraph Serve[Serving]
         Cp[C++ Featurizer<br/>Bit-exact reproduction]
-        Ld[Load vocabulary<br/>Same hash · Same key]
     end
 
-    Raw --> C
-    C --> U & M
-    U & M & P --> J
+    Raw --> C --> S & B & P --> J
     J --> N & F
     F --> H --> V
     V --> T & Pq & Pm
-    Pm --> Ld --> Cp
+    Pm --> Cp
 ```
 
 ### Component Architecture
@@ -151,72 +157,99 @@ flowchart TD
 
     subgraph Core[Featurizer Core]
         FE["Featurizer[T]<br/>Generic abstract framework"]
-        CF["CategoricalFeature[T]<br/>Hash-based embedding<br/>(field:idx_raw, _index, _value)"]
+        CF["CategoricalFeature[T]<br/>Hash-based embedding<br/>(raw, _index, _value)"]
         COF["ContinuousFeature[T]<br/>Identity mapping"]
         XF["CrossFeature[T]<br/>Combinatory enumeration"]
         RT["RawTarget[T]"]
     end
 
-    subgraph ML1M[ML-1M Implementation]
-        MF[ML1MFeaturizer<br/>Reflection-based instantiation<br/>from YAML config]
-        MS[ML1MSample<br/>50+ fields: user, item,<br/>context, behavior]
-        UF[40 concrete feature classes]
+    subgraph DS[Dataset Implementations]
+        M1[ML-1M<br/>ML1MFeaturizer<br/>ML1MPipeline]
+        MR[MobileRec<br/>MobileRecFeaturizer<br/>MobileRecPipeline]
+        AL[Ali_Display_Ad_Click<br/>AliCtrFeaturizer<br/>AliCtrPipeline]
     end
 
     subgraph Pipe[Pipeline]
-        PL["Pipeline[T]<br/>Time-based split<br/>Vocabulary building<br/>Quality tracking"]
-        SW["SampleWriter[T]<br/>TFRecord + Parquet<br/>Partition-local featurizer"]
-        PS[PosMapSerDe<br/>Save / Restore<br/>vocabulary across runs]
-        QT[DataQualityTracker<br/>Parse rate · Target dist<br/>Drift detection]
+        PL["Pipeline[T]<br/>splitSamples<br/>generateVocabulary<br/>generateSample"]
+        SW["SampleWriter[T]<br/>TFRecord + Parquet"]
+        VS[Vocabulary<br/>Save / Restore]
+        QT[DataQualityTracker<br/>Parse rate · Target dist]
     end
 
-    subgraph Serde[Serialization]
-        TR[tfrecords/ package<br/>Custom Spark SQL<br/>TFRecord data source]
-        TF[TFRecord IO<br/>Hadoop Input/Output format]
-        PB[Protobuf<br/>TensorFlow Example]
+    subgraph Eval[Evaluation]
+        RM[RankingMetrics<br/>AUC / GAUC]
+        SR[SparkRankingMetrics<br/>Spark DataFrame wrapper]
     end
 
-    subgraph Sched[Scheduling]
-        AD[Airflow DAG<br/>ml1m_pipeline_dag.py]
-        SP[Bash scripts<br/>Spark-submit wrappers]
-        DV[Docker + DevContainer<br/>Reproducible env]
-    end
-
-    YAML --> FC --> CL --> MF
-    MF --> FE
+    YAML --> FC --> CL --> FE
     FE --> CF & COF & XF & RT
-    CF & COF & XF --> UF
-    MS --> UF
-    FE --> PL
-    PL --> SW & PS & QT
-    SW --> TF
-    TF --> PB
-    TR --> PB
-    AD & SP & DV --> PL
+    FE --> DS
+    DS --> PL
+    PL --> SW & VS & QT
+    FE --> RM --> SR
 
     style FE fill:#e1f5fe
     style PL fill:#e1f5fe
     style YAML fill:#fff3e0
-    style MF fill:#f3e5f5
 ```
 
-## Prerequisites
+## Datasets
 
-- **Java** 8+
-- **Scala** 2.12
-- **Maven** 3.x
-- **Apache Spark** 3.4.0
-- **protoc** 3.6.0 (for protobuf compilation, optional)
+### ML-1M (MovieLens 1M)
 
-## Python Setup
+Movie rating dataset with 1M interactions, 6040 users, 3706 movies. Features include user demographics (gender, age, occupation), item attributes (title, genres, release year), multi-window behavior sequences, and context signals.
 
-Set up the Python virtual environment for the Jupyter notebook demo (`examples/gerbil-data-demo.ipynb`) and the data inspection utilities (`bash/tools/*.py`).
+**ETL Pipeline** (in order):
+
+| Step | Script | Class | Description |
+|------|--------|-------|-------------|
+| 1 | `bash/processing/clean/ML1MCleanSample.sh` | `processing.clean.ML1MCleanSample` | Clean & deduplicate ratings |
+| 2 | `bash/processing/feature/ML1MUserMovieRateSequence.sh` | `processing.feature.ML1MUserMovieRateSequence` | Build user behavior sequences |
+| 3 | `bash/processing/feature/ML1MMovieStatFeature.sh` | `processing.feature.ML1MMovieStatFeature` | Compute movie statistics |
+| 4 | `bash/processing/join/ML1MJoinSample.sh` | `processing.join.ML1MJoinSample` | Join all features |
+| 5 | `bash/pipeline/ML1MPipelineBinary.sh` | `pipeline.ML1MPipeline` | Generate TFRecord / Parquet |
+
+### MobileRec
+
+Large-scale app recommendation dataset with 19.3M interactions, 700K users, 10K apps. Rating-based with app store metadata (category, price, reviews, content rating).
+
+**ETL Pipeline**:
+
+| Step | Script | Class |
+|------|--------|-------|
+| 1 | `bash/processing/clean/MobileRecCleanSample.sh` | `processing.clean.MobileRecCleanSample` |
+| 2 | `bash/processing/feature/MobileRecAppStatFeature.sh` | `processing.feature.MobileRecAppStatFeature` |
+| 3 | `bash/processing/feature/MobileRecUserBehaviorSequence.sh` | `processing.feature.MobileRecUserBehaviorSequence` |
+| 4 | `bash/processing/join/MobileRecJoinSample.sh` | `processing.join.MobileRecJoinSample` |
+| 5 | `bash/pipeline/MobileRecPipelineBinary.sh` | `pipeline.MobileRecPipeline` |
+
+### Ali_Display_Ad_Click (AliCtr)
+
+Real-world display advertising CTR dataset with 26.6M impressions, 1.14M users, 847K ad groups. Native click labels (0/1), user profiles (gender, age, shopping level), and ad hierarchy (campaign, customer, brand, category).
+
+**ETL Pipeline**:
+
+| Step | Script | Class |
+|------|--------|-------|
+| 1 | `bash/processing/clean/AliCtrCleanSample.sh` | `processing.clean.AliCtrCleanSample` |
+| 2 | `bash/processing/feature/AliCtrItemStatFeature.sh` | `processing.feature.AliCtrItemStatFeature` |
+| 3 | `bash/processing/feature/AliCtrUserProfileFeature.sh` | `processing.feature.AliCtrUserProfileFeature` |
+| 4 | `bash/processing/feature/AliCtrUserBehaviorSequence.sh` | `processing.feature.AliCtrUserBehaviorSequence` |
+| 5 | `bash/processing/feature/AliCtrJoinSample.sh` | `processing.feature.AliCtrJoinSample` |
+| 6 | `bash/pipeline/AliCtrPipelineBinary.sh` | `pipeline.AliCtrPipeline` |
+
+## Evaluation
+
+Ranking metrics are provided in the `pipeline.eval` package:
+
+| Class | Description |
+|-------|-------------|
+| `RankingMetrics` | Pure Scala AUC / GAUC computation, no Spark dependency |
+| `SparkRankingMetrics` | Spark DataFrame wrapper with CLI entry point |
 
 ```bash
-cd $PROJECT_HOME
-python3.11 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+# Evaluate model predictions (Parquet with target + score columns)
+bash bash/pipeline/eval/RankingMetrics.sh
 ```
 
 ## Quick Start
@@ -227,151 +260,68 @@ pip install -r requirements.txt
 mvn clean package -DskipTests
 ```
 
-### 2. View API documentation (Scaladoc)
+### 2. Download a dataset
 
 ```bash
-mvn scala:doc
-open target/site/scaladocs/index.html
+# ML-1M
+curl -O https://files.grouplens.org/datasets/movielens/ml-1m.zip && unzip ml-1m.zip
+
+# or MobileRec / Ali_Display_Ad_Click (see docs/dataset/ for instructions)
 ```
 
-### 3. Download the ML-1M dataset
-
-```bash
-curl -O https://files.grouplens.org/datasets/movielens/ml-1m.zip
-unzip ml-1m.zip
-# Set this environment variable for the commands below
-export ML1M_HOME=/path/to/unzipped/ml-1m
-```
-
-### 3. Run the pipeline
-
-#### Step 1: Clean raw data
-```bash
-spark-submit --class processing.clean.ML1MCleanSample \
-  target/gerbil-data-1.0.0-jar-with-dependencies.jar \
-  ${ML1M_HOME}
-```
-
-#### Step 2: Extract user behavior sequences
-```bash
-spark-submit --class processing.feature.ML1MUserMovieRateSequence \
-  target/gerbil-data-1.0.0-jar-with-dependencies.jar \
-  ${ML1M_HOME}
-```
-
-#### Step 3: Compute movie statistics
-```bash
-spark-submit --class processing.feature.ML1MMovieStatFeature \
-  target/gerbil-data-1.0.0-jar-with-dependencies.jar \
-  ${ML1M_HOME}
-```
-
-#### Step 4: Join all features
-```bash
-spark-submit --class processing.join.ML1MJoinSample \
-  target/gerbil-data-1.0.0-jar-with-dependencies.jar \
-  ${ML1M_HOME}
-```
-
-#### Step 5: Generate TFRecord / Parquet samples
-```bash
-spark-submit --class pipeline.ML1MPipeline \
-  --conf spark.serializer=org.apache.spark.serializer.JavaSerializer \
-  target/gerbil-data-1.0.0-jar-with-dependencies.jar \
-  --yesterday <date> \
-  --parts <num_partitions> \
-  --feature_threshold <threshold> \
-  --target_threshold <threshold> \
-  --sample_ratio <ratio> \
-  --input_dir ${ML1M_HOME} \
-  --output_dir /path/to/output \
-  --output_format tfrecord \
-  --target_mode binary
-```
-
-### Or run with shell scripts
+### 3. Run the ETL + pipeline
 
 ```bash
 # Edit bash/conf/env.sh with your paths
+source bash/conf/env.sh
+
+# ML-1M
 bash bash/processing/clean/ML1MCleanSample.sh
-bash bash/processing/feature/ML1MMovieStatFeature.sh
 bash bash/processing/feature/ML1MUserMovieRateSequence.sh
+bash bash/processing/feature/ML1MMovieStatFeature.sh
 bash bash/processing/join/ML1MJoinSample.sh
-bash bash/pipeline/ML1MPipeline.sh
+bash bash/pipeline/ML1MPipelineBinary.sh
+
+# MobileRec
+bash bash/processing/clean/MobileRecCleanSample.sh
+bash bash/processing/feature/MobileRecAppStatFeature.sh
+bash bash/processing/feature/MobileRecUserBehaviorSequence.sh
+bash bash/processing/join/MobileRecJoinSample.sh
+bash bash/pipeline/MobileRecPipelineBinary.sh
+
+# AliCtr
+bash bash/processing/clean/AliCtrCleanSample.sh
+bash bash/processing/feature/AliCtrItemStatFeature.sh
+bash bash/processing/feature/AliCtrUserProfileFeature.sh
+bash bash/processing/feature/AliCtrUserBehaviorSequence.sh
+bash bash/processing/feature/AliCtrJoinSample.sh
+bash bash/pipeline/AliCtrPipelineBinary.sh
 ```
-
-## Docker / DevContainer
-
-A Docker image with all build dependencies (Java 8, Scala 2.12, Maven, protoc, Python) is provided for a reproducible development environment.
-
-### Build the image (or skip to use pre-built)
-
-```bash
-docker build -t gerbil-data .
-```
-
-### Interactive shell
-
-```bash
-docker run -it --rm -v "$PWD":/workspace gerbil-data bash
-```
-
-### Run Maven commands
-
-```bash
-docker run --rm -v "$PWD":/workspace gerbil-data mvn compile -DskipTests
-```
-
-### VS Code DevContainer
-
-1. Install the **Dev Containers** extension
-2. Press `Cmd+Shift+P` → **Dev Containers: Reopen in Container**
-3. VS Code will automatically build and enter the container, with Metals (Scala LSP) and all extensions configured
-
-> Spark is not included in the image to keep it lightweight. Mount it at runtime if needed:
-> `-v /path/to/spark:/opt/spark`
-
-## Examples
-
-A Jupyter notebook demonstrating the end-to-end pipeline is available at:
-
-```bash
-jupyter notebook examples/gerbil-data-demo.ipynb
-```
-
-Or with JupyterLab:
-
-```bash
-jupyter lab examples/gerbil-data-demo.ipynb
-```
-
-It covers raw data inspection, ETL pipeline execution, featurization, TFRecord output inspection, and a quick model training example.
 
 ## Feature Types
 
 ### Raw Features
 
-| Category | Features |
-|----------|----------|
-| User | ID, gender, age, occupation, zip code, rating count, avg rating, rating std, active days |
-| Item | ID, title, genres, genre count, rating count, avg rating, hot rank, publish year |
-| Context | time hour, time area (morning/afternoon/evening/night), week day, weekend flag |
-| Behavior | movie rating sequences (all-time, 1d, 3d, 7d, 15d), genre rating sequences |
+| Category | ML-1M | MobileRec | AliCtr |
+|----------|-------|-----------|--------|
+| User | gender, age, occupation, zip code, rating stats | user behavior stats (active days, avg rating, std) | cms_segid, gender, age_level, pvalue_level, shopping_level, occupation |
+| Item | title, genres, rating count, avg rating, hot rank, release year | app package, category, price, avg rating, review count, content rating | adgroup_id, cate_id, campaign_id, customer, brand, price |
+| Context | time hour, time area, week day | time hour, time area, week day | pid (position), time hour, time area, week day |
+| Behavior | movie rating sequences (multi-window), genre rating sequences | app rating sequences (multi-window), category rating sequences | ad impression/click history sequence |
 
-### Cross Features (configurable)
+### Cross Features (configurable per dataset)
 
-- **Second-order**: genre × user genre preference, publish year × age, hot rank × user avg rating, genre × gender, genre × weekend
-- **Third-order**: age × gender × genre, publish year × age × occupation, genre × gender × occupation
+Each dataset supports cross features like `category_xx_user_category`, `gender_xx_age`, etc., defined in its YAML config.
 
 ### Targets
 
 Select the prediction target with `--target_mode` when running the pipeline:
 
-| Mode | CLI Value | Description |
-|------|-----------|-------------|
-| **Multi-class** | `multi` | Rating (1-5) as a multi-class categorical target; uses `target_map` for vocabulary |
-| **Binary** | `binary` | Rating >= 3 as positive, < 3 as negative; supports negative down-sampling via `sample_ratio` |
-| **Regression** | `rating` | Raw rating value as a regression target; disables `target_map` and outputs the float value directly |
+| Mode | CLI Value | ML-1M | MobileRec / AliCtr |
+|------|-----------|-------|--------------------|
+| **Binary** | `binary` | rating >= 3 → positive | rating >= 4 → positive / native clk |
+| **Multi-class** | `multi` | rating (1-5) as classes | app/adgroup_id as classes |
+| **Regression** | `rating` | raw rating value | N/A |
 
 ## Output Formats
 
@@ -388,7 +338,7 @@ Columnar storage format compatible with Spark and many big data tools.
 
 ## Feature Configuration
 
-Features are registered in YAML (`src/main/resources/ml1m/features.yaml`). Each feature entry specifies:
+Features are registered in YAML (`src/main/resources/{dataset}/*.yaml`). Each feature entry specifies:
 
 | Key | Description |
 |-----|-------------|
@@ -403,42 +353,62 @@ features:
   - {field_name: user_id,       field_index: 1,   field_type: 1, class_name: UserID,       enabled: true}
   - {field_name: user_age,      field_index: 2,   field_type: 1, class_name: UserAge,      enabled: true}
   - {field_name: movie_id,      field_index: 101, field_type: 1, class_name: MovieID,      enabled: true}
-  - {field_name: movie_title,   field_index: 102, field_type: 1, class_name: MovieTitle,   enabled: true}
 
   # Behavior sequences share field_index 101 (same vocabulary as movie_id)
   - {field_name: user_movie_rate,    field_index: 101, field_type: 1, class_name: UserMovieRate,    enabled: true}
-  - {field_name: user_movie_rate_1day, field_index: 101, field_type: 1, class_name: UserMovieRate1Day, enabled: true}
 ```
 
 ### Shared Vocabulary
 
 Features sharing the same `field_index` share a single embedding vocabulary (pos-map). The position counter is unified across all features using that `field_index`, ensuring each unique feature value gets a unique embedding slot — even when the value appears in multiple related features.
 
-For example, `movie_id`, `user_movie_rate`, and `user_movie_rate_1day` all share `field_index=101`. The item "Toy Story" maps to the same embedding position whether it appears as the target movie, the user's recent 1-day history, or the full history. This enables parameter sharing and cross-feature generalization.
+For example, `adgroup_id`, `user_history_ad_seq` all share `field_index=101` in AliCtr. The ad "12345" maps to the same embedding position whether it appears as the target ad or in the user's history sequence.
 
 ### Field Naming Convention
 
 Each feature produces three TFRecord fields:
 - `{field_name}_raw` — string representation
 - `{field_name}_index` — embedding position (pos-map lookup or hashed)
-- `{field_name}_value` — embedding weight (e.g., avg rating for genre-rate features)
+- `{field_name}_value` — embedding weight
 
 ## Project Modules
 
 | Module | Description |
 |--------|-------------|
 | `processing` | ETL pipeline: data cleaning, feature derivation, multi-table joining |
-| `sampling` | Negative sampling for CTR training (random/popular/mixed) |
 | `featurizer` | ML feature encoding: categorical/continuous/cross featurizers, hash/PosMap embedding |
 | `pipeline` | Orchestration: sample generation, vocabulary management, TFRecord/Parquet output |
+| `pipeline.eval` | Ranking metrics: AUC / GAUC computation (pure Scala + Spark wrappers) |
 | `config` | YAML-driven feature configuration (SnakeYAML → Scala case classes) |
 | `tfrecords` | Custom Spark SQL data source for TFRecord format |
-| `utils` | Logging, MurmurHash3, date utilities, protobuf helpers |
+| `utils` | Logging, MurmurHash3, date utilities |
 | `dag` | Pipeline orchestration: Airflow DAG (production) + standalone Python runner (CI/dev) |
 | `bash` | Spark-submit wrapper scripts with environment configuration |
-| `sql` | Hive DDL for persistent tables |
-| `proto` | TensorFlow Example protobuf definitions |
 | `tools` | C++ online inference featurizer + golden data generators |
+
+## Prerequisites
+
+- **Java** 8+
+- **Scala** 2.12
+- **Maven** 3.x
+- **Apache Spark** 3.4.0
+- **protoc** 3.6.0 (for protobuf compilation, optional)
+
+## Python Setup
+
+```bash
+cd $PROJECT_HOME
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+## Docker / DevContainer
+
+```bash
+docker build -t gerbil-data .
+docker run -it --rm -v "$PWD":/workspace gerbil-data bash
+```
 
 ## Dependencies
 
@@ -459,6 +429,8 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 ## References
 
 - [MovieLens 1M Dataset](https://grouplens.org/datasets/movielens/1m/)
+- [MobileRec: A Large-Scale Dataset for Mobile Apps Recommendation](https://arxiv.org/abs/2303.06588)
+- [Ali_Display_Ad_Click Dataset](https://tianchi.aliyun.com/dataset/56)
 - [TensorFlow Example Protocol](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/core/example)
 - [TensorFlow Hadoop](https://github.com/tensorflow/ecosystem/tree/master/hadoop)
 - [Spark TensorFlow Connector](https://github.com/tensorflow/ecosystem/tree/master/spark/spark-tensorflow-connector)

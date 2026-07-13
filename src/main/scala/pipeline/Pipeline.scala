@@ -37,7 +37,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
   /** Persists/restores position-map and target-map across runs. */
   @transient val vocabulary: Vocabulary = new Vocabulary(hadoopConf)
   /** Serializes featurized samples to TFRecord or Parquet. */
-  @transient lazy val writer: SampleWriter[T] = new SampleWriter[T](() => featurizer, max_dim)
+  @transient lazy val sampleWriter: SampleWriter[T] = new SampleWriter[T](() => featurizer, max_dim)
   /** Tracks record counts, parse success rates, and target distributions at each ETL stage. */
   @transient lazy val qualityTracker: DataQualityTracker = new DataQualityTracker()
 
@@ -114,9 +114,15 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     val trainEnd = (total * trainRatio).toLong
     val valEnd = trainEnd + (total * valRatio).toLong
 
-    val train: RDD[(T, Boolean)] = indexed.filter { case (_, idx) => idx < trainEnd }.map(_._1)
-    val valid: RDD[(T, Boolean)] = indexed.filter { case (_, idx) => idx >= trainEnd && idx < valEnd }.map(_._1)
-    val test: RDD[(T, Boolean)] = indexed.filter { case (_, idx) => idx >= valEnd }.map(_._1)
+    val train: RDD[(T, Boolean)] = indexed
+      .filter { case (_, idx) => idx < trainEnd }.map(_._1)
+      .persist(StorageLevel.MEMORY_AND_DISK_SER)
+    val valid: RDD[(T, Boolean)] = indexed
+      .filter { case (_, idx) => idx >= trainEnd && idx < valEnd }.map(_._1)
+      .persist(StorageLevel.MEMORY_AND_DISK_SER)
+    val test: RDD[(T, Boolean)] = indexed
+      .filter { case (_, idx) => idx >= valEnd }.map(_._1)
+      .persist(StorageLevel.MEMORY_AND_DISK_SER)
     val trainCount = train.count()
     val valCount = valid.count()
     val testCount = test.count()
@@ -303,7 +309,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
       val filterdData = data.filter(r => r._2) // 过滤有效样本
       val subdir = if (suffix.isEmpty) "" else s"/${suffix}"
       if (output_format == "tfrecord" || output_format == "both") {
-        writer.writeTfrecord(filterdData, localPosMap, targetMap, s"${basePath}${subdir}/tfrecord")
+        sampleWriter.writeTfrecord(filterdData, localPosMap, targetMap, s"${basePath}${subdir}/tfrecord")
       }
 
       if (output_format == "parquet" || output_format == "both") {
@@ -318,7 +324,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
           }
           StructType(fields)
         }
-        writer.writeParquet(spark, filterdData, parquet_schema, localPosMap, localTargetMap, s"${basePath}${subdir}/parquet")
+        sampleWriter.writeParquet(spark, filterdData, parquet_schema, localPosMap, localTargetMap, s"${basePath}${subdir}/parquet")
       }
     }
   }
@@ -334,18 +340,20 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     // 1. negative sampling (if necessary)
     val allSamples: RDD[(T, Boolean)] = loadTrainingSamples(spark, inputDir, parts).filter {
         case (sample, _) => keepSample(sample, sampleRatio)
-      }
+      }.persist(StorageLevel.MEMORY_AND_DISK_SER)
 
-    // 2. Time-based split into train/val/test
-    val (trainingSample, valSample, testSample) = splitSamples(allSamples, trainRatio, valRatio)
-    trainingSample.persist(StorageLevel.MEMORY_AND_DISK_SER)
+    // 2. Time-based split into train/val/test (each split is persisted inside splitSamples)
+    val (trainSample, valSample, testSample) = splitSamples(allSamples, trainRatio, valRatio)
+    allSamples.unpersist()
 
     // 3. load and update vocabulary
-    generateVocabulary(trainingSample, targetThreshold, featureThreshold, targetMap, posMap, posDim)
+    generateVocabulary(trainSample, targetThreshold, featureThreshold, targetMap, posMap, posDim)
 
     // 4. generate final train sample
-    generateSample(spark, yesterday, trainingSample, valSample, testSample, posMap, targetMap, outputDir, outputFormat)
-    trainingSample.unpersist()
+    generateSample(spark, yesterday, trainSample, valSample, testSample, posMap, targetMap, outputDir, outputFormat)
+    trainSample.unpersist()
+    if (valSample != null) valSample.unpersist()
+    if (testSample != null) testSample.unpersist()
 
     // Print consolidated quality report before returning
     qualityTracker.printReport()

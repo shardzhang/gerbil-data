@@ -33,7 +33,7 @@ class SampleWriter[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Lon
         // Factory function ensures each Spark partition gets its own featurizer instance, avoiding shared mutable state
         val encoder = createEncoder()
         samples.flatMap(sample => {
-          val (record, has_feature, has_target) = parseParquet(sample, encoder, posMapLocalImmutable, targetMapImmutable)
+          val (record, has_feature, has_target) = sampleToParquet(sample, encoder, posMapLocalImmutable, targetMapImmutable)
           if (has_feature && has_target) {
             Some(Row.fromSeq(record.to_seq(parquetFieldNames)))
           } else {
@@ -62,7 +62,7 @@ class SampleWriter[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Lon
         // Factory function ensures each Spark partition gets its own featurizer instance, avoiding shared mutable state
         val encoder = createEncoder()
         samples.flatMap(sample => {
-          val (example, has_feature, has_target) = parseTFrecord(sample, encoder, posMap, targetMap)
+          val (example, has_feature, has_target) = sampleToExample(sample, encoder, posMap, targetMap)
           if (has_feature && has_target) {
             Some(example)
           } else {
@@ -79,20 +79,20 @@ class SampleWriter[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Lon
   }
 
   /** Encodes a single sample into a TensorFlow Example. Returns (example, has_feature, has_target). */
-  def parseTFrecord(sample: T,
-                    encoder: Featurizer[T],
-                    posMap: collection.Map[(Int, Long), Int],
-                    targetMap: collection.Map[Int, Int]): (Example, Boolean, Boolean) = {
+  def sampleToExample(sample: T,
+                      encoder: Featurizer[T],
+                      posMap: collection.Map[(Int, Long), Int],
+                      targetMap: collection.Map[Int, Int]): (Example, Boolean, Boolean) = {
     val builder = Example.newBuilder()
     val (has_feature, has_target) = encoder.encode(sample, max_dim, builder, posMap, targetMap)
     (builder.build(), has_feature, has_target)
   }
 
   /** Encodes a single sample into a ParquetRecord. Returns (record, has_feature, has_target). */
-  def parseParquet(sample: T,
-                   encoder: Featurizer[T],
-                   pos_map: collection.Map[(Int, Long), Int],
-                   target_map: collection.Map[Int, Int]): (ParquetRecord, Boolean, Boolean) = {
+  def sampleToParquet(sample: T,
+                      encoder: Featurizer[T],
+                      pos_map: collection.Map[(Int, Long), Int],
+                      target_map: collection.Map[Int, Int]): (ParquetRecord, Boolean, Boolean) = {
     val builder = ParquetRecord.newBuilder()
     val (has_feature, has_target) = encoder.encode(sample, max_dim, builder, pos_map, target_map)
     (builder.build(), has_feature, has_target)
