@@ -14,11 +14,11 @@ import utils.LogUtils.green_println
 import pipeline.stats.PosInfo
 
 /**
- * PosMap serialization — saves/restores feature position maps in JSON/text/binary formats
+ * Vocabulary serialization — saves/restores feature position maps in JSON/text/binary formats
  */
 
 /** Persists and restores feature position maps, target maps, and field dimension maps in JSON, text, and binary formats. */
-class PosMapSerDe(val hadoopConf: Configuration) {
+class Vocabulary(val hadoopConf: Configuration) {
   /** Reconstructs a PosInfo from legacy mean/std representation (used when restoring older binary format). */
   def legacyPosInfo(pos: Int, mean: Double, std: Double, count: Long): PosInfo = {
     val safeCount = math.max(count, 1L)

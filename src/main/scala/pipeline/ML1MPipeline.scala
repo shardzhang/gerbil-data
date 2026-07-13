@@ -155,13 +155,9 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
         green_println(outputPath.toString + " exists and delete.")
         fs.delete(outputPath, true)
       }
-      val (pos_map_before, target_map_before, pos_dim_before) = posMapSerDe.restore(output_dir, yesterday)
-      val (pos_map_after, target_map_after, pos_dim_after) = run(
-        spark, yesterday, feature_threshold, target_threshold, sample_ratio,
-        pos_map_before, target_map_before, pos_dim_before, input_dir, output_dir, parts, output_format,
-        train_ratio, val_ratio
-      )
-      posMapSerDe.save(output_dir, yesterday, pos_map_after, target_map_after, pos_dim_after)
+      val (pos_map_before, target_map_before, pos_dim_before) = vocabulary.restore(output_dir, yesterday)
+      val (pos_map_after, target_map_after, pos_dim_after) = run(spark, yesterday, feature_threshold, target_threshold, sample_ratio, pos_map_before, target_map_before, pos_dim_before, input_dir, train_ratio, val_ratio, parts, output_dir, output_format)
+      vocabulary.save(output_dir, yesterday, pos_map_after, target_map_after, pos_dim_after)
       val successPath = new Path(s"${outputPath.toString}/_SUCCESS")
       if (fs.exists(successPath)) {
         fs.delete(successPath, true)

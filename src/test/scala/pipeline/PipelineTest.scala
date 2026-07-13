@@ -95,8 +95,8 @@ class PipelineTest extends WordSpec with Matchers {
     }
 
     // Expose persistence methods for testing
-    def testReadText(reader: BufferedReader): String = posMapSerDe.readText(reader)
-    def testLegacyPosInfo(pos: Int, mean: Double, std: Double, count: Long): PosInfo = posMapSerDe.legacyPosInfo(pos, mean, std, count)
+    def testReadText(reader: BufferedReader): String = vocabulary.readText(reader)
+    def testLegacyPosInfo(pos: Int, mean: Double, std: Double, count: Long): PosInfo = vocabulary.legacyPosInfo(pos, mean, std, count)
   }
 
   "Pipeline.readText" should {

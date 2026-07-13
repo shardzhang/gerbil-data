@@ -11,7 +11,7 @@ import org.apache.spark.storage.StorageLevel
 
 import featurizer.{Featurizer, FieldType}
 import utils.LogUtils.green_println
-import pipeline.serde.{PosMapSerDe, SampleWriter}
+import pipeline.serde.{Vocabulary, SampleWriter}
 import pipeline.stats.{DataQualityTracker, PosInfo, RunningValueStats}
 
 
@@ -21,11 +21,11 @@ import pipeline.stats.{DataQualityTracker, PosInfo, RunningValueStats}
  * Orchestrates the full workflow from raw samples to featurized TFRecord/Parquet output:
  *
  *  1. Load and parse raw samples from the input directory
- *  2. Time-based train/val/test split to prevent data leakage
- *  3. Compute target distribution and build target-map (frequency thresholding)
- *  4. Collect hash statistics across all samples, build embedding vocabulary (pos-map)
- *  5. Encode each sample via the Featurizer and write to TFRecord or Parquet
- *  6. Report data quality metrics (parse success rate, target distribution, etc.)
+ *     2. Time-based train/val/test split to prevent data leakage
+ *     3. Compute target distribution and build target-map (frequency thresholding)
+ *     4. Collect hash statistics across all samples, build embedding vocabulary (pos-map)
+ *     5. Encode each sample via the Featurizer and write to TFRecord or Parquet
+ *     6. Report data quality metrics (parse success rate, target distribution, etc.)
  *
  * Supports incremental training: pos-map and target-map from previous runs
  * can be loaded and updated with new data.
@@ -35,7 +35,7 @@ import pipeline.stats.{DataQualityTracker, PosInfo, RunningValueStats}
 abstract class Pipeline[T: ClassTag] extends Serializable {
   @transient var hadoopConf: Configuration = new Configuration()
   /** Persists/restores position-map and target-map across runs. */
-  @transient val posMapSerDe: PosMapSerDe = new PosMapSerDe(hadoopConf)
+  @transient val vocabulary: Vocabulary = new Vocabulary(hadoopConf)
   /** Serializes featurized samples to TFRecord or Parquet. */
   @transient lazy val writer: SampleWriter[T] = new SampleWriter[T](() => featurizer, max_dim)
   /** Tracks record counts, parse success rates, and target distributions at each ETL stage. */
@@ -114,28 +114,11 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     val trainEnd = (total * trainRatio).toLong
     val valEnd = trainEnd + (total * valRatio).toLong
 
-    // train sample
-    val train: RDD[(T, Boolean)] = indexed.filter {
-        case (_, idx) => idx < trainEnd
-      }
-      .map(_._1)
-      .persist(StorageLevel.MEMORY_AND_DISK_SER)
+    val train: RDD[(T, Boolean)] = indexed.filter { case (_, idx) => idx < trainEnd }.map(_._1)
+    val valid: RDD[(T, Boolean)] = indexed.filter { case (_, idx) => idx >= trainEnd && idx < valEnd }.map(_._1)
+    val test: RDD[(T, Boolean)] = indexed.filter { case (_, idx) => idx >= valEnd }.map(_._1)
     val trainCount = train.count()
-
-    // validation sample
-    val valid: RDD[(T, Boolean)] = indexed.filter {
-        case (_, idx) => idx >= trainEnd && idx < valEnd
-      }
-      .map(_._1)
-      .persist(StorageLevel.MEMORY_AND_DISK_SER)
     val valCount = valid.count()
-
-    // test sample
-    val test: RDD[(T, Boolean)] = indexed.filter {
-        case (_, idx) => idx >= valEnd
-      }
-      .map(_._1)
-      .persist(StorageLevel.MEMORY_AND_DISK_SER)
     val testCount = test.count()
 
     indexed.unpersist()
@@ -165,11 +148,11 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
                          posMap: mutable.HashMap[(Int, Long), PosInfo],
                          posDim: mutable.HashMap[(String, Int, Int), Int]
                         ): Unit = {
-    green_println(s"old targetMap: ${targetMap.size}.")
+    green_println(s"old targetMap.size: ${targetMap.size}.")
 
     // Aggregate sample counts per target value
     val targetOccurs: Array[(Int, Int)] = trainingSample
-      .filter(r => r._2)                        // 仅取出有效样本
+      .filter(r => r._2) // 仅取出有效样本
       .map { case (sample, _) => sample }
       .map(sample => (parseTarget(sample), 1))
       .reduceByKey(_ + _)
@@ -182,9 +165,10 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
       .reduceByKey(_ + _)
       .collect()
     val totalCount = retCounts.map(_._2).sum
-    val validCount = retCounts.find(_._1).map(_._2.toLong).getOrElse(0L)  // count of successfully parsed samples
+    val validCount = retCounts.find(_._1).map(_._2.toLong).getOrElse(0L) // count of successfully parsed samples
     qualityTracker.record("train_stats", totalCount, validCount, targetOccurs.toSeq)
 
+    //====================== part1: target position vocabulary ======================
     // Only needed for multi-class mode to re-index sparse target IDs into dense indices
     if (!useTargetMap) {
       targetMap.clear()
@@ -207,11 +191,12 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
         ignoredCount += 1
       }
     }
+    green_println(s"new targetMap.size: ${targetMap.size}.")
     green_println(s"target_map: new=${newCount}, existing=${existingCount}, belowThreshold=${ignoredCount}, totalOccurrences=${totalOccurrences}")
-    green_println(s"new targetMap: ${targetMap.size}.")
 
-    green_println(s"old posMap: ${posMap.size}.")
-    green_println(s"old posDim: ${posDim.size}.")
+    //====================== part2: feature position vocabulary ======================
+    green_println(s"old posMap.size: ${posMap.size}.")
+    green_println(s"old posDim.size: ${posDim.size}.")
 
     /** Collect hash statistics across all samples: aggregates sum/powerSum/count per (f_name, f_index, f_type, hash) key */
     val trainSample: Array[((String, Int, Byte, Long), RunningValueStats)] = trainingSample
@@ -278,10 +263,10 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
       }
     }
     alignFieldDim(posDim, fieldDim, featurizer)
+    green_println(s"new posMap.size: ${posMap.size}.")
+    green_println(s"new posDim.size: ${posDim.size}.")
     green_println(s"ignored_pos_count: ${ignoredPosCount}. total filtered feature value count")
     green_println(s"reused_history_pos_count: ${reusedHistoryPosCount}. low-frequency feature values reusing historical vocabulary")
-    green_println(s"new posMap: ${posMap.size}.")
-    green_println(s"new posDim: ${posDim.size}.")
   }
 
 
@@ -338,48 +323,30 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     }
   }
 
-  /** Runs the full pipeline: load samples, build target-map, build pos-map (vocabulary), and write encoded output.
-    *
-    * @param trainRatio Fraction of data for training (default 1.0 = no split)
-    * @param valRatio   Fraction of data for validation (default 0.0). Test ratio = 1.0 - train_ratio - val_ratio
-    */
-  def run(spark: SparkSession,
-          yesterday: String,
-          /** Minimum occurrence count for a feature value to be included in vocabulary. */
-          featureThreshold: Int,
-          /** Minimum occurrence count for a target value to be included in target-map. */
-          targetThreshold: Int,
-          /** Down-sampling ratio for negative samples (0.0 = keep none, 1.0 = keep all). */
-          sampleRatio: Double,
-          /** HashMap[(f_index, hash), PosInfo] */
-          posMap: HashMap[(Int, Long), PosInfo],
-          /** HashMap[target, pos] */
-          targetMap: HashMap[Int, Int],
-          /** HashMap[(f_name, f_index, f_type), dim] */
-          posDim: HashMap[(String, Int, Int), Int],
-          inputDir: String,
-          outputDir: String,
-          parts: Int,
-          outputFormat: String = "tfrecord",
-          trainRatio: Double = 0.8,
-          valRatio: Double = 0.1
-         ): (HashMap[(Int, Long), PosInfo], HashMap[Int, Int], HashMap[(String, Int, Int), Int]) = {
+  /**
+   * Runs the full pipeline: load samples, build target-map, build pos-map (vocabulary), and write encoded output.
+   *
+   * @param trainRatio Fraction of data for training (default 1.0 = no split)
+   * @param valRatio   Fraction of data for validation (default 0.0). Test ratio = 1.0 - train_ratio - val_ratio
+   */
+  def run(spark: SparkSession, yesterday: String, featureThreshold: Int, targetThreshold: Int, sampleRatio: Double, posMap: mutable.HashMap[(Int, Long), PosInfo], targetMap: mutable.HashMap[Int, Int], posDim: mutable.HashMap[(String, Int, Int), Int], inputDir: String, trainRatio: Double = 0.8, valRatio: Double = 0.1, parts: Int, outputDir: String, outputFormat: String = "tfrecord"): (HashMap[(Int, Long), PosInfo], HashMap[Int, Int], HashMap[(String, Int, Int), Int]) = {
 
     // 1. negative sampling (if necessary)
     val allSamples: RDD[(T, Boolean)] = loadTrainingSamples(spark, inputDir, parts).filter {
         case (sample, _) => keepSample(sample, sampleRatio)
       }
-      .persist(StorageLevel.MEMORY_AND_DISK_SER)
 
     // 2. Time-based split into train/val/test
     val (trainingSample, valSample, testSample) = splitSamples(allSamples, trainRatio, valRatio)
-    allSamples.unpersist()
+    trainingSample.persist(StorageLevel.MEMORY_AND_DISK_SER)
 
     // 3. load and update vocabulary
     generateVocabulary(trainingSample, targetThreshold, featureThreshold, targetMap, posMap, posDim)
 
     // 4. generate final train sample
     generateSample(spark, yesterday, trainingSample, valSample, testSample, posMap, targetMap, outputDir, outputFormat)
+    trainingSample.unpersist()
+
     // Print consolidated quality report before returning
     qualityTracker.printReport()
 
