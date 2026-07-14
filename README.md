@@ -84,20 +84,20 @@ gerbil-data/
 │   │       │   ├── join/        #   Multi-table joining (all datasets)
 │   │       │   └── sampling/    #   Negative sampling
 │   │       ├── featurizer/      # ML encoding: features → embedding indices
-│   │       │   ├── Featurizer.scala
-│   │       │   ├── RawFeature.scala
-│   │       │   ├── RawTarget.scala
-│   │       │   ├── CategoricalFeature.scala
-│   │       │   ├── ContinuousFeature.scala
-│   │       │   ├── CrossFeature.scala
+│   │       │   ├── Featurizer.scala              #   Generic abstract featurization framework
+│   │       │   ├── RawFeature.scala              #   Base class for all feature types
+│   │       │   ├── RawTarget.scala               #   Target feature base class
+│   │       │   ├── CategoricalFeature.scala      #   Hash-based categorical feature encoder
+│   │       │   ├── ContinuousFeature.scala       #   Identity-mapping continuous feature encoder
+│   │       │   ├── CrossFeature.scala            #   Combinatory cross feature encoder
 │   │       │   ├── ml1m/        #   ML-1M feature implementations
 │   │       │   ├── mobilerec/   #   MobileRec feature implementations
 │   │       │   └── alictr/      #   AliCtr feature implementations
 │   │       ├── pipeline/        # Orchestration & training sample generation
-│   │       │   ├── Pipeline.scala
-│   │       │   ├── ML1MPipeline.scala
-│   │       │   ├── MobileRecPipeline.scala
-│   │       │   ├── AliCtrPipeline.scala
+│   │       │   ├── Pipeline.scala                #   Abstract pipeline base class
+│   │       │   ├── ML1MPipeline.scala            #   ML-1M pipeline driver
+│   │       │   ├── MobileRecPipeline.scala       #   MobileRec pipeline driver
+│   │       │   ├── AliCtrPipeline.scala          #   Ali_Display_Ad_Click pipeline driver
 │   │       │   ├── serde/       #   Serialization (TFRecord, Parquet, pos-map)
 │   │       │   ├── stats/       #   Online statistics
 │   │       │   └── eval/        #   AUC / GAUC evaluation

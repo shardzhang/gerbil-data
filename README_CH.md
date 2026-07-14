@@ -65,20 +65,20 @@ gerbil-data/
 │   │       │   ├── feature/     #   特征衍生
 │   │       │   └── join/        #   多表关联
 │   │       ├── featurizer/      # 特征编码器
-│   │       │   ├── Featurizer.scala
-│   │       │   ├── RawFeature.scala
-│   │       │   ├── RawTarget.scala
-│   │       │   ├── CategoricalFeature.scala
-│   │       │   ├── ContinuousFeature.scala
-│   │       │   ├── CrossFeature.scala
+│   │       │   ├── Featurizer.scala              #   泛型特征化抽象框架
+│   │       │   ├── RawFeature.scala              #   特征基类
+│   │       │   ├── RawTarget.scala               #   目标特征基类
+│   │       │   ├── CategoricalFeature.scala      #   离散特征哈希编码器
+│   │       │   ├── ContinuousFeature.scala       #   连续特征恒等映射编码器
+│   │       │   ├── CrossFeature.scala            #   交叉特征组合编码器
 │   │       │   ├── ml1m/        #   ML-1M 实现
 │   │       │   ├── mobilerec/   #   MobileRec 实现
 │   │       │   └── alictr/      #   AliCtr 实现
 │   │       ├── pipeline/        # 编排与训练样本生成
-│   │       │   ├── Pipeline.scala
-│   │       │   ├── ML1MPipeline.scala
-│   │       │   ├── MobileRecPipeline.scala
-│   │       │   ├── AliCtrPipeline.scala
+│   │       │   ├── Pipeline.scala                #   Pipeline 抽象基类
+│   │       │   ├── ML1MPipeline.scala            #   ML-1M 驱动
+│   │       │   ├── MobileRecPipeline.scala       #   MobileRec 驱动
+│   │       │   ├── AliCtrPipeline.scala          #   AliCtr 驱动
 │   │       │   ├── serde/       #   序列化
 │   │       │   ├── stats/       #   统计
 │   │       │   └── eval/        #   AUC / GAUC 评估
