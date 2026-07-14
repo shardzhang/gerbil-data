@@ -115,37 +115,37 @@ gerbil-data/
 
 ```mermaid
 flowchart LR
-    subgraph Raw[Raw Data]
+    subgraph Raw["Raw Data"]
         direction TB
-        R1[ratings.dat /<br/>mobilerec_final.csv /<br/>raw_sample.csv]
+        R1["ratings.dat /<br/>mobilerec_final.csv /<br/>raw_sample.csv"]
     end
 
-    subgraph ETL[ETL Processing]
-        C[CleanSample<br/>Filter · Dedup · Validate]
-        S[ItemStatFeature<br/>Item stats: avg, count, price…]
-        B[UserBehaviorSequence<br/>Behavior sequences<br/>1d / 3d / 7d / 15d / 30d / all]
-        P[UserProfile<br/>Parse user attributes]
-        J[JoinSample<br/>Join all features]
+    subgraph ETL["ETL Processing"]
+        C["CleanSample<br/>Filter · Dedup · Validate"]
+        S["ItemStatFeature<br/>Item stats: avg, count, price…"]
+        B["UserBehaviorSequence<br/>Behavior sequences<br/>1d / 3d / 7d / 15d / 30d / all"]
+        P["UserProfile<br/>Parse user attributes"]
+        J["JoinSample<br/>Join all features"]
     end
 
-    subgraph Sampling[Negative Sampling]
-        N[NegativeSampler<br/>Random / Popular / Mixed]
+    subgraph Sampling["Negative Sampling"]
+        N["NegativeSampler<br/>Random / Popular / Mixed"]
     end
 
-    subgraph Encoding[Feature Encoding]
-        F[Featurizer<br/>YAML config<br/>Categorical + Continuous]
-        H[Hash → Embedding Index<br/>MurmurHash3 x64_128<br/>f_index || value as key]
-        V[Vocabulary<br/>Frequency threshold<br/>Pos-map / Target-map]
+    subgraph Encoding["Feature Encoding"]
+        F["Featurizer<br/>YAML config<br/>Categorical + Continuous"]
+        H["Hash → Embedding Index<br/>MurmurHash3 x64_128<br/>f_index || value as key"]
+        V["Vocabulary<br/>Frequency threshold<br/>Pos-map / Target-map"]
     end
 
-    subgraph Train[Training Data]
-        T[TFRecord<br/>Example]
-        Pq[Parquet<br/>Columnar format]
-        Pm[Pos-map<br/>JSON + Binary]
+    subgraph Train["Training Data"]
+        T["TFRecord<br/>Example"]
+        Pq["Parquet<br/>Columnar format"]
+        Pm["Pos-map<br/>JSON + Binary"]
     end
 
-    subgraph Serve[Serving]
-        Cp[C++ Featurizer<br/>Bit-exact reproduction]
+    subgraph Serve["Serving"]
+        Cp["C++ Featurizer<br/>Bit-exact reproduction"]
     end
 
     Raw --> C --> S & B & P --> J
@@ -159,13 +159,13 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    subgraph Config[Configuration Layer]
-        YAML[features.yaml<br/>Feature registry<br/>field_name · field_index · field_type · class_name]
-        FC[FeatureConfig<br/>Case class model]
-        CL[FeatureConfigLoader<br/>YAML → FeatureDef]
+    subgraph Config["Configuration Layer"]
+        YAML["features.yaml<br/>Feature registry<br/>field_name · field_index · field_type · class_name"]
+        FC["FeatureConfig<br/>Case class model"]
+        CL["FeatureConfigLoader<br/>YAML → FeatureDef"]
     end
 
-    subgraph Core[Featurizer Core]
+    subgraph Core["Featurizer Core"]
         FE["Featurizer[T]<br/>Generic abstract framework"]
         CF["CategoricalFeature[T]<br/>Hash-based embedding<br/>(raw, _index, _value)"]
         COF["ContinuousFeature[T]<br/>Identity mapping"]
@@ -173,22 +173,22 @@ flowchart TD
         RT["RawTarget[T]"]
     end
 
-    subgraph DS[Dataset Implementations]
-        M1[ML-1M<br/>ML1MFeaturizer<br/>ML1MPipeline]
-        MR[MobileRec<br/>MobileRecFeaturizer<br/>MobileRecPipeline]
-        AL[Ali_Display_Ad_Click<br/>AliCtrFeaturizer<br/>AliCtrPipeline]
+    subgraph DS["Dataset Implementations"]
+        M1["ML-1M<br/>ML1MFeaturizer<br/>ML1MPipeline"]
+        MR["MobileRec<br/>MobileRecFeaturizer<br/>MobileRecPipeline"]
+        AL["Ali_Display_Ad_Click<br/>AliCtrFeaturizer<br/>AliCtrPipeline"]
     end
 
-    subgraph Pipe[Pipeline]
+    subgraph Pipe["Pipeline"]
         PL["Pipeline[T]<br/>splitSamples<br/>generateVocabulary<br/>generateSample"]
         SW["SampleWriter[T]<br/>TFRecord + Parquet"]
-        VS[Vocabulary<br/>Save / Restore]
-        QT[DataQualityTracker<br/>Parse rate · Target dist]
+        VS["Vocabulary<br/>Save / Restore"]
+        QT["DataQualityTracker<br/>Parse rate · Target dist"]
     end
 
-    subgraph Eval[Evaluation]
-        RM[RankingMetrics<br/>AUC / GAUC]
-        SR[SparkRankingMetrics<br/>Spark DataFrame wrapper]
+    subgraph Eval["Evaluation"]
+        RM["RankingMetrics<br/>AUC / GAUC"]
+        SR["SparkRankingMetrics<br/>Spark DataFrame wrapper"]
     end
 
     YAML --> FC --> CL --> FE

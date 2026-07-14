@@ -93,33 +93,33 @@ gerbil-data/
 
 ```mermaid
 flowchart LR
-    subgraph Raw[原始数据]
+    subgraph Raw["原始数据"]
         direction TB
-        R1[ratings.dat /<br/>mobilerec_final.csv /<br/>raw_sample.csv]
+        R1["ratings.dat /<br/>mobilerec_final.csv /<br/>raw_sample.csv"]
     end
 
-    subgraph ETL[ETL 处理]
-        C[CleanSample<br/>过滤 · 去重 · 校验]
-        S[ItemStatFeature<br/>物品统计]
-        B[UserBehaviorSequence<br/>行为序列<br/>1d / 3d / 7d / 15d / 30d]
-        P[UserProfile<br/>用户画像]
-        J[JoinSample<br/>关联所有特征]
+    subgraph ETL["ETL 处理"]
+        C["CleanSample<br/>过滤 · 去重 · 校验"]
+        S["ItemStatFeature<br/>物品统计"]
+        B["UserBehaviorSequence<br/>行为序列<br/>1d / 3d / 7d / 15d / 30d"]
+        P["UserProfile<br/>用户画像"]
+        J["JoinSample<br/>关联所有特征"]
     end
 
-    subgraph Encoding[特征编码]
-        F[Featurizer<br/>YAML 配置<br/>离散 + 连续]
-        H[Hash → 嵌入索引<br/>MurmurHash3 x64_128]
-        V[词表<br/>频次阈值<br/>Pos-map / Target-map]
+    subgraph Encoding["特征编码"]
+        F["Featurizer<br/>YAML 配置<br/>离散 + 连续"]
+        H["Hash → 嵌入索引<br/>MurmurHash3 x64_128"]
+        V["词表<br/>频次阈值<br/>Pos-map / Target-map"]
     end
 
-    subgraph Train[训练数据]
-        T[TFRecord<br/>Example]
-        Pq[Parquet<br/>列式格式]
-        Pm[Pos-map<br/>JSON + 二进制]
+    subgraph Train["训练数据"]
+        T["TFRecord<br/>Example"]
+        Pq["Parquet<br/>列式格式"]
+        Pm["Pos-map<br/>JSON + 二进制"]
     end
 
-    subgraph Serve[在线推理]
-        Cp[C++ Featurizer<br/>按位一致]
+    subgraph Serve["在线推理"]
+        Cp["C++ Featurizer<br/>按位一致"]
     end
 
     Raw --> C --> S & B & P --> J
@@ -132,32 +132,32 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    subgraph Config[配置层]
-        YAML[features.yaml]
-        FC[FeatureConfig]
-        CL[FeatureConfigLoader]
+    subgraph Config["配置层"]
+        YAML["features.yaml"]
+        FC["FeatureConfig"]
+        CL["FeatureConfigLoader"]
     end
 
-    subgraph Core[特征化核心]
+    subgraph Core["特征化核心"]
         FE["Featurizer[T]"]
         CF["CategoricalFeature[T]"]
         COF["ContinuousFeature[T]"]
         XF["CrossFeature[T]"]
     end
 
-    subgraph DS[数据集实现]
-        M1[ML-1M]
-        MR[MobileRec]
-        AL[Ali_Display_Ad_Click]
+    subgraph DS["数据集实现"]
+        M1["ML-1M"]
+        MR["MobileRec"]
+        AL["Ali_Display_Ad_Click"]
     end
 
-    subgraph Pipe[流水线]
+    subgraph Pipe["流水线"]
         PL["Pipeline[T]<br/>splitSamples<br/>generateVocabulary<br/>generateSample"]
         SW["SampleWriter[T]"]
     end
 
-    subgraph Eval[评估]
-        RM[RankingMetrics<br/>AUC / GAUC]
+    subgraph Eval["评估"]
+        RM["RankingMetrics<br/>AUC / GAUC"]
     end
 
     YAML --> CL --> FE
