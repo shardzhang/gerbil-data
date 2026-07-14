@@ -22,23 +22,25 @@ Currently supports **three datasets** with a modular, extensible architecture:
 
 ## Features
 
-1. **Data Cleaning and Feature Extraction**: Transforms raw interaction logs into structured training samples — the foundation of recommender system feature engineering. Handles deduplication, anomaly filtering, and multi-table feature joining through Spark SQL, with column-level data quality checks at every stage to eliminate "garbage in, garbage out". Extracts user profiles, item attributes, context signals, and behavior sequences with configurable time windows — covering the full spectrum of features needed for recommendation models. Supports multiple prediction targets: multi-class classification, binary classification, and regression.
+1. **Data Cleaning and Feature Extraction**: Transforms raw interaction logs into structured training samples — the foundation of recommender system feature engineering. Handles deduplication, anomaly filtering, and multi-table feature joining through Spark SQL, with column-level data quality checks at every stage to eliminate "garbage in, garbage out". Extracts user profiles, item attributes, context signals, and behavior sequences with configurable time windows — covering the full spectrum of features needed for recommendation models. Supports multiple prediction targets: multi-class classification, binary classification, and regression. Supports multiple datasets: ML-1M, MobileRec, Ali_Display_Ad_Click.
 
-2. **Negative Sampling Strategies**: For each positive instance, generates unobserved items as negative samples — a critical component for ranking model training. Supports uniform random, popularity-biased sampling, and hybrid strategies, preventing popular items from dominating training gradients and effectively mitigating the "Matthew effect", improving model generalization on long-tail items.
+2. **Negative Sampling Strategies**: For each positive instance, generates unobserved items as negative samples — a critical component for ranking model training. Supports uniform random, popularity-biased sampling, and hybrid strategies, preventing popular items from dominating training gradients and effectively mitigating the "Matthew effect", improving model generalization on long-tail items. (Currently implemented for ML-1M.)
 
-3. **High-Order Cross Features**: Supports second-order and higher-order feature combinations to capture deeper patterns in data. All features (60 raw + 17 cross) are encoded through a type-safe generic `Featurizer[T]` architecture — producing the standard embedding lookup schema for DeepFM, DIN, and similar models.
+3. **High-Order Cross Features**: Supports second-order and higher-order feature combinations to capture deeper patterns in data. All features (60 raw + 17 cross for ML-1M) are encoded through a type-safe generic `Featurizer[T]` architecture — producing the standard embedding lookup schema for DeepFM, DIN, Wide&Deep, and similar models. Cross features are configurable per dataset via YAML.
 
-4. **Vocabulary Management**: Builds embedding vocabularies through frequency thresholding, assigning dedicated slots for each feature. Feature position maps are persisted in JSON (human-readable) and binary (with mean/std for online normalization).
+4. **Vocabulary Management**: Builds embedding vocabularies through frequency thresholding, assigning dedicated slots for each feature. Feature position maps are persisted in JSON (human-readable) and binary (with mean/std for online normalization). Supports incremental vocabulary updates across training runs and shared vocabularies across features via `field_index`.
 
-5. **Feature Configuration**: YAML-driven feature registry. Adding or disabling features requires editing a single config file — no code changes, no recompilation. Supports classpath and external file loading.
+5. **Feature Configuration**: YAML-driven feature registry. Adding or disabling features requires editing a single config file — no code changes, no recompilation. Supports classpath and external file loading. Each dataset has its own YAML config with mode-specific variants (binary/multi).
 
 6. **Multi-Format Output**: Outputs training samples in TFRecord (TensorFlow Example protobuf) and Parquet (columnar storage) formats, with time-based train/val/test split for standard recommendation evaluation.
 
 7. **Data Quality Monitoring**: Guards against the two silent killers of production recommender systems — training-serving skew and data drift. Automatically detects column-level metrics (null ratios, cardinality, numeric distributions) across ETL stages; tracks parse success rates and target distribution during featurization. Cross-run drift detection compares against historical baselines and alerts when volume, null ratios, or means exceed preset thresholds.
 
-8. **Pipeline Orchestration and Scheduling**: Dual-mode pipeline execution engine. Airflow DAG for production scheduling with automatic retries and monitoring; standalone Python runner for local development and CI. Topological sort ensures stage dependencies are honored. `--dry-run` mode supports execution plan preview.
+8. **Pipeline Orchestration and Scheduling**: Modular `Pipeline[T]` abstract class orchestrated via `splitSamples` → `generateVocabulary` → `generateSample`. Airflow DAG for production scheduling with automatic retries and monitoring; standalone Python runner for local development and CI. Topological sort ensures stage dependencies are honored. `--dry-run` mode supports execution plan preview.
 
 9. **C++ Online Inference**: A bit-exact C++ reimplementation of the Scala featurizer for latency-critical serving scenarios. Loads the identical vocabulary binary and executes the same MurmurHash3 with matching key concatenation — fundamentally eliminating training-serving skew in production systems. Correctness is verified by golden data diff across tens of thousands of rows.
+
+10. **AUC / GAUC Evaluation**: Built-in ranking metrics for offline model evaluation. Pure Scala `RankingMetrics` (no Spark dependency) implements AUC via the Mann-Whitney U statistic and GAUC with sample-weighted group averaging. `SparkRankingMetrics` wraps it with DataFrame-based CLI support for evaluating model predictions in Parquet, CSV, or TFRecord format.
 
 ## Architecture
 
