@@ -280,16 +280,21 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
 
 
   /**
+   * Encodes filtered training/validation/test samples into TFRecord or Parquet
+   * and writes to the output directory.
    *
-   * @param spark
-   * @param yesterday
-   * @param trainingSample
-   * @param valSample
-   * @param testSample
-   * @param posMap
-   * @param targetMap
-   * @param outputDir
-   * @param outputFormat
+   * Creates a format-specific [[BaseRecord]] writer via [[createRecord]] based on
+   * `outputFormat`, then writes each data split (train/val/test) to its own
+   * subdirectory (e.g. `{outputDir}/{yesterday}/train/tfrecord`).
+   *
+   * @param yesterday      date string used as the output subdirectory name
+   * @param trainingSample training split RDD of (sample, parseSuccess)
+   * @param valSample      validation split RDD (null if no split)
+   * @param testSample     test split RDD (null if no split)
+   * @param posMap         HashMap[(f_index, hash), PosInfo] — feature position vocabulary
+   * @param targetMap      HashMap[target, dense_index] — target re-indexing map
+   * @param outputDir      base output directory
+   * @param outputFormat   "tfrecord", "parquet", or "both"
    */
   def generateSample(yesterday: String,
                      trainingSample: RDD[(T, Boolean)],
