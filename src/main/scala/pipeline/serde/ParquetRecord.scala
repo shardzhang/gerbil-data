@@ -2,12 +2,10 @@ package pipeline.serde
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
-import scala.jdk.CollectionConverters._
 import scala.reflect.ClassTag
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.types.{ArrayType, FloatType, LongType, StringType, StructField, StructType}
 import org.apache.spark.sql.{Row, SparkSession}
-import org.tensorflow.example.Example
 
 import featurizer.Featurizer
 
@@ -42,30 +40,12 @@ object ParquetRecordData {
       this
     }
   }
-
-  /** 从TFRecord Example中构造 */
-  def from_example(example: Example): ParquetRecordData = {
-    val columns = new mutable.HashMap[String, Any]()
-    for ((name, feature) <- example.getFeatures.getFeatureMap.asScala) {
-      if (name == "target") {
-        columns.put(name, feature.getFloatList.getValue(0))
-      } else if (name.endsWith("_raw")) {
-        columns.put(name, feature.getBytesList.getValueList.asScala.map(_.toByteArray))
-      } else if (name.endsWith("_index")) {
-        columns.put(name, feature.getInt64List.getValueList.asScala.map(_.toLong))
-      } else if (name.endsWith("_value")) {
-        columns.put(name, feature.getFloatList.getValueList.asScala.map(_.toFloat))
-      }
-    }
-    ParquetRecordData(columns)
-  }
 }
 
 /**
  * Serializes training samples into Parquet columnar format.
  */
 class ParquetRecord[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Long) extends BaseRecord[T](createEncoder, max_dim) {
-
   override def write(trainingSample: RDD[(T, Boolean)],
                      posMap: collection.Map[(Int, Long), Int],
                      targetMap: collection.Map[Int, Int],
@@ -88,7 +68,8 @@ class ParquetRecord[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Lo
         })
       })
 
-    SparkSession.active.createDataFrame(parquetRows, schema)
+    SparkSession.active
+      .createDataFrame(parquetRows, schema)
       .write
       .mode("overwrite")
       .parquet(path)

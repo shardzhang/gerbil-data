@@ -11,7 +11,7 @@ import featurizer.Featurizer
 /** Serializes training samples into TFRecord (TensorFlow Example) format. */
 class TFRecord[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Long) extends BaseRecord[T](createEncoder, max_dim) {
   /** Encodes samples into TensorFlow Example protobuf and writes TFRecord to `tfRecordPath`. */
-  def write(trainingSample: RDD[(T, Boolean)],
+  override def write(trainingSample: RDD[(T, Boolean)],
             /** HashMap[(f_index, hash), pos] */
             posMap: collection.Map[(Int, Long), Int],
             /** HashMap[target, pos] */

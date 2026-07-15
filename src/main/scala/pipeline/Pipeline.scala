@@ -6,7 +6,6 @@ import scala.reflect.ClassTag
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types.{ArrayType, FloatType, LongType, StringType, StructField, StructType}
 import org.apache.spark.storage.StorageLevel
 
 import featurizer.{Featurizer, FieldType}
@@ -290,7 +289,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
    * @param posMap
    * @param targetMap
    * @param outputDir
-   * @param output_format
+   * @param outputFormat
    */
   def generateSample(yesterday: String,
                      trainingSample: RDD[(T, Boolean)],
@@ -299,8 +298,8 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
                      posMap: mutable.HashMap[(Int, Long), PosInfo],
                      targetMap: mutable.HashMap[Int, Int],
                      outputDir: String,
-                     output_format: String): Unit = {
-    val record = createRecord(output_format)
+                     outputFormat: String): Unit = {
+    val record = createRecord(outputFormat)
     val localPosMap = posMap.map { case (k, v) => (k, v.pos) }
     val localTargetMap = if (useTargetMap) targetMap else null
     val basePath = s"${outputDir.stripSuffix("/")}/${yesterday}"
@@ -312,7 +311,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     for ((suffix, data) <- splitsToWrite) {
       val filterdData = data.filter(r => r._2) // 过滤有效样本
       val subdir = if (suffix.isEmpty) "" else s"/${suffix}"
-      record.write(filterdData, localPosMap, localTargetMap, s"${basePath}${subdir}/${output_format}")
+      record.write(filterdData, localPosMap, localTargetMap, s"${basePath}${subdir}/${outputFormat}")
     }
   }
 
