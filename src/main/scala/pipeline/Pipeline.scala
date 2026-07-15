@@ -11,7 +11,7 @@ import org.apache.spark.storage.StorageLevel
 
 import featurizer.{Featurizer, FieldType}
 import utils.LogUtils.green_println
-import pipeline.serde.{Vocabulary, TFRecord}
+import pipeline.serde.{BaseRecord, TFRecord, ParquetRecord, Vocabulary}
 import pipeline.stats.{DataQualityTracker, PosInfo, RunningValueStats}
 
 
@@ -37,7 +37,8 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
   /** Persists/restores position-map and target-map across runs. */
   @transient val vocabulary: Vocabulary = new Vocabulary(hadoopConf)
   /** Serializes featurized samples to TFRecord or Parquet. */
-  @transient lazy val tfRecord: TFRecord[T] = new TFRecord[T](() => featurizer, max_dim)
+  @transient lazy val record: BaseRecord[T] = new TFRecord[T](() => featurizer, max_dim)
+  @transient lazy val parquetRecord: BaseRecord[T] = new ParquetRecord[T](() => featurizer, max_dim)
   /** Tracks record counts, parse success rates, and target distributions at each ETL stage. */
   @transient lazy val qualityTracker: DataQualityTracker = new DataQualityTracker()
 
@@ -288,8 +289,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
    * @param outputDir
    * @param output_format
    */
-  def generateSample(spark: SparkSession,
-                     yesterday: String,
+  def generateSample(yesterday: String,
                      trainingSample: RDD[(T, Boolean)],
                      valSample: RDD[(T, Boolean)],
                      testSample: RDD[(T, Boolean)],
@@ -309,23 +309,11 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
       val filterdData = data.filter(r => r._2) // 过滤有效样本
       val subdir = if (suffix.isEmpty) "" else s"/${suffix}"
       if (output_format == "tfrecord") {
-        tfRecord.writeTfrecord(filterdData, localPosMap, localTargetMap, s"${basePath}${subdir}/tfrecord")
+        record.write(filterdData, localPosMap, localTargetMap, s"${basePath}${subdir}/tfrecord")
       }
-
-//      if (output_format == "parquet") {
-//        /** Builds the Parquet schema with (target, *_raw, *_index, *_value) columns for each feature. */
-//        val parquet_schema: StructType = {
-//          val fields = new ArrayBuffer[StructField]()
-//          fields.append(StructField("target", FloatType, nullable = true))
-//          for ((f_name, _) <- featurizer.getFieldInfo()) {
-//            fields.append(StructField(f_name + "_raw", ArrayType(StringType, containsNull = false), nullable = true))
-//            fields.append(StructField(f_name + "_index", ArrayType(LongType, containsNull = false), nullable = true))
-//            fields.append(StructField(f_name + "_value", ArrayType(FloatType, containsNull = false), nullable = true))
-//          }
-//          StructType(fields)
-//        }
-//        tfRecord.writeParquet(spark, filterdData, parquet_schema, localPosMap, localTargetMap, s"${basePath}${subdir}/parquet")
-//      }
+      else if (output_format == "parquet") {
+        parquetRecord.write(filterdData, localPosMap, localTargetMap, s"${basePath}${subdir}/parquet")
+      }
     }
   }
 
@@ -350,7 +338,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     generateVocabulary(trainSample, targetThreshold, featureThreshold, targetMap, posMap, posDim)
 
     // 4. generate final train sample
-    generateSample(spark, yesterday, trainSample, valSample, testSample, posMap, targetMap, outputDir, outputFormat)
+    generateSample(yesterday, trainSample, valSample, testSample, posMap, targetMap, outputDir, outputFormat)
     trainSample.unpersist()
     if (valSample != null) valSample.unpersist()
     if (testSample != null) testSample.unpersist()

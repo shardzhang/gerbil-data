@@ -8,28 +8,23 @@ import org.tensorflow.example.Example
 
 import featurizer.Featurizer
 
-
-/**
- * Training sample serializer — writes encoded features to TFRecord or Parquet
- */
-
-/** Serializes training samples into TFRecord (TensorFlow Example) or Parquet format. */
-class TFRecord[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Long) extends Serializable {
+/** Serializes training samples into TFRecord (TensorFlow Example) format. */
+class TFRecord[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Long) extends BaseRecord[T](createEncoder, max_dim) {
   /** Encodes samples into TensorFlow Example protobuf and writes TFRecord to `tfRecordPath`. */
-  def writeTfrecord(trainingSample: RDD[(T, Boolean)],
-                    /** HashMap[(f_index, hash), pos] */
-                    posMap: collection.Map[(Int, Long), Int],
-                    /** HashMap[target, pos] */
-                    targetMap: collection.Map[Int, Int],
-                    tfRecordPath: String
-                   ): Unit = {
+  def write(trainingSample: RDD[(T, Boolean)],
+            /** HashMap[(f_index, hash), pos] */
+            posMap: collection.Map[(Int, Long), Int],
+            /** HashMap[target, pos] */
+            targetMap: collection.Map[Int, Int],
+            tfRecordPath: String
+           ): Unit = {
     trainingSample
       .map { case (sample, _) => sample }
       .mapPartitions(samples => {
         // Factory function ensures each Spark partition gets its own featurizer instance, avoiding shared mutable state
         val encoder = createEncoder()
         samples.flatMap(sample => {
-          val (example, has_feature, has_target) = sampleToExample(sample, encoder, posMap, targetMap)
+          val (example, has_feature, has_target) = encode(sample, encoder, posMap, targetMap)
           if (has_feature && has_target) {
             Some(example)
           } else {
@@ -46,10 +41,10 @@ class TFRecord[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Long) e
   }
 
   /** Encodes a single sample into a TensorFlow Example. Returns (example, has_feature, has_target). */
-  def sampleToExample(sample: T,
-                      encoder: Featurizer[T],
-                      posMap: collection.Map[(Int, Long), Int],
-                      targetMap: collection.Map[Int, Int]): (Example, Boolean, Boolean) = {
+  def encode(sample: T,
+             encoder: Featurizer[T],
+             posMap: collection.Map[(Int, Long), Int],
+             targetMap: collection.Map[Int, Int]): (Example, Boolean, Boolean) = {
     val builder = Example.newBuilder()
     val (has_feature, has_target) = encoder.encode(sample, max_dim, builder, posMap, targetMap)
     (builder.build(), has_feature, has_target)
