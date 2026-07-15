@@ -4,7 +4,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 import org.tensorflow.example.Example
-import pipeline.serde.ParquetRecord.ParquetRecordBuilder
+import pipeline.serde.ParquetRecordData.Builder
 
 
 /**
@@ -207,7 +207,7 @@ abstract class Featurizer[T] extends Serializable {
   }
 
   /** Encodes a sample into a ParquetRecord builder by filling a columns map. Returns (has_feature, has_target). */
-  def encode(input: T, dim: Long, parquet_builder: ParquetRecordBuilder, pos_map: collection.Map[(Int, Long), Int], target_map: collection.Map[Int, Int]): (Boolean, Boolean) = {
+  def encode(input: T, dim: Long, parquet_builder: Builder, pos_map: collection.Map[(Int, Long), Int], target_map: collection.Map[Int, Int]): (Boolean, Boolean) = {
     for (raw_f <- raw_cate_features) {
       raw_f.clear();
       raw_f.parse(input)

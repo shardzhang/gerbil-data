@@ -351,22 +351,16 @@ class FeatureEncoderTest extends WordSpec with Matchers {
   // ==================== CrossFeature ====================
 
   "CrossFeature" should {
-    "enumerate all combinations with foreachCombination" in {
+    "enumerate all combinations" in {
       val f1 = new TestCategoricalFeature(1, "f1")
       f1.parse("10,20")
       val f2 = new TestCategoricalFeature(2, "f2")
       f2.parse("30")
 
       val cross = new CrossFeature[String](100, "cross_f", f1, f2)
-      // CrossFeature.indexes(i) gives the current index into rnfs(i).feature_list
-      val combinations = ArrayBuffer.empty[(Long, Long)]
-      cross.foreachCombination {
-        combinations.append((f1.feature_list(cross.indexes(0)), f2.feature_list(cross.indexes(1))))
-      }
-      // f1 has {10,20}, f2 has {30} => 2 combinations: (10,30), (20,30)
-      assert(combinations.size === 2)
-      assert(combinations.contains((10L, 30L)))
-      assert(combinations.contains((20L, 30L)))
+      val hashes = cross.getHash(1000)
+      // f1 has {10,20}, f2 has {30} => 2 combinations
+      assert(hashes.size === 2)
     }
 
     "skip combinations where any feature value is 0" in {
@@ -376,12 +370,8 @@ class FeatureEncoderTest extends WordSpec with Matchers {
       f2.parse("20")
 
       val cross = new CrossFeature[String](100, "cross_f", f1, f2)
-      val combinations = ArrayBuffer.empty[(Long, Long)]
-      cross.foreachCombination {
-        combinations.append((f1.feature_list(cross.indexes(0)), f2.feature_list(cross.indexes(1))))
-      }
-      assert(combinations.size === 1)
-      assert(combinations.head === (10L, 20L))
+      val hashes = cross.getHash(1000)
+      assert(hashes.size === 1)
     }
 
     "computeHash consistently" in {

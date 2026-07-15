@@ -7,11 +7,11 @@ import org.tensorflow.example.{BytesList, Example, Feature, Features, FloatList,
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 
-class ParquetRecordTest extends WordSpec with Matchers {
+class ParquetRecordDataTest extends WordSpec with Matchers {
 
-  "ParquetRecordBuilder" should {
-    "build a ParquetRecord with put/putAll" in {
-      val record = ParquetRecord.newBuilder()
+  "ParquetRecordDataBuilder" should {
+    "build a ParquetRecordData with put/putAll" in {
+      val record = ParquetRecordData.newBuilder()
         .put("field1", 123)
         .put("field2", "hello")
         .putAll(mutable.Map("field3" -> 45.0, "field4" -> List(1, 2, 3)))
@@ -24,7 +24,7 @@ class ParquetRecordTest extends WordSpec with Matchers {
     }
 
     "support chain calls and clear" in {
-      val builder = ParquetRecord.newBuilder()
+      val builder = ParquetRecordData.newBuilder()
       builder.put("a", 1).put("b", 2)
       assert(builder.build().columns.size === 2)
       builder.clear()
@@ -32,9 +32,9 @@ class ParquetRecordTest extends WordSpec with Matchers {
     }
   }
 
-  "ParquetRecord.to_seq" should {
+  "ParquetRecordData.to_seq" should {
     "return values in column order, with null for missing" in {
-      val record = ParquetRecord.newBuilder()
+      val record = ParquetRecordData.newBuilder()
         .put("name", "alice")
         .put("age", 25)
         .build()
@@ -44,7 +44,7 @@ class ParquetRecordTest extends WordSpec with Matchers {
     }
   }
 
-  "ParquetRecord.from_example" should {
+  "ParquetRecordData.from_example" should {
     "parse Example with target field" in {
       val example = Example.newBuilder()
         .setFeatures(Features.newBuilder()
@@ -54,7 +54,7 @@ class ParquetRecordTest extends WordSpec with Matchers {
           .build())
         .build()
 
-      val record = ParquetRecord.from_example(example)
+      val record = ParquetRecordData.from_example(example)
       assert(record.columns("target") === 3.5F)
     }
 
@@ -70,7 +70,7 @@ class ParquetRecordTest extends WordSpec with Matchers {
           .build())
         .build()
 
-      val record = ParquetRecord.from_example(example)
+      val record = ParquetRecordData.from_example(example)
       val raw = record.columns("title_raw").asInstanceOf[Seq[Array[Byte]]]
       assert(raw.map(new String(_)) === Seq("hello", "world"))
     }
@@ -84,7 +84,7 @@ class ParquetRecordTest extends WordSpec with Matchers {
           .build())
         .build()
 
-      val record = ParquetRecord.from_example(example)
+      val record = ParquetRecordData.from_example(example)
       assert(record.columns("item_index") === Seq(10L, 20L))
     }
 
@@ -97,7 +97,7 @@ class ParquetRecordTest extends WordSpec with Matchers {
           .build())
         .build()
 
-      val record = ParquetRecord.from_example(example)
+      val record = ParquetRecordData.from_example(example)
       assert(record.columns("score_value") === Seq(1.5F, 2.5F))
     }
 
@@ -113,7 +113,7 @@ class ParquetRecordTest extends WordSpec with Matchers {
           .build())
         .build()
 
-      val record = ParquetRecord.from_example(example)
+      val record = ParquetRecordData.from_example(example)
       assert(record.columns.contains("target"))
       assert(!record.columns.contains("unknown_field"))
     }
