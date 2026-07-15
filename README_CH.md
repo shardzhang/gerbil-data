@@ -80,6 +80,10 @@ gerbil-data/
 │   │       │   ├── MobileRecPipeline.scala       #   MobileRec 驱动
 │   │       │   ├── AliCtrPipeline.scala          #   AliCtr 驱动
 │   │       │   ├── serde/       #   序列化
+│   │       │   │   ├── BaseRecord.scala            #   写入器抽象基类
+│   │       │   │   ├── TFRecord.scala              #   TFRecord (Example) 写入器
+│   │       │   │   ├── ParquetRecord.scala         #   Parquet 列式写入器 + 数据模型
+│   │       │   │   └── Vocabulary.scala            #   词表持久化
 │   │       │   ├── stats/       #   统计
 │   │       │   └── eval/        #   AUC / GAUC 评估
 │   │       ├── tfrecords/       # 自定义 TFRecord 数据源
@@ -153,7 +157,7 @@ flowchart TD
 
     subgraph Pipe["流水线"]
         PL["Pipeline[T]<br/>splitSamples<br/>generateVocabulary<br/>generateSample"]
-        SW["SampleWriter[T]"]
+        BR["BaseRecord[T]<br/>TFRecord / ParquetRecord"]
     end
 
     subgraph Eval["评估"]
@@ -164,7 +168,7 @@ flowchart TD
     FE --> CF & COF & XF
     FE --> DS
     DS --> PL
-    PL --> SW
+    PL --> BR
     RM -.-> PL
 ```
 

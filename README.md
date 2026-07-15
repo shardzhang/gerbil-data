@@ -99,6 +99,10 @@ gerbil-data/
 │   │       │   ├── MobileRecPipeline.scala       #   MobileRec pipeline driver
 │   │       │   ├── AliCtrPipeline.scala          #   Ali_Display_Ad_Click pipeline driver
 │   │       │   ├── serde/       #   Serialization (TFRecord, Parquet, pos-map)
+│   │       │   │   ├── BaseRecord.scala            #   Abstract writer base class
+│   │       │   │   ├── TFRecord.scala              #   TFRecord (Example) writer
+│   │       │   │   ├── ParquetRecord.scala         #   Parquet columnar writer + data model
+│   │       │   │   └── Vocabulary.scala            #   Pos-map / target-map persistence
 │   │       │   ├── stats/       #   Online statistics
 │   │       │   └── eval/        #   AUC / GAUC evaluation
 │   │       ├── tfrecords/       # Custom Spark SQL TFRecord data source
@@ -181,7 +185,7 @@ flowchart TD
 
     subgraph Pipe["Pipeline"]
         PL["Pipeline[T]<br/>splitSamples<br/>generateVocabulary<br/>generateSample"]
-        SW["SampleWriter[T]<br/>TFRecord + Parquet"]
+        BR["BaseRecord[T]<br/>TFRecord / ParquetRecord"]
         VS["Vocabulary<br/>Save / Restore"]
         QT["DataQualityTracker<br/>Parse rate · Target dist"]
     end
@@ -195,7 +199,7 @@ flowchart TD
     FE --> CF & COF & XF & RT
     FE --> DS
     DS --> PL
-    PL --> SW & VS & QT
+    PL --> BR & VS & QT
     FE --> RM --> SR
 
     style FE fill:#e1f5fe
