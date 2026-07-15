@@ -37,8 +37,7 @@ class ContextTimeWeek(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSamp
 
 class IsWeekend(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
   override def parse(sample: ML1MSample): RawFeature = {
-    val w = sample.week_day
-    val flag = if (w == 6 || w == 7) 2 else 1
+    val flag = if (sample.week_day == 6 || sample.week_day == 7) 2 else 1
     raw_list.append(flag.toString)
     feature_list.append(flag)
     value_list.append(1.0F)
