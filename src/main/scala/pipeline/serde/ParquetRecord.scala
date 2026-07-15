@@ -73,7 +73,6 @@ class ParquetRecord[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Lo
     val encoder = createEncoder()
     val fieldInfo = encoder.getFieldInfo()
     val schema = buildParquetSchema(fieldInfo)
-    val parquetFieldNames = schema.fieldNames.toSeq
 
     val parquetRows: RDD[Row] = trainingSample
       .map { case (sample, _) => sample }

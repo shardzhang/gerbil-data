@@ -7,8 +7,7 @@ import org.apache.spark.sql.SparkSession
 import java.util.concurrent.ThreadLocalRandom
 
 import featurizer.Featurizer
-import featurizer.ml1m.ML1MSample
-import featurizer.ml1m.ML1MFeaturizer
+import featurizer.ml1m.{ML1MSample, ML1MFeaturizer}
 import utils.LogUtils.green_println
 import utils.LogUtils.setLogLevel
 

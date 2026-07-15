@@ -36,9 +36,6 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
   @transient var hadoopConf: Configuration = new Configuration()
   /** Persists/restores position-map and target-map across runs. */
   @transient val vocabulary: Vocabulary = new Vocabulary(hadoopConf)
-  /** Serializes featurized samples to TFRecord or Parquet. */
-  @transient lazy val record: BaseRecord[T] = new TFRecord[T](() => featurizer, max_dim)
-  @transient lazy val parquetRecord: BaseRecord[T] = new ParquetRecord[T](() => featurizer, max_dim)
   /** Tracks record counts, parse success rates, and target distributions at each ETL stage. */
   @transient lazy val qualityTracker: DataQualityTracker = new DataQualityTracker()
 
@@ -47,6 +44,12 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
 
   /** The featurizer that converts raw samples into encoded features. */
   def featurizer: Featurizer[T]
+
+  /** Factory: creates TFRecord or ParquetRecord based on output format. */
+  def createRecord(outputFormat: String): BaseRecord[T] = outputFormat match {
+    case "tfrecord" => new TFRecord[T](() => featurizer, max_dim)
+    case "parquet"  => new ParquetRecord[T](() => featurizer, max_dim)
+  }
 
   /** Loads and parses raw training samples from the given input directory. */
   def loadTrainingSamples(spark: SparkSession, inputDir: String, parts: Int): RDD[(T, Boolean)]
@@ -297,6 +300,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
                      targetMap: mutable.HashMap[Int, Int],
                      outputDir: String,
                      output_format: String): Unit = {
+    val record = createRecord(output_format)
     val localPosMap = posMap.map { case (k, v) => (k, v.pos) }
     val localTargetMap = if (useTargetMap) targetMap else null
     val basePath = s"${outputDir.stripSuffix("/")}/${yesterday}"
@@ -308,12 +312,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     for ((suffix, data) <- splitsToWrite) {
       val filterdData = data.filter(r => r._2) // 过滤有效样本
       val subdir = if (suffix.isEmpty) "" else s"/${suffix}"
-      if (output_format == "tfrecord") {
-        record.write(filterdData, localPosMap, localTargetMap, s"${basePath}${subdir}/tfrecord")
-      }
-      else if (output_format == "parquet") {
-        parquetRecord.write(filterdData, localPosMap, localTargetMap, s"${basePath}${subdir}/parquet")
-      }
+      record.write(filterdData, localPosMap, localTargetMap, s"${basePath}${subdir}/${output_format}")
     }
   }
 
