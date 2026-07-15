@@ -94,21 +94,28 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
 
 
   /**
+   * Time-based train/val/test split on the sorted sample RDD.
    *
-   * @param allSamples
-   * @param trainRatio
-   * @param valRatio
-   * @return
+   * Samples are sorted by [[parseTimestamp]] ascending, then split sequentially:
+   *   - train: first `trainRatio` fraction
+   *   - val:   next `valRatio` fraction
+   *   - test:  remaining
+   *
+   * Each split is persisted and the intermediate sorted+indexed RDD is released
+   * before returning, so callers can use the splits without re-computation.
+   *
+   * @param allSamples RDD of (sample, parseSuccess) — unsorted, unfiltered raw samples
+   * @param trainRatio fraction of data for training (default 0.8)
+   * @param valRatio   fraction of data for validation (default 0.1)
+   * @return (train, val, test) — each RDD persisted; val/test may be null if trainRatio >= 1.0
    */
   def splitSamples(allSamples: RDD[(T, Boolean)],
                    trainRatio: Double,
                    valRatio: Double
                   ): (RDD[(T, Boolean)], RDD[(T, Boolean)], RDD[(T, Boolean)]) = {
-
     if (trainRatio >= 1.0) {
       return (allSamples, null, null)
     }
-
     val sorted: RDD[(T, Boolean)] = allSamples.sortBy {
       case (sample, _) => parseTimestamp(sample)
     }
@@ -294,7 +301,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
    * @param posMap         HashMap[(f_index, hash), PosInfo] — feature position vocabulary
    * @param targetMap      HashMap[target, dense_index] — target re-indexing map
    * @param outputDir      base output directory
-   * @param outputFormat   "tfrecord", "parquet", or "both"
+   * @param outputFormat   "tfrecord", "parquet"
    */
   def generateSample(yesterday: String,
                      trainingSample: RDD[(T, Boolean)],
