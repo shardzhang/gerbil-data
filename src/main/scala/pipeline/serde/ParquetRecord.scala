@@ -2,17 +2,19 @@ package pipeline.serde
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.jdk.CollectionConverters._
 import scala.reflect.ClassTag
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.types.{ArrayType, FloatType, LongType, StringType, StructField, StructType}
 import org.apache.spark.sql.{Row, SparkSession}
+import org.tensorflow.example.Example
 
 import featurizer.Featurizer
 
 /** A serializable record backed by a mutable map of column name -> value. */
 case class ParquetRecordData(columns: mutable.Map[String, Any]) extends Serializable {
-  def to_seq(): Seq[Any] = {
-    columns.keys.map(name => columns.get(name)).toSeq
+  def to_seq(column_names: Seq[String]): Seq[Any] = {
+    column_names.map(name => columns.getOrElse(name, null))
   }
 }
 
@@ -40,6 +42,23 @@ object ParquetRecordData {
       this
     }
   }
+
+  /** Converts a TensorFlow Example proto into a ParquetRecordData. */
+  def from_example(example: Example): ParquetRecordData = {
+    val columns = new mutable.HashMap[String, Any]()
+    for ((name, feature) <- example.getFeatures.getFeatureMap.asScala) {
+      if (name == "target") {
+        columns.put(name, feature.getFloatList.getValue(0))
+      } else if (name.endsWith("_raw")) {
+        columns.put(name, feature.getBytesList.getValueList.asScala.map(_.toByteArray))
+      } else if (name.endsWith("_index")) {
+        columns.put(name, feature.getInt64List.getValueList.asScala.map(_.toLong))
+      } else if (name.endsWith("_value")) {
+        columns.put(name, feature.getFloatList.getValueList.asScala.map(_.toFloat))
+      }
+    }
+    ParquetRecordData(columns)
+  }
 }
 
 /**
@@ -53,6 +72,7 @@ class ParquetRecord[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Lo
     val encoder = createEncoder()
     val fieldInfo = encoder.getFieldInfo()
     val schema = buildParquetSchema(fieldInfo)
+    val parquetFieldNames = schema.fieldNames.toSeq
 
     val parquetRows: RDD[Row] = trainingSample
       .map { case (sample, _) => sample }
@@ -61,7 +81,7 @@ class ParquetRecord[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Lo
         samples.flatMap(sample => {
           val (record, has_feature, has_target) = encode(sample, encoder, posMap, targetMap)
           if (has_feature && has_target) {
-            Some(Row.fromSeq(record.to_seq()))
+            Some(Row.fromSeq(record.to_seq(parquetFieldNames)))
           } else {
             None
           }

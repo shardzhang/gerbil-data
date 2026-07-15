@@ -39,7 +39,7 @@ class ParquetRecordDataTest extends WordSpec with Matchers {
         .put("age", 25)
         .build()
 
-      val seq = record.to_seq()
+      val seq = record.to_seq(Seq("name", "age", "missing"))
       assert(seq === Seq("alice", 25, null))
     }
   }
