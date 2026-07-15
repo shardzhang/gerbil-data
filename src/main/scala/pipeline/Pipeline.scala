@@ -11,7 +11,7 @@ import org.apache.spark.storage.StorageLevel
 
 import featurizer.{Featurizer, FieldType}
 import utils.LogUtils.green_println
-import pipeline.serde.{Vocabulary, SampleWriter}
+import pipeline.serde.{Vocabulary, TFRecord}
 import pipeline.stats.{DataQualityTracker, PosInfo, RunningValueStats}
 
 
@@ -37,7 +37,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
   /** Persists/restores position-map and target-map across runs. */
   @transient val vocabulary: Vocabulary = new Vocabulary(hadoopConf)
   /** Serializes featurized samples to TFRecord or Parquet. */
-  @transient lazy val sampleWriter: SampleWriter[T] = new SampleWriter[T](() => featurizer, max_dim)
+  @transient lazy val tfRecord: TFRecord[T] = new TFRecord[T](() => featurizer, max_dim)
   /** Tracks record counts, parse success rates, and target distributions at each ETL stage. */
   @transient lazy val qualityTracker: DataQualityTracker = new DataQualityTracker()
 
@@ -308,24 +308,24 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     for ((suffix, data) <- splitsToWrite) {
       val filterdData = data.filter(r => r._2) // 过滤有效样本
       val subdir = if (suffix.isEmpty) "" else s"/${suffix}"
-      if (output_format == "tfrecord" || output_format == "both") {
-        sampleWriter.writeTfrecord(filterdData, localPosMap, targetMap, s"${basePath}${subdir}/tfrecord")
+      if (output_format == "tfrecord") {
+        tfRecord.writeTfrecord(filterdData, localPosMap, localTargetMap, s"${basePath}${subdir}/tfrecord")
       }
 
-      if (output_format == "parquet" || output_format == "both") {
-        /** Builds the Parquet schema with (target, *_raw, *_index, *_value) columns for each feature. */
-        val parquet_schema: StructType = {
-          val fields = new ArrayBuffer[StructField]()
-          fields.append(StructField("target", FloatType, nullable = true))
-          for ((f_name, _) <- featurizer.getFieldInfo()) {
-            fields.append(StructField(f_name + "_raw", ArrayType(StringType, containsNull = false), nullable = true))
-            fields.append(StructField(f_name + "_index", ArrayType(LongType, containsNull = false), nullable = true))
-            fields.append(StructField(f_name + "_value", ArrayType(FloatType, containsNull = false), nullable = true))
-          }
-          StructType(fields)
-        }
-        sampleWriter.writeParquet(spark, filterdData, parquet_schema, localPosMap, localTargetMap, s"${basePath}${subdir}/parquet")
-      }
+//      if (output_format == "parquet") {
+//        /** Builds the Parquet schema with (target, *_raw, *_index, *_value) columns for each feature. */
+//        val parquet_schema: StructType = {
+//          val fields = new ArrayBuffer[StructField]()
+//          fields.append(StructField("target", FloatType, nullable = true))
+//          for ((f_name, _) <- featurizer.getFieldInfo()) {
+//            fields.append(StructField(f_name + "_raw", ArrayType(StringType, containsNull = false), nullable = true))
+//            fields.append(StructField(f_name + "_index", ArrayType(LongType, containsNull = false), nullable = true))
+//            fields.append(StructField(f_name + "_value", ArrayType(FloatType, containsNull = false), nullable = true))
+//          }
+//          StructType(fields)
+//        }
+//        tfRecord.writeParquet(spark, filterdData, parquet_schema, localPosMap, localTargetMap, s"${basePath}${subdir}/parquet")
+//      }
     }
   }
 
