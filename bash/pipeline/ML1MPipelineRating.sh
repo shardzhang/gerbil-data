@@ -8,7 +8,7 @@ cd "$(dirname "$0")"
 
 source ../conf/env.sh
 
-day="20260623"
+day="20260717"
 input_path=${ML_1M_PATH}
 output_path=${input_path}/train_sample/rating
 
