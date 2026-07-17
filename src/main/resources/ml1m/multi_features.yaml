@@ -42,15 +42,15 @@ features:
 
   # ── User rating count (bucketed) ──
   - {field_name: user_movie_rate_cnt, field_index: 22, field_type: 1, class_name: UserMovieRateCnt, enabled: true}
-  - {field_name: user_movie_rate_cnt_7day, field_index: 23, field_type: 1, class_name: UserMovieRateCnt7Day, enabled: true}
-  - {field_name: user_movie_rate_cnt_15day, field_index: 24, field_type: 1, class_name: UserMovieRateCnt15Day, enabled: true}
-  - {field_name: user_movie_rate_cnt_30day, field_index: 25, field_type: 1, class_name: UserMovieRateCnt30Day, enabled: true}
+  - {field_name: user_movie_rate_7day_cnt, field_index: 23, field_type: 1, class_name: UserMovieRate7DayCnt, enabled: true}
+  - {field_name: user_movie_rate_15day_cnt, field_index: 24, field_type: 1, class_name: UserMovieRate15DayCnt, enabled: true}
+  - {field_name: user_movie_rate_30day_cnt, field_index: 25, field_type: 1, class_name: UserMovieRate30DayCnt, enabled: true}
 
   # ── User rating count (continuous) ──
   - {field_name: user_movie_rate_cnt_continue, field_index: 26, field_type: 0, class_name: UserMovieRateCntContinue, enabled: true}
-  - {field_name: user_movie_rate_cnt_7day_continue, field_index: 27, field_type: 0, class_name: UserMovieRateCnt7DayContinue, enabled: true}
-  - {field_name: user_movie_rate_cnt_15day_continue, field_index: 28, field_type: 0, class_name: UserMovieRateCnt15DayContinue, enabled: true}
-  - {field_name: user_movie_rate_cnt_30day_continue, field_index: 29, field_type: 0, class_name: UserMovieRateCnt30DayContinue, enabled: true}
+  - {field_name: user_movie_rate_7day_cnt_continue, field_index: 27, field_type: 0, class_name: UserMovieRate7DayCntContinue, enabled: true}
+  - {field_name: user_movie_rate_15day_cnt_continue, field_index: 28, field_type: 0, class_name: UserMovieRate15DayCntContinue, enabled: true}
+  - {field_name: user_movie_rate_30day_cnt_continue, field_index: 29, field_type: 0, class_name: UserMovieRate30DayCntContinue, enabled: true}
 
   # ── Item ID ──
   - {field_name: movie_id, field_index: 101, field_type: 1, class_name: MovieID, enabled: false}  # movie ID

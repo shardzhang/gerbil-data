@@ -46,5 +46,5 @@ source "../conf/env.sh" && "${SPARK_HOME}/bin/spark-submit" \
 --output_format tfrecord \
 --train_ratio 0.8 \
 --val_ratio 0.1 \
---feature_config ${PROJECT_HOME}/src/main/resources/ml1m/features.yaml \
+--feature_config ${PROJECT_HOME}/src/main/resources/ml1m/multi_features.yaml \
 --target_mode multi
