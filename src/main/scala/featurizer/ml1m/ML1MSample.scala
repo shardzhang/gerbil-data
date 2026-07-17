@@ -128,6 +128,7 @@ class ML1MSample extends Serializable {
   var user_movie_rate_id_30days: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
 
   // User rating sequence for movies (movie genre, rating)
+  // 序列长度必须要与对应的user_movie_rate_ids一致, 目的是后续loopup后再做concat
   var user_movie_rate_genres: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
   var user_movie_rate_genre_1days: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
   var user_movie_rate_genre_3days: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
@@ -400,44 +401,32 @@ object ML1MSample {
             }
             if (dur > 0) {  // include only strictly historical ratings
               train_sample.user_movie_rate_ids.append((item_id, rate))
-              for (genre <- genres) {
-                train_sample.user_movie_rate_genres.append((genre, rate))
-              }
+              train_sample.user_movie_rate_genres.append((genres(0), rate))
               train_sample.user_rate_cnt += 1
             }
             if (dur > 0 && dur <= 1) {
               train_sample.user_movie_rate_id_1days.append((item_id, rate))
-              for (genre <- genres) {
-                train_sample.user_movie_rate_genre_1days.append((genre, rate))
-              }
+              train_sample.user_movie_rate_genre_1days.append((genres(0), rate))
               train_sample.user_rate_1day_cnt += 1
             }
             if (dur > 0 && dur <= 3) {
               train_sample.user_movie_rate_id_3days.append((item_id, rate))
-              for (genre <- genres) {
-                train_sample.user_movie_rate_genre_3days.append((genre, rate))
-              }
+              train_sample.user_movie_rate_genre_3days.append((genres(0), rate))
               train_sample.user_rate_3day_cnt += 1
             }
             if (dur > 0 && dur <= 7) {
               train_sample.user_movie_rate_id_7days.append((item_id, rate))
-              for (genre <- genres) {
-                train_sample.user_movie_rate_genre_7days.append((genre, rate))
-              }
+              train_sample.user_movie_rate_genre_7days.append((genres(0), rate))
               train_sample.user_rate_7day_cnt += 1
             }
             if (dur > 0 && dur <= 15) {
               train_sample.user_movie_rate_id_15days.append((item_id, rate))
-              for (genre <- genres) {
-                train_sample.user_movie_rate_genre_15days.append((genre, rate))
-              }
+              train_sample.user_movie_rate_genre_15days.append((genres(0), rate))
               train_sample.user_rate_15day_cnt += 1
             }
             if (dur > 0 && dur <= 30) {
               train_sample.user_movie_rate_id_30days.append((item_id, rate))
-              for (genre <- genres) {
-                train_sample.user_movie_rate_genre_30days.append((genre, rate))
-              }
+              train_sample.user_movie_rate_genre_30days.append((genres(0), rate))
               train_sample.user_rate_30day_cnt += 1
             }
 

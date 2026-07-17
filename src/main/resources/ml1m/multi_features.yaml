@@ -86,18 +86,18 @@ features:
   - {field_name: user_movie_rate_genre_15days, field_index: 103, field_type: 1, class_name: UserMovieRateGenre15Days, enabled: true}
 
   # ── User behaviors (no attention): recent genre rating sequences (shared vocabulary) ──
-  - {field_name: user_genres_rate, field_index: 103, field_type: 1, class_name: UserGenresRates, enabled: true}
-  - {field_name: user_genres_rate_1day, field_index: 103, field_type: 1, class_name: UserGenresRate1Days, enabled: true}
-  - {field_name: user_genres_rate_3day, field_index: 103, field_type: 1, class_name: UserGenresRate3Days, enabled: true}
-  - {field_name: user_genres_rate_7day, field_index: 103, field_type: 1, class_name: UserGenresRate7Days, enabled: true}
-  - {field_name: user_genres_rate_15day, field_index: 103, field_type: 1, class_name: UserGenresRate15Days, enabled: true}
+  - {field_name: user_genres_rate, field_index: 103, field_type: 1, class_name: UserGenresRates, enabled: false}
+  - {field_name: user_genres_rate_1day, field_index: 103, field_type: 1, class_name: UserGenresRate1Days, enabled: false}
+  - {field_name: user_genres_rate_3day, field_index: 103, field_type: 1, class_name: UserGenresRate3Days, enabled: false}
+  - {field_name: user_genres_rate_7day, field_index: 103, field_type: 1, class_name: UserGenresRate7Days, enabled: false}
+  - {field_name: user_genres_rate_15day, field_index: 103, field_type: 1, class_name: UserGenresRate15Days, enabled: false}
 
   # ── User behaviors (no attention): User recent genre rating counts (shared vocabulary) ──
-  - {field_name: user_genres_rate_cnts, field_index: 103, field_type: 1, class_name: UserGenresRateCnts, enabled: true}
-  - {field_name: user_genres_rate_cnt_1days, field_index: 103, field_type: 1, class_name: UserGenresRateCnt1Days, enabled: true}
-  - {field_name: user_genres_rate_cnt_3days, field_index: 103, field_type: 1, class_name: UserGenresRateCnt3Days, enabled: true}
-  - {field_name: user_genres_rate_cnt_7days, field_index: 103, field_type: 1, class_name: UserGenresRateCnt7Days, enabled: true}
-  - {field_name: user_genres_rate_cnt_15days, field_index: 103, field_type: 1, class_name: UserGenresRateCnt15Days, enabled: true}
+  - {field_name: user_genres_rate_cnts, field_index: 103, field_type: 1, class_name: UserGenresRateCnts, enabled: false}
+  - {field_name: user_genres_rate_cnt_1days, field_index: 103, field_type: 1, class_name: UserGenresRateCnt1Days, enabled: false}
+  - {field_name: user_genres_rate_cnt_3days, field_index: 103, field_type: 1, class_name: UserGenresRateCnt3Days, enabled: false}
+  - {field_name: user_genres_rate_cnt_7days, field_index: 103, field_type: 1, class_name: UserGenresRateCnt7Days, enabled: false}
+  - {field_name: user_genres_rate_cnt_15days, field_index: 103, field_type: 1, class_name: UserGenresRateCnt15Days, enabled: false}
 
   # ── User behaviors (no attention): User top genres ──
   - {field_name: user_top3_genres, field_index: 103, field_type: 1, class_name: UserTop3Genres, enabled: true}  # top-3 genres by rating frequency
