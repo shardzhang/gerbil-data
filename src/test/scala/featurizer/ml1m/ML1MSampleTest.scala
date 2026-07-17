@@ -76,9 +76,9 @@ class ML1MSampleTest extends WordSpec with Matchers {
         """{"user_movie_rate":"1:4:789123456,2:3:789123456"}""")
 
       val (sample, _) = ML1MSample.parseSample(row, movie_info)
-      assert(sample.user_movie_rates.nonEmpty)
+      assert(sample.user_movie_rate_ids.nonEmpty)
       assert(sample.user_rate_cnt > 0)
-      assert(sample.user_avg_rate > 0)
+      assert(sample.user_rate_avg > 0)
       assert(sample.user_rate_std >= 0)
       assert(sample.user_genres_rates.nonEmpty)
       assert(sample.user_top3_genres.nonEmpty)

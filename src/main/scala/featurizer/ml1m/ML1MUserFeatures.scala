@@ -120,9 +120,232 @@ class UserRateStd7Day(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSamp
   }
 }
 
+class UserRateStd7DayContinue(f_i: Int, f_n: String) extends ContinuousFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val v = try {
+      sample.user_rate_std_7day
+    } catch {
+      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}");
+        0.0F
+    }
+    raw_list.append(v.toString)
+    feature_list.append(1L)
+    value_list.append(v)
+    this
+  }
+}
+
+class UserRateStd15Day(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val v = try { sample.user_rate_std_15day } catch { case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}"); 0.0 }
+    val buck = v match {
+      case x if x <= 0.0 => 1
+      case x if x <= 1.0 => 2
+      case x if x <= 2.0 => 3
+      case _ => 4
+    }
+    raw_list.append(v.toString)
+    feature_list.append(buck)
+    value_list.append(1.0F)
+    this
+  }
+}
+
+class UserRateStd15DayContinue(f_i: Int, f_n: String) extends ContinuousFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val v = try {
+      sample.user_rate_std_15day
+    } catch {
+      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}");
+        0.0F
+    }
+    raw_list.append(v.toString)
+    feature_list.append(1L)
+    value_list.append(v)
+    this
+  }
+}
+
+class UserRateStd30Day(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val v = try {
+      sample.user_rate_std_30day
+    } catch {
+      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}");
+        0.0
+    }
+    val buck = v match {
+      case x if x <= 0.0 => 1
+      case x if x <= 1.0 => 2
+      case x if x <= 2.0 => 3
+      case _ => 4
+    }
+    raw_list.append(v.toString)
+    feature_list.append(buck)
+    value_list.append(1.0F)
+    this
+  }
+}
+
+class UserRateStd30DayContinue(f_i: Int, f_n: String) extends ContinuousFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val v = try {
+      sample.user_rate_std_30day
+    } catch {
+      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}");
+        0.0F
+    }
+    raw_list.append(v.toString)
+    feature_list.append(1L)
+    value_list.append(v)
+    this
+  }
+}
+
+
+class UserRateAvg(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val v = try {
+      sample.user_rate_avg
+    } catch {
+      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}"); 3.0
+    }
+    val buck = v match {
+      case x if x == 0.0 => 1
+      case x if x < 3.0 => 2
+      case x if x < 4.0 => 3
+      case _ => 4
+    }
+    raw_list.append(v.toString)
+    feature_list.append(buck)
+    value_list.append(1.0F)
+    this
+  }
+}
+
+class UserRateAvgContinue(f_i: Int, f_n: String) extends ContinuousFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val v = try { sample.user_rate_avg } catch { case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}"); 3.0F }
+    raw_list.append(v.toString)
+    feature_list.append(1L)
+    value_list.append(v)
+    this
+  }
+}
+
+class UserRateAvg7Day(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val v = try {
+      sample.user_rate_avg_7day
+    } catch {
+      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}"); 3.0
+    }
+    val buck = v match {
+      case x if x == 0.0 => 1
+      case x if x < 3.0 => 2
+      case x if x < 4.0 => 3
+      case _ => 4
+    }
+    raw_list.append(v.toString)
+    feature_list.append(buck)
+    value_list.append(1.0F)
+    this
+  }
+}
+
+class UserRateAvg7DayContinue(f_i: Int, f_n: String) extends ContinuousFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val v = try {
+      sample.user_rate_avg_7day
+    } catch {
+      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}");
+        3.0F
+    }
+    raw_list.append(v.toString)
+    feature_list.append(1L)
+    value_list.append(v)
+    this
+  }
+}
+
+class UserRateAvg15Day(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val v = try {
+      sample.user_rate_avg_15day
+    } catch {
+      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}"); 3.0
+    }
+    val buck = v match {
+      case x if x == 0.0 => 1
+      case x if x < 3.0 => 2
+      case x if x < 4.0 => 3
+      case _ => 4
+    }
+    raw_list.append(v.toString)
+    feature_list.append(buck)
+    value_list.append(1.0F)
+    this
+  }
+}
+
+class UserRateAvg15DayContinue(f_i: Int, f_n: String) extends ContinuousFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val v = try {
+      sample.user_rate_avg_15day
+    } catch {
+      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}");
+        3.0F
+    }
+    raw_list.append(v.toString)
+    feature_list.append(1L)
+    value_list.append(v)
+    this
+  }
+}
+
+class UserRateAvg30Day(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val v = try {
+      sample.user_rate_avg_30day
+    } catch {
+      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}"); 3.0
+    }
+    val buck = v match {
+      case x if x == 0.0 => 1
+      case x if x < 3.0 => 2
+      case x if x < 4.0 => 3
+      case _ => 4
+    }
+    raw_list.append(v.toString)
+    feature_list.append(buck)
+    value_list.append(1.0F)
+    this
+  }
+}
+
+class UserRateAvg30DayContinue(f_i: Int, f_n: String) extends ContinuousFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val v = try {
+      sample.user_rate_avg_30day
+    } catch {
+      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}");
+        3.0F
+    }
+    raw_list.append(v.toString)
+    feature_list.append(1L)
+    value_list.append(v)
+    this
+  }
+}
+
 class UserMovieRateCnt(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
   override def parse(sample: ML1MSample): RawFeature = {
-    val v = try { sample.user_rate_cnt } catch { case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}"); 0 }
+    val v = try {
+      sample.user_rate_cnt
+    } catch {
+      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}");
+        0
+    }
     val buck = v match {
       case x if x == 0 => 1
       case x if x <= 10 => 2
@@ -138,14 +361,36 @@ class UserMovieRateCnt(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSam
   }
 }
 
-class UserAvgRate(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
+class UserMovieRateCntContinue(f_i: Int, f_n: String) extends ContinuousFeature[ML1MSample](f_i, f_n) {
   override def parse(sample: ML1MSample): RawFeature = {
-    val v = try { sample.user_avg_rate } catch { case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}"); 3.0 }
+    val v = try {
+      sample.user_rate_cnt
+    } catch {
+      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}");
+        3.0F
+    }
+    raw_list.append(v.toString)
+    feature_list.append(1L)
+    value_list.append(v)
+    this
+  }
+}
+
+class UserMovieRate7DayCnt(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val v = try {
+      sample.user_rate_7day_cnt
+    } catch {
+      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}");
+        0
+    }
     val buck = v match {
-      case x if x == 0.0 => 1
-      case x if x < 3.0 => 2
-      case x if x < 4.0 => 3
-      case _ => 4
+      case x if x == 0 => 1
+      case x if x <= 10 => 2
+      case x if x <= 30 => 3
+      case x if x <= 50 => 4
+      case x if x <= 100 => 5
+      case _ => 6
     }
     raw_list.append(v.toString)
     feature_list.append(buck)
@@ -154,9 +399,52 @@ class UserAvgRate(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](
   }
 }
 
-class UserAvgRateContinue(f_i: Int, f_n: String) extends ContinuousFeature[ML1MSample](f_i, f_n) {
+class UserMovieRate7DayCntContinue(f_i: Int, f_n: String) extends ContinuousFeature[ML1MSample](f_i, f_n) {
   override def parse(sample: ML1MSample): RawFeature = {
-    val v = try { sample.user_avg_rate } catch { case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}"); 3.0F }
+    val v = try {
+      sample.user_rate_7day_cnt
+    } catch {
+      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}");
+        3.0F
+    }
+    raw_list.append(v.toString)
+    feature_list.append(1L)
+    value_list.append(v)
+    this
+  }
+}
+
+class UserMovieRate15DayCnt(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val v = try {
+      sample.user_rate_15day_cnt
+    } catch {
+      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}");
+        0
+    }
+    val buck = v match {
+      case x if x == 0 => 1
+      case x if x <= 10 => 2
+      case x if x <= 30 => 3
+      case x if x <= 50 => 4
+      case x if x <= 100 => 5
+      case _ => 6
+    }
+    raw_list.append(v.toString)
+    feature_list.append(buck)
+    value_list.append(1.0F)
+    this
+  }
+}
+
+class UserMovieRate15DayCntContinue(f_i: Int, f_n: String) extends ContinuousFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val v = try {
+      sample.user_rate_15day_cnt
+    } catch {
+      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}");
+        3.0F
+    }
     raw_list.append(v.toString)
     feature_list.append(1L)
     value_list.append(v)
@@ -180,6 +468,44 @@ class UserActiveDay(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample
     raw_list.append(days.toString)
     feature_list.append(buck)
     value_list.append(1.0F)
+    this
+  }
+}
+
+class UserMovieRate30DayCnt(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val v = try {
+      sample.user_rate_30day_cnt
+    } catch {
+      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}");
+        0
+    }
+    val buck = v match {
+      case x if x == 0 => 1
+      case x if x <= 10 => 2
+      case x if x <= 30 => 3
+      case x if x <= 50 => 4
+      case x if x <= 100 => 5
+      case _ => 6
+    }
+    raw_list.append(v.toString)
+    feature_list.append(buck)
+    value_list.append(1.0F)
+    this
+  }
+}
+
+class UserMovieRate30DayCntContinue(f_i: Int, f_n: String) extends ContinuousFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val v = try {
+      sample.user_rate_30day_cnt
+    } catch {
+      case e: Exception => green_println(s"Featurizer4ML1M parse error: ${e.getMessage}");
+        3.0F
+    }
+    raw_list.append(v.toString)
+    feature_list.append(1L)
+    value_list.append(v)
     this
   }
 }

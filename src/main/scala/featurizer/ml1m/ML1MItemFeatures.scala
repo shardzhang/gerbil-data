@@ -85,7 +85,7 @@ class MovieRateCount(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSampl
   }
 }
 
-class MovieAvgRate(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
+class MovieRateAvg(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
   override def parse(sample: ML1MSample): RawFeature = {
     val buck = sample.movie_avg_rate match {
       case x if x <= 0.0 => 1
@@ -105,7 +105,7 @@ class MovieAvgRate(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample]
   }
 }
 
-class MovieAvgRateContinue(f_i: Int, f_n: String) extends ContinuousFeature[ML1MSample](f_i, f_n) {
+class MovieRateAvgContinue(f_i: Int, f_n: String) extends ContinuousFeature[ML1MSample](f_i, f_n) {
   override def parse(sample: ML1MSample): RawFeature = {
     val avg = try {
       sample.movie_avg_rate.toFloat

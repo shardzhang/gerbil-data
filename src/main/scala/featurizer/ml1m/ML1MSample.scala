@@ -45,11 +45,11 @@ class ML1MSample extends Serializable {
     str.append(s"week_day: ${week_day}\n")
 
     // user_behavior
-    str.append(s"user_movie_rate: ${user_movie_rates.map(s => s._1 + ":" + s._2).mkString(",")}\n")
-    str.append(s"user_movie_rate_1days: ${user_movie_rate_1days.map(s => s._1 + ":" + s._2).mkString(",")}\n")
-    str.append(s"user_movie_rate_3days: ${user_movie_rate_3days.map(s => s._1 + ":" + s._2).mkString(",")}\n")
-    str.append(s"user_movie_rate_7days: ${user_movie_rate_7days.map(s => s._1 + ":" + s._2).mkString(",")}\n")
-    str.append(s"user_movie_rate_15days: ${user_movie_rate_15days.map(s => s._1 + ":" + s._2).mkString(",")}\n")
+    str.append(s"user_movie_rate: ${user_movie_rate_ids.map(s => s._1 + ":" + s._2).mkString(",")}\n")
+    str.append(s"user_movie_rate_1days: ${user_movie_rate_id_1days.map(s => s._1 + ":" + s._2).mkString(",")}\n")
+    str.append(s"user_movie_rate_3days: ${user_movie_rate_id_3days.map(s => s._1 + ":" + s._2).mkString(",")}\n")
+    str.append(s"user_movie_rate_7days: ${user_movie_rate_id_7days.map(s => s._1 + ":" + s._2).mkString(",")}\n")
+    str.append(s"user_movie_rate_15days: ${user_movie_rate_id_15days.map(s => s._1 + ":" + s._2).mkString(",")}\n")
 
     // target
     str.append(s"target: ${target}\n")
@@ -120,14 +120,27 @@ class ML1MSample extends Serializable {
 
   /** ***************************** user behavior *********************************** */
   // User rating sequence for movies (movie ID, rating)
-  var user_movie_rates: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
-  var user_movie_rate_1days: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
-  var user_movie_rate_3days: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
-  var user_movie_rate_7days: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
-  var user_movie_rate_15days: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
+  var user_movie_rate_ids: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
+  var user_movie_rate_id_1days: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
+  var user_movie_rate_id_3days: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
+  var user_movie_rate_id_7days: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
+  var user_movie_rate_id_15days: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
+  var user_movie_rate_id_30days: ArrayBuffer[(Int, Int)] = ArrayBuffer.empty[(Int, Int)]
+
+  // User rating sequence for movies (movie genre, rating)
+  var user_movie_rate_genres: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
+  var user_movie_rate_genre_1days: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
+  var user_movie_rate_genre_3days: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
+  var user_movie_rate_genre_7days: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
+  var user_movie_rate_genre_15days: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
+  var user_movie_rate_genre_30days: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
 
   // Total user rating count
   var user_rate_cnt: Int = 0
+  // User rating count 1-day
+  var user_rate_1day_cnt: Int = 0
+  // User rating count 3-day
+  var user_rate_3day_cnt: Int = 0
   // User rating count 7-day
   var user_rate_7day_cnt: Int = 0
   // User rating count 15-day
@@ -145,10 +158,10 @@ class ML1MSample extends Serializable {
   var user_rate_std_30day: Float = 0.0F
 
   // User average rating. Low-score users (<3), neutral 3, high-score preference (≥4)
-  var user_avg_rate: Float = 3.0F
-  var user_avg_rate_7day: Float = 3.0F
-  var user_avg_rate_15day: Float = 3.0F
-  var user_avg_rate_30day: Float = 3.0F
+  var user_rate_avg: Float = 3.0F
+  var user_rate_avg_7day: Float = 3.0F
+  var user_rate_avg_15day: Float = 3.0F
+  var user_rate_avg_30day: Float = 3.0F
 
   // User rating sequence by movie genre (genre, average rating of all movies in that genre)
   var user_genres_rates: ArrayBuffer[(String, Float)] = ArrayBuffer.empty[(String, Float)]
@@ -163,6 +176,7 @@ class ML1MSample extends Serializable {
   var user_genres_rate_cnt_3days: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
   var user_genres_rate_cnt_7days: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
   var user_genres_rate_cnt_15days: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
+  var user_genres_rate_cnt_30days: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
 
   // User's historical top 3 favorite movie genres and corresponding rating counts
   var user_top3_genres: ArrayBuffer[(String, Int)] = ArrayBuffer.empty[(String, Int)]
@@ -171,7 +185,7 @@ class ML1MSample extends Serializable {
   // User active days (cumulative distinct days with ratings)
   var user_active_day: Int = 0
   // Days since user registration (lifecycle)
-  var user_reg_day: Int = 0
+  var user_regist_day: Int = 0
   // Days since last behavior (silent days)
   var user_last_behavior_day: Int = 0
   // Days/years since movie release
@@ -355,7 +369,6 @@ object ML1MSample {
       // user_movie_rate
       val user_movie_rate_seq = user_behavior.getString("user_movie_rate")
       if (user_movie_rate_seq != null && user_movie_rate_seq.nonEmpty) {
-        val userMovieRate30Days = ArrayBuffer.empty[(Int, Int)]
         val user_genres_rate_map = mutable.Map[String, Float]().withDefaultValue(0.0f)
         val user_genres_rate_1day_map = mutable.Map[String, Float]().withDefaultValue(0.0f)
         val user_genres_rate_3day_map = mutable.Map[String, Float]().withDefaultValue(0.0f)
@@ -372,7 +385,7 @@ object ML1MSample {
             val item_id = parts(0).toInt
             val rate = parts(1).toInt
             val timestamp = parts(2)
-            val (_, genres) = movie_info.get(parts(0).toInt) match {
+            val (_, genres) = movie_info.get(item_id) match {
               case Some(tg) => tg
               case None => ("", Array.empty[String])
             }
@@ -386,25 +399,45 @@ object ML1MSample {
                 -1.0
             }
             if (dur > 0) {  // include only strictly historical ratings
-              train_sample.user_movie_rates.append((item_id, rate))
+              train_sample.user_movie_rate_ids.append((item_id, rate))
+              for (genre <- genres) {
+                train_sample.user_movie_rate_genres.append((genre, rate))
+              }
               train_sample.user_rate_cnt += 1
             }
             if (dur > 0 && dur <= 1) {
-              train_sample.user_movie_rate_1days.append((item_id, rate))
+              train_sample.user_movie_rate_id_1days.append((item_id, rate))
+              for (genre <- genres) {
+                train_sample.user_movie_rate_genre_1days.append((genre, rate))
+              }
+              train_sample.user_rate_1day_cnt += 1
             }
             if (dur > 0 && dur <= 3) {
-              train_sample.user_movie_rate_3days.append((item_id, rate))
+              train_sample.user_movie_rate_id_3days.append((item_id, rate))
+              for (genre <- genres) {
+                train_sample.user_movie_rate_genre_3days.append((genre, rate))
+              }
+              train_sample.user_rate_3day_cnt += 1
             }
             if (dur > 0 && dur <= 7) {
-              train_sample.user_movie_rate_7days.append((item_id, rate))
+              train_sample.user_movie_rate_id_7days.append((item_id, rate))
+              for (genre <- genres) {
+                train_sample.user_movie_rate_genre_7days.append((genre, rate))
+              }
               train_sample.user_rate_7day_cnt += 1
             }
             if (dur > 0 && dur <= 15) {
-              train_sample.user_movie_rate_15days.append((item_id, rate))
+              train_sample.user_movie_rate_id_15days.append((item_id, rate))
+              for (genre <- genres) {
+                train_sample.user_movie_rate_genre_15days.append((genre, rate))
+              }
               train_sample.user_rate_15day_cnt += 1
             }
             if (dur > 0 && dur <= 30) {
-              userMovieRate30Days.append((item_id, rate))
+              train_sample.user_movie_rate_id_30days.append((item_id, rate))
+              for (genre <- genres) {
+                train_sample.user_movie_rate_genre_30days.append((genre, rate))
+              }
               train_sample.user_rate_30day_cnt += 1
             }
 
@@ -434,15 +467,14 @@ object ML1MSample {
           }
         }
 
-        train_sample.user_avg_rate = parseUserAvgRate(train_sample.user_movie_rates)
-        train_sample.user_rate_std = parseUserRateStd(train_sample.user_movie_rates)
-        train_sample.user_avg_rate_7day = parseUserAvgRate(train_sample.user_movie_rate_7days)
-        train_sample.user_rate_std_7day = parseUserRateStd(train_sample.user_movie_rate_7days)
-        train_sample.user_avg_rate_15day = parseUserAvgRate(train_sample.user_movie_rate_15days)
-        train_sample.user_rate_std_15day = parseUserRateStd(train_sample.user_movie_rate_15days)
-        train_sample.user_avg_rate_30day = parseUserAvgRate(userMovieRate30Days)
-        train_sample.user_rate_std_30day = parseUserRateStd(userMovieRate30Days)
-
+        train_sample.user_rate_avg = parseUserAvgRate(train_sample.user_movie_rate_ids)
+        train_sample.user_rate_std = parseUserRateStd(train_sample.user_movie_rate_ids)
+        train_sample.user_rate_avg_7day = parseUserAvgRate(train_sample.user_movie_rate_id_7days)
+        train_sample.user_rate_std_7day = parseUserRateStd(train_sample.user_movie_rate_id_7days)
+        train_sample.user_rate_avg_15day = parseUserAvgRate(train_sample.user_movie_rate_id_15days)
+        train_sample.user_rate_std_15day = parseUserRateStd(train_sample.user_movie_rate_id_15days)
+        train_sample.user_rate_avg_30day = parseUserAvgRate(train_sample.user_movie_rate_id_30days)
+        train_sample.user_rate_std_30day = parseUserRateStd(train_sample.user_movie_rate_id_30days)
         for ((gen, total_rate) <- user_genres_rate_map) {
           val total_cnt = user_genres_rate_cnt_map(gen)
           train_sample.user_genres_rates.append((gen, total_rate / total_cnt))

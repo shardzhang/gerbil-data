@@ -23,28 +23,34 @@ features:
   - {field_name: user_rate_std_30day, field_index: 9, field_type: 1, class_name: UserRateStd30Day, enabled: true}
 
   # ── User rating stddev (continuous) ──
-  - {field_name: user_rate_std_continue, field_index: 18, field_type: 0, class_name: UserRateStdContinue, enabled: true}
-  - {field_name: user_rate_std_7day_continue, field_index: 19, field_type: 0, class_name: UserRateStd7DayContinue, enabled: true}
-  - {field_name: user_rate_std_15day_continue, field_index: 21, field_type: 0, class_name: UserRateStd15DayContinue, enabled: true}
-  - {field_name: user_rate_std_30day_continue, field_index: 22, field_type: 0, class_name: UserRateStd30DayContinue, enabled: true}
+  - {field_name: user_rate_std_continue, field_index: 10, field_type: 0, class_name: UserRateStdContinue, enabled: true}
+  - {field_name: user_rate_std_7day_continue, field_index: 11, field_type: 0, class_name: UserRateStd7DayContinue, enabled: true}
+  - {field_name: user_rate_std_15day_continue, field_index: 12, field_type: 0, class_name: UserRateStd15DayContinue, enabled: true}
+  - {field_name: user_rate_std_30day_continue, field_index: 13, field_type: 0, class_name: UserRateStd30DayContinue, enabled: true}
+
+  # ── User rating avg (bucketed) ──
+  - {field_name: user_rate_avg, field_index: 14, field_type: 1, class_name: UserRateAvg, enabled: true}
+  - {field_name: user_rate_avg_7day, field_index: 15, field_type: 1, class_name: UserRateAvg7Day, enabled: true}
+  - {field_name: user_rate_avg_15day, field_index: 16, field_type: 1, class_name: UserRateAvg15Day, enabled: true}
+  - {field_name: user_rate_avg_30day, field_index: 17, field_type: 1, class_name: UserRateAvg30Day, enabled: true}
+
+  # ── User rating avg (continuous) ──
+  - {field_name: user_rate_avg_continue, field_index: 18, field_type: 0, class_name: UserRateAvgContinue, enabled: true}
+  - {field_name: user_rate_avg_7day_continue, field_index: 19, field_type: 0, class_name: UserRateAvg7DayContinue, enabled: true}
+  - {field_name: user_rate_avg_15day_continue, field_index: 20, field_type: 0, class_name: UserRateAvg15DayContinue, enabled: true}
+  - {field_name: user_rate_avg_30day_continue, field_index: 21, field_type: 0, class_name: UserRateAvg30DayContinue, enabled: true}
 
   # ── User rating count (bucketed) ──
-  - {field_name: user_movie_rate_cnt, field_index: 10, field_type: 1, class_name: UserMovieRateCnt, enabled: true}
-  - {field_name: user_movie_rate_cnt_7day, field_index: 11, field_type: 1, class_name: UserMovieRateCnt7Day, enabled: true}
-  - {field_name: user_movie_rate_cnt_15day, field_index: 12, field_type: 1, class_name: UserMovieRateCnt15Day, enabled: true}
-  - {field_name: user_movie_rate_cnt_30day, field_index: 13, field_type: 1, class_name: UserMovieRateCnt30Day, enabled: true}
+  - {field_name: user_movie_rate_cnt, field_index: 22, field_type: 1, class_name: UserMovieRateCnt, enabled: true}
+  - {field_name: user_movie_rate_cnt_7day, field_index: 23, field_type: 1, class_name: UserMovieRateCnt7Day, enabled: true}
+  - {field_name: user_movie_rate_cnt_15day, field_index: 24, field_type: 1, class_name: UserMovieRateCnt15Day, enabled: true}
+  - {field_name: user_movie_rate_cnt_30day, field_index: 25, field_type: 1, class_name: UserMovieRateCnt30Day, enabled: true}
 
-  # ── User avg rating (bucketed) ──
-  - {field_name: user_avg_rate, field_index: 14, field_type: 1, class_name: UserAvgRate, enabled: true}
-  - {field_name: user_avg_rate_7day, field_index: 15, field_type: 1, class_name: UserAvgRate7Day, enabled: true}
-  - {field_name: user_avg_rate_15day, field_index: 16, field_type: 1, class_name: UserAvgRate15Day, enabled: true}
-  - {field_name: user_avg_rate_30day, field_index: 17, field_type: 1, class_name: UserAvgRate30Day, enabled: true}
-
-  # ── User avg rating (continuous) ──
-  - {field_name: user_avg_rate_continue, field_index: 23, field_type: 0, class_name: UserAvgRateContinue, enabled: true}
-  - {field_name: user_avg_rate_7day_continue, field_index: 24, field_type: 0, class_name: UserAvgRate7DayContinue, enabled: true}
-  - {field_name: user_avg_rate_15day_continue, field_index: 25, field_type: 0, class_name: UserAvgRate15DayContinue, enabled: true}
-  - {field_name: user_avg_rate_30day_continue, field_index: 26, field_type: 0, class_name: UserAvgRate30DayContinue, enabled: true}
+  # ── User rating count (continuous) ──
+  - {field_name: user_movie_rate_cnt_continue, field_index: 26, field_type: 0, class_name: UserMovieRateCntContinue, enabled: true}
+  - {field_name: user_movie_rate_cnt_7day_continue, field_index: 27, field_type: 0, class_name: UserMovieRateCnt7DayContinue, enabled: true}
+  - {field_name: user_movie_rate_cnt_15day_continue, field_index: 28, field_type: 0, class_name: UserMovieRateCnt15DayContinue, enabled: true}
+  - {field_name: user_movie_rate_cnt_30day_continue, field_index: 29, field_type: 0, class_name: UserMovieRateCnt30DayContinue, enabled: true}
 
   # ── Item ID ──
   - {field_name: movie_id, field_index: 101, field_type: 1, class_name: MovieID, enabled: false}  # movie ID
@@ -53,11 +59,11 @@ features:
   - {field_name: movie_title, field_index: 102, field_type: 1, class_name: MovieTitle, enabled: false}  # tokenized title (multi-value)
   - {field_name: movie_genres, field_index: 103, field_type: 1, class_name: MovieGenres, enabled: false}  # genre list (multi-value)
   - {field_name: movie_rate_count, field_index: 104, field_type: 1, class_name: MovieRateCount, enabled: false}  # total ratings (bucketed)
-  - {field_name: movie_avg_rate, field_index: 105, field_type: 1, class_name: MovieAvgRate, enabled: false}  # average rating (bucketed)
+  - {field_name: movie_rate_avg, field_index: 105, field_type: 1, class_name: MovieRateAvg, enabled: false}  # average rating (bucketed)
   - {field_name: movie_genre_cnt, field_index: 106, field_type: 1, class_name: MovieGenreCnt, enabled: false}  # number of genres
   - {field_name: item_hot_rank, field_index: 107, field_type: 1, class_name: MovieHotRank, enabled: false}  # popularity rank (bucketed)
   - {field_name: movie_publish_year, field_index: 108, field_type: 1, class_name: MoviePublishYear, enabled: false}  # release year (bucketed)
-  - {field_name: movie_avg_rate_continue, field_index: 109, field_type: 0, class_name: MovieAvgRateContinue, enabled: false}  # average rating (continuous)
+  - {field_name: movie_rate_avg_continue, field_index: 109, field_type: 0, class_name: MovieRateAvgContinue, enabled: false}  # average rating (continuous)
 
   # ── Context features ──
   - {field_name: context_time_hour, field_index: 201, field_type: 1, class_name: ContextTimeHour, enabled: true}  # hour of day (0-23)
@@ -65,31 +71,38 @@ features:
   - {field_name: context_time_week, field_index: 203, field_type: 1, class_name: ContextTimeWeek, enabled: true}  # day of week (1-7)
   - {field_name: context_is_weekend, field_index: 204, field_type: 1, class_name: IsWeekend, enabled: true}  # whether it is weekend
 
-  # ── User behavior: recent movie rating sequences ──
-  - {field_name: user_movie_rate, field_index: 101, field_type: 1, class_name: UserMovieRate, enabled: false}
-  - {field_name: user_movie_rate_1day, field_index: 101, field_type: 1, class_name: UserMovieRate1Day, enabled: false}
-  - {field_name: user_movie_rate_3day, field_index: 101, field_type: 1, class_name: UserMovieRate3Day, enabled: false}
-  - {field_name: user_movie_rate_7day, field_index: 101, field_type: 1, class_name: UserMovieRate7Day, enabled: false}
-  - {field_name: user_movie_rate_15day, field_index: 101, field_type: 1, class_name: UserMovieRate15Day, enabled: false}
+  # ── User behaviors (attention): recent movie rating ids sequences (shared vocabulary) ──
+  - {field_name: user_movie_rate_ids, field_index: 101, field_type: 1, class_name: UserMovieRateIds, enabled: false}
+  - {field_name: user_movie_rate_id_1days, field_index: 101, field_type: 1, class_name: UserMovieRateId1Days, enabled: false}
+  - {field_name: user_movie_rate_id_3days, field_index: 101, field_type: 1, class_name: UserMovieRateId3Days, enabled: false}
+  - {field_name: user_movie_rate_id_7days, field_index: 101, field_type: 1, class_name: UserMovieRateId7Days, enabled: false}
+  - {field_name: user_movie_rate_id_15days, field_index: 101, field_type: 1, class_name: UserMovieRateId15Days, enabled: false}
 
-  # ── User behavior: recent genre rating sequences ──
-  - {field_name: user_genres_rate, field_index: 103, field_type: 1, class_name: UserGenresRate, enabled: true}
-  - {field_name: user_genres_rate_1day, field_index: 103, field_type: 1, class_name: UserGenresRate1Day, enabled: true}
-  - {field_name: user_genres_rate_3day, field_index: 103, field_type: 1, class_name: UserGenresRate3Day, enabled: true}
-  - {field_name: user_genres_rate_7day, field_index: 103, field_type: 1, class_name: UserGenresRate7Day, enabled: true}
-  - {field_name: user_genres_rate_15day, field_index: 103, field_type: 1, class_name: UserGenresRate15Day, enabled: true}
+  # ── User behaviors (attention): recent movie rating category sequences (shared vocabulary) ──
+  - {field_name: user_movie_rate_genres, field_index: 103, field_type: 1, class_name: UserMovieRateGenres, enabled: true}
+  - {field_name: user_movie_rate_genre_1days, field_index: 103, field_type: 1, class_name: UserMovieRateGenre1Days, enabled: true}
+  - {field_name: user_movie_rate_genre_3days, field_index: 103, field_type: 1, class_name: UserMovieRateGenre3Days, enabled: true}
+  - {field_name: user_movie_rate_genre_7days, field_index: 103, field_type: 1, class_name: UserMovieRateGenre7Days, enabled: true}
+  - {field_name: user_movie_rate_genre_15days, field_index: 103, field_type: 1, class_name: UserMovieRateGenre15Days, enabled: true}
 
-  # ── User behavior: recent genre rating counts ──
-  - {field_name: user_genres_rate_cnts, field_index: 312, field_type: 1, class_name: UserGenresRateCnts, enabled: true}
-  - {field_name: user_genres_rate_cnt_1days, field_index: 313, field_type: 1, class_name: UserGenresRateCnt1Days, enabled: true}
-  - {field_name: user_genres_rate_cnt_3days, field_index: 314, field_type: 1, class_name: UserGenresRateCnt3Days, enabled: true}
-  - {field_name: user_genres_rate_cnt_7days, field_index: 315, field_type: 1, class_name: UserGenresRateCnt7Days, enabled: true}
-  - {field_name: user_genres_rate_cnt_15days, field_index: 316, field_type: 1, class_name: UserGenresRateCnt15Days, enabled: true}
+  # ── User behaviors (no attention): recent genre rating sequences (shared vocabulary) ──
+  - {field_name: user_genres_rate, field_index: 103, field_type: 1, class_name: UserGenresRates, enabled: true}
+  - {field_name: user_genres_rate_1day, field_index: 103, field_type: 1, class_name: UserGenresRate1Days, enabled: true}
+  - {field_name: user_genres_rate_3day, field_index: 103, field_type: 1, class_name: UserGenresRate3Days, enabled: true}
+  - {field_name: user_genres_rate_7day, field_index: 103, field_type: 1, class_name: UserGenresRate7Days, enabled: true}
+  - {field_name: user_genres_rate_15day, field_index: 103, field_type: 1, class_name: UserGenresRate15Days, enabled: true}
 
-  # ── User top genres ──
-  - {field_name: user_top3_genres, field_index: 317, field_type: 1, class_name: UserTop3Genres, enabled: true}  # top-3 genres by rating frequency
+  # ── User behaviors (no attention): User recent genre rating counts (shared vocabulary) ──
+  - {field_name: user_genres_rate_cnts, field_index: 103, field_type: 1, class_name: UserGenresRateCnts, enabled: true}
+  - {field_name: user_genres_rate_cnt_1days, field_index: 103, field_type: 1, class_name: UserGenresRateCnt1Days, enabled: true}
+  - {field_name: user_genres_rate_cnt_3days, field_index: 103, field_type: 1, class_name: UserGenresRateCnt3Days, enabled: true}
+  - {field_name: user_genres_rate_cnt_7days, field_index: 103, field_type: 1, class_name: UserGenresRateCnt7Days, enabled: true}
+  - {field_name: user_genres_rate_cnt_15days, field_index: 103, field_type: 1, class_name: UserGenresRateCnt15Days, enabled: true}
 
-  # ── Same-genre watch sequences ──
+  # ── User behaviors (no attention): User top genres ──
+  - {field_name: user_top3_genres, field_index: 103, field_type: 1, class_name: UserTop3Genres, enabled: true}  # top-3 genres by rating frequency
+
+  # ── Hit: Same-genre watch sequences ──
   - {field_name: user_watch_same_genre, field_index: 351, field_type: 1, class_name: UserWatchSameGenre, enabled: true}
   - {field_name: user_watch_same_genre_1day, field_index: 352, field_type: 1, class_name: UserWatchSameGenre1Day, enabled: true}
   - {field_name: user_watch_same_genre_3day, field_index: 353, field_type: 1, class_name: UserWatchSameGenre3Day, enabled: true}
@@ -107,9 +120,9 @@ cross_features:
   - {field_name: movie_genres_xx_user_genres_rate_1day, field_index: 402, depends: [movie_genres, user_genres_rate_1day], enabled: false}
   - {field_name: movie_publish_year_xx_user_age, field_index: 406, depends: [movie_publish_year, user_age], enabled: false}
   - {field_name: movie_rate_count_xx_user_rate_std, field_index: 410, depends: [movie_rate_count, user_rate_std], enabled: false}
-  - {field_name: movie_hot_rank_xx_user_avg_rate, field_index: 411, depends: [item_hot_rank, user_avg_rate], enabled: false}
-  - {field_name: movie_publish_year_xx_user_avg_rate, field_index: 412, depends: [movie_publish_year, user_avg_rate], enabled: false}
-  - {field_name: movie_genre_cnt_xx_user_avg_rate, field_index: 413, depends: [movie_genre_cnt, user_avg_rate], enabled: false}
+  - {field_name: movie_hot_rank_xx_user_rate_avg, field_index: 411, depends: [item_hot_rank, user_rate_avg], enabled: false}
+  - {field_name: movie_publish_year_xx_user_rate_avg, field_index: 412, depends: [movie_publish_year, user_rate_avg], enabled: false}
+  - {field_name: movie_genre_cnt_xx_user_rate_avg, field_index: 413, depends: [movie_genre_cnt, user_rate_avg], enabled: false}
   - {field_name: movie_hot_rank_xx_user_genre_avg_rate, field_index: 414, depends: [item_hot_rank, user_same_genre_avg_rate], enabled: false}
   - {field_name: movie_genres_xx_user_gender, field_index: 417, depends: [movie_genres, user_gender], enabled: false}
   - {field_name: movie_genres_xx_user_occupation, field_index: 418, depends: [movie_genres, user_occupation], enabled: false}
@@ -121,7 +134,7 @@ cross_features:
   - {field_name: movie_genres_xx_user_age_xx_user_gender, field_index: 460, depends: [movie_genres, user_age, user_gender], enabled: false}
   - {field_name: movie_genres_xx_user_gender_xx_user_occupation, field_index: 461, depends: [movie_genres, user_gender, user_occupation], enabled: false}
   - {field_name: movie_publish_year_xx_user_age_xx_user_occupation, field_index: 462, depends: [movie_publish_year, user_age, user_occupation], enabled: false}
-  - {field_name: movie_avg_rate_xx_movie_hot_rank_xx_user_avg_rate, field_index: 463, depends: [movie_avg_rate, item_hot_rank, user_avg_rate], enabled: false}
-  - {field_name: movie_genre_cnt_xx_user_total_rate_cnt_xx_user_avg_rate, field_index: 465, depends: [movie_genre_cnt, user_movie_rate_cnt, user_avg_rate], enabled: false}
+  - {field_name: movie_rate_avg_xx_movie_hot_rank_xx_user_rate_avg, field_index: 463, depends: [movie_rate_avg, item_hot_rank, user_rate_avg], enabled: false}
+  - {field_name: movie_genre_cnt_xx_user_total_rate_cnt_xx_user_rate_avg, field_index: 465, depends: [movie_genre_cnt, user_movie_rate_cnt, user_rate_avg], enabled: false}
   - {field_name: movie_genre_cnt_xx_movie_hot_rank_xx_user_genre_avg_rate, field_index: 466, depends: [movie_genre_cnt, item_hot_rank, user_same_genre_avg_rate], enabled: false}
-  - {field_name: movie_publish_year_xx_movie_avg_rate_xx_user_avg_rate, field_index: 467, depends: [movie_publish_year, movie_avg_rate, user_avg_rate], enabled: false}
+  - {field_name: movie_publish_year_xx_movie_rate_avg_xx_user_rate_avg, field_index: 467, depends: [movie_publish_year, movie_rate_avg, user_rate_avg], enabled: false}

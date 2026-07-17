@@ -120,20 +120,20 @@ class ML1MItemFeaturesTest extends WordSpec with Matchers {
   "MovieAvgRate" should {
     "bucket 0.0 to 1" in {
       val s = sample(); s.movie_avg_rate = 0.0
-      val f = new MovieAvgRate(105, "movie_avg_rate")
+      val f = new MovieRateAvg(105, "movie_avg_rate")
       f.parse(s)
       assert(f.feature_list.head === 1)
     }
 
     "bucket 4.2 to 8" in {
-      val f = new MovieAvgRate(105, "movie_avg_rate")
+      val f = new MovieRateAvg(105, "movie_avg_rate")
       f.parse(sample())
       assert(f.feature_list.head === 8)
     }
 
     "bucket >4.5 to 9" in {
       val s = sample(); s.movie_avg_rate = 4.8
-      val f = new MovieAvgRate(105, "movie_avg_rate")
+      val f = new MovieRateAvg(105, "movie_avg_rate")
       f.parse(s)
       assert(f.feature_list.head === 9)
     }
@@ -141,7 +141,7 @@ class ML1MItemFeaturesTest extends WordSpec with Matchers {
 
   "MovieAvgRateContinue" should {
     "use raw value" in {
-      val f = new MovieAvgRateContinue(109, "movie_avg_rate_continue")
+      val f = new MovieRateAvgContinue(109, "movie_avg_rate_continue")
       f.parse(sample())
       assert(f.raw_list.head === "4.2")
       assert(f.feature_list.head === 1L)
@@ -149,7 +149,7 @@ class ML1MItemFeaturesTest extends WordSpec with Matchers {
     }
 
     "handle exception with 0" in {
-      val f = new MovieAvgRateContinue(109, "movie_avg_rate_continue")
+      val f = new MovieRateAvgContinue(109, "movie_avg_rate_continue")
       assert(f.isInstanceOf[ContinuousFeature[ML1MSample]])
     }
   }
@@ -241,8 +241,8 @@ class ML1MItemFeaturesTest extends WordSpec with Matchers {
       assert(new MovieTitle(102, "movie_title").field_type === FieldType.Categorical)
       assert(new MovieGenres(103, "movie_genres").field_type === FieldType.Categorical)
       assert(new MovieRateCount(104, "movie_rate_count").field_type === FieldType.Categorical)
-      assert(new MovieAvgRate(105, "movie_avg_rate").field_type === FieldType.Categorical)
-      assert(new MovieAvgRateContinue(109, "movie_avg_rate_continue").field_type === FieldType.Continuous)
+      assert(new MovieRateAvg(105, "movie_avg_rate").field_type === FieldType.Categorical)
+      assert(new MovieRateAvgContinue(109, "movie_avg_rate_continue").field_type === FieldType.Continuous)
       assert(new MovieGenreCnt(106, "movie_genre_cnt").field_type === FieldType.Categorical)
       assert(new MovieHotRank(107, "item_hot_rank").field_type === FieldType.Categorical)
       assert(new MoviePublishYear(108, "movie_publish_year").field_type === FieldType.Categorical)

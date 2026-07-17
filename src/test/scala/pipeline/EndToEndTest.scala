@@ -123,8 +123,8 @@ class EndToEndTest extends WordSpecLike with Matchers with BeforeAndAfterAll {
       assert(sample2.age === "35")
 
       // Verify behavior sequences were parsed
-      assert(sample1.user_movie_rates.nonEmpty)
-      assert(sample2.user_movie_rates.nonEmpty)
+      assert(sample1.user_movie_rate_ids.nonEmpty)
+      assert(sample2.user_movie_rate_ids.nonEmpty)
     }
   }
 }

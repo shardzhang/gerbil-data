@@ -29,8 +29,8 @@ class ML1MFeaturizerTest extends WordSpec with Matchers {
     s.week_day = 3
     s.user_rate_std = 1.5F
     s.user_rate_cnt = 50
-    s.user_avg_rate = 3.5F
-    s.user_movie_rates = ArrayBuffer((1, 4), (2, 3), (3, 5))
+    s.user_rate_avg = 3.5F
+    s.user_movie_rate_ids = ArrayBuffer((1, 4), (2, 3), (3, 5))
     s.user_genres_rates = ArrayBuffer(("animation", 3.5F), ("comedy", 4.0F))
     s.user_genres_rate_cnts = ArrayBuffer(("animation", 5), ("comedy", 3))
     s.user_top3_genres = ArrayBuffer(("animation", 5), ("comedy", 3))

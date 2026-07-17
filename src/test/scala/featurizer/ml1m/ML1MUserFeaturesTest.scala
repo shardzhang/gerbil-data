@@ -22,10 +22,10 @@ class ML1MUserFeaturesTest extends WordSpec with Matchers {
     s.user_rate_7day_cnt = 10
     s.user_rate_15day_cnt = 20
     s.user_rate_30day_cnt = 30
-    s.user_avg_rate = 3.5F
-    s.user_avg_rate_7day = 3.0F
-    s.user_avg_rate_15day = 4.0F
-    s.user_avg_rate_30day = 2.5F
+    s.user_rate_avg = 3.5F
+    s.user_rate_avg_7day = 3.0F
+    s.user_rate_avg_15day = 4.0F
+    s.user_rate_avg_30day = 2.5F
     s.movie_genres = ArrayBuffer("animation", "comedy")
     s.user_genres_rates = ArrayBuffer(("animation", 3.5F), ("comedy", 4.0F))
     s.user_genres_rate_1days = ArrayBuffer(("action", 4.0F))
@@ -175,25 +175,25 @@ class ML1MUserFeaturesTest extends WordSpec with Matchers {
 
   "UserAvgRate" should {
     "bucket 3.5 to 3" in {
-      val f = new UserAvgRate(14, "user_avg_rate")
+      val f = new UserRateAvg(14, "user_avg_rate")
       f.parse(baseSample())
       assert(f.feature_list.head === 3)
     }
     "bucket 0.0 to 1" in {
-      val s = baseSample(); s.user_avg_rate = 0.0F
-      val f = new UserAvgRate(14, "user_avg_rate")
+      val s = baseSample(); s.user_rate_avg = 0.0F
+      val f = new UserRateAvg(14, "user_avg_rate")
       f.parse(s)
       assert(f.feature_list.head === 1)
     }
     "bucket 2.0 to 2" in {
-      val s = baseSample(); s.user_avg_rate = 2.0F
-      val f = new UserAvgRate(14, "user_avg_rate")
+      val s = baseSample(); s.user_rate_avg = 2.0F
+      val f = new UserRateAvg(14, "user_avg_rate")
       f.parse(s)
       assert(f.feature_list.head === 2)
     }
     "bucket >=4 to 4" in {
-      val s = baseSample(); s.user_avg_rate = 4.5F
-      val f = new UserAvgRate(14, "user_avg_rate")
+      val s = baseSample(); s.user_rate_avg = 4.5F
+      val f = new UserRateAvg(14, "user_avg_rate")
       f.parse(s)
       assert(f.feature_list.head === 4)
     }
@@ -201,7 +201,7 @@ class ML1MUserFeaturesTest extends WordSpec with Matchers {
 
   "UserAvgRateContinue" should {
     "use raw value" in {
-      val f = new UserAvgRateContinue(23, "user_avg_rate_continue")
+      val f = new UserRateAvgContinue(23, "user_avg_rate_continue")
       f.parse(baseSample())
       assert(f.value_list.head === 3.5F)
     }
@@ -311,7 +311,7 @@ class ML1MUserFeaturesTest extends WordSpec with Matchers {
       assert(new UserAge(2, "user_age").field_type === FieldType.Categorical)
       assert(new UserGender(3, "user_gender").field_type === FieldType.Categorical)
       assert(new UserRateStdContinue(18, "user_rate_std_continue").field_type === FieldType.Continuous)
-      assert(new UserAvgRateContinue(23, "user_avg_rate_continue").field_type === FieldType.Continuous)
+      assert(new UserRateAvgContinue(23, "user_avg_rate_continue").field_type === FieldType.Continuous)
       assert(new UserSameGenreAvgRateContinue(357, "user_same_genre_avg_rate_continue").field_type === FieldType.Continuous)
     }
   }
