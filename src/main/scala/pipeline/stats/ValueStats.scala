@@ -39,7 +39,8 @@ final case class PosInfo(pos: Int, sum: Double = 0.0D, powerSum: Double = 0.0D, 
       return 1.0D
     }
     val variance = math.max(powerSum * 1.0 / count - math.pow(mean, 2), 0.0D)
-    math.sqrt(variance + 0.000001D)
+    val safe_variance = math.max(variance, 0.000001D)
+    math.sqrt(safe_variance)
   }
 
   /** Merges this position info with new statistics (e.g. from a subsequent run). */
