@@ -2,6 +2,7 @@ package pipeline
 
 import featurizer.Featurizer
 import featurizer.mobilerec.{MobileRecFeaturizer, MobileRecSample}
+import pipeline.stats.{Accumulator, WelfordAccumulator}
 import org.apache.commons.cli.{DefaultParser, Options}
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.rdd.RDD
@@ -19,6 +20,8 @@ object MobileRecPipeline extends Pipeline[MobileRecSample] {
   override def featurizer: Featurizer[MobileRecSample] = {
     new MobileRecFeaturizer(featureConfigPath, targetMode).setup()
   }
+
+  override def createAccumulator(): Accumulator = new WelfordAccumulator()
 
   override def loadTrainingSamples(spark: SparkSession, inputDir: String, parts: Int): RDD[(MobileRecSample, Boolean)] = {
     spark.read

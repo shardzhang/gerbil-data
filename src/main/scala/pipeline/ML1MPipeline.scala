@@ -8,6 +8,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 import featurizer.Featurizer
 import featurizer.ml1m.{ML1MSample, ML1MFeaturizer}
+import pipeline.stats.{Accumulator, WelfordAccumulator}
 import utils.LogUtils.green_println
 import utils.LogUtils.setLogLevel
 
@@ -28,6 +29,8 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
   override def featurizer: Featurizer[ML1MSample] = {
     new ML1MFeaturizer(featureConfigPath, targetMode).setup()
   }
+
+  override def createAccumulator(): Accumulator = new WelfordAccumulator()
 
   /** Load ML1M join_sample CSV, parse with movie info, and return RDD of samples. */
   override def loadTrainingSamples(spark: SparkSession, inputDir: String, parts: Int): RDD[(ML1MSample, Boolean)] = {

@@ -277,4 +277,56 @@ class ValueStatsTest extends WordSpec with Matchers {
       assert(p.powerSum === 0.0)
     }
   }
+
+  "Accumulator" should {
+    "SOSAccumulator toPosInfo produces correct PosInfo" in {
+      val s = new SOSAccumulator()
+      s.add(2.0F)
+      s.add(4.0F)
+      s.add(6.0F)
+      val pi = s.toPosInfo(7)
+      assert(pi.pos === 7)
+      assert(pi.count === 3L)
+      assert(pi.sum === 12.0)
+      assert(pi.powerSum === 56.0)
+      assert(pi.mean === 4.0)
+    }
+
+    "WelfordAccumulator toPosInfo produces correct PosInfo" in {
+      val w = new WelfordAccumulator()
+      w.add(2.0F)
+      w.add(4.0F)
+      w.add(6.0F)
+      val pi = w.toPosInfo(7)
+      assert(pi.pos === 7)
+      assert(pi.count === 3L)
+      assert(math.abs(pi.welfordMean - 4.0) < 1e-12)
+      assert(math.abs(pi.welfordM2 - 8.0) < 1e-12)
+      assert(math.abs(pi.mean - 4.0) < 1e-12)
+    }
+
+    "SOSAccumulator mergeIntoPosInfo works" in {
+      val existing = PosInfo(pos = 5, sum = 10.0, powerSum = 30.0, count = 5L)
+      val s = new SOSAccumulator()
+      s.add(5.0F)
+      s.add(5.0F)
+      val merged = s.mergeIntoPosInfo(existing, 3)
+      assert(merged.pos === 3)
+      assert(merged.sum === 20.0)
+      assert(merged.powerSum === 80.0)
+      assert(merged.count === 7L)
+    }
+
+    "WelfordAccumulator mergeIntoPosInfo works" in {
+      val existing = PosInfo(pos = 5, sum = 0.0, powerSum = 0.0, count = 0L)
+      val w = new WelfordAccumulator()
+      w.add(2.0F)
+      w.add(4.0F)
+      w.add(6.0F)
+      val merged = w.mergeIntoPosInfo(existing, 3)
+      assert(merged.pos === 3)
+      assert(merged.count === 3L)
+      assert(math.abs(merged.mean - 4.0) < 1e-12)
+    }
+  }
 }

@@ -11,7 +11,7 @@ import org.apache.spark.storage.StorageLevel
 import featurizer.{Featurizer, FieldType}
 import utils.LogUtils.green_println
 import pipeline.serde.{BaseRecord, TFRecord, ParquetRecord, Vocabulary}
-import pipeline.stats.{DataQualityTracker, PosInfo, SOSAccumulator}
+import pipeline.stats.{Accumulator, SOSAccumulator, WelfordAccumulator, DataQualityTracker, PosInfo}
 
 
 /**
@@ -49,6 +49,10 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     case "tfrecord" => new TFRecord[T](() => featurizer, max_dim)
     case "parquet"  => new ParquetRecord[T](() => featurizer, max_dim)
   }
+
+  /** Factory: creates the accumulator used for per-feature-value statistics.
+   *  Override to choose between SOSAccumulator and WelfordAccumulator. */
+  def createAccumulator(): Accumulator = new SOSAccumulator()
 
   /** Loads and parses raw training samples from the given input directory. */
   def loadTrainingSamples(spark: SparkSession, inputDir: String, parts: Int): RDD[(T, Boolean)]
@@ -214,18 +218,18 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     green_println(s"old posMap.size: ${posMap.size}.")
     green_println(s"old posDim.size: ${posDim.size}.")
 
-    /** Collect hash statistics across all samples: aggregates sum/powerSum/count per (f_name, f_index, f_type, hash) key */
-    val trainSample: Array[((String, Int, Byte, Long), SOSAccumulator)] = trainingSample
+    /** Collect hash statistics across all samples: aggregates per (f_name, f_index, f_type, hash) key */
+    val trainSample: Array[((String, Int, Byte, Long), Accumulator)] = trainingSample
       .filter(r => r._2)
       .map { case (sample, _) => sample }
       .mapPartitions(samples => {
         val encoder = featurizer
-        val posInfo = new mutable.HashMap[(String, Int, Byte, Long), SOSAccumulator]()
+        val posInfo = new mutable.HashMap[(String, Int, Byte, Long), Accumulator]()
         for (sample <- samples) {
           val oneSampleHashArr = getHashInfo(sample, encoder)
           for ((field_name, field_index, field_type, raw, hash, value) <- oneSampleHashArr) {
             val key = (field_name, field_index, field_type, hash)
-            posInfo.getOrElseUpdate(key, new SOSAccumulator()).add(value)
+            posInfo.getOrElseUpdate(key, createAccumulator()).add(value)
           }
         }
         posInfo.iterator
@@ -247,8 +251,8 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     for (posInfo <- trainSample) {
       val (f_name, f_index, f_type, hash) = posInfo._1
       val dimKey = (f_index, f_type.toInt)
-      val stat = posInfo._2
-      if (stat.count < featureThreshold) {
+      val acc = posInfo._2
+      if (acc.count < featureThreshold) {
         posMap.get((f_index, hash)) match {
           case Some(history) =>
             val currentDim = fieldDim.getOrElse(dimKey, 1)
@@ -270,8 +274,8 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
           fieldDim(dimKey)
         }
         val merged: PosInfo = posMap.get((f_index, hash)) match {
-          case Some(history) => history.copy(pos = pos).merge(stat)
-          case None => PosInfo(pos, stat.sum, stat.powerSum, stat.count)
+          case Some(history) => acc.mergeIntoPosInfo(history, pos)
+          case None => acc.toPosInfo(pos)
         }
         posMap.put((f_index, hash), merged)
         val currentDim = fieldDim.getOrElse(dimKey, 1)

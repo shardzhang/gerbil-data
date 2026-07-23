@@ -5,19 +5,21 @@ package pipeline.stats
  *
  * Provides two interchangeable single-pass algorithms (SOS and Welford) for computing
  * per-feature-value mean and variance, alongside a persistence-oriented PosInfo wrapper.
- * Both accumulators expose identical Add and Merge primitives, enabling compile-time
+ * Both accumulators expose identical Add and Merge primitives, enabling runtime
  * interchange within the Spark mapPartitions/reduceByKey pipeline.
  *
  * @see "Benchmarking Online Variance Algorithms for Production Feature Engineering Systems"
  */
 
-/** Accumulator trait with online update and distributed merge primitives. */
-trait Accumulator[Self <: Accumulator[Self]] extends Serializable {
-  def add(value: Float): Self
-
-  def merge(other: Self): Self
-
+/** Accumulator trait with online update, distributed merge, and PosInfo conversion primitives.
+ *  Concrete implementations SOSAccumulator and WelfordAccumulator are interchangeable:
+ *  the pipeline selects which to instantiate via a factory method. */
+trait Accumulator extends Serializable {
+  def add(value: Float): Accumulator
+  def merge(other: Accumulator): Accumulator
   def count: Long
+  def toPosInfo(pos: Int): PosInfo
+  def mergeIntoPosInfo(existing: PosInfo, pos: Int): PosInfo
 }
 
 /**
@@ -28,9 +30,9 @@ trait Accumulator[Self <: Accumulator[Self]] extends Serializable {
  * Suffers catastrophic cancellation when μ/σ ≫ 1.
  */
 final class SOSAccumulator(var sum: Double = 0.0, var powerSum: Double = 0.0, var count: Long = 0L)
-  extends Accumulator[SOSAccumulator] {
+  extends Accumulator {
 
-  def add(value: Float): SOSAccumulator = {
+  def add(value: Float): Accumulator = {
     val v = value.toDouble
     sum += v
     powerSum += v * v
@@ -38,10 +40,11 @@ final class SOSAccumulator(var sum: Double = 0.0, var powerSum: Double = 0.0, va
     this
   }
 
-  def merge(other: SOSAccumulator): SOSAccumulator = {
-    sum += other.sum
-    powerSum += other.powerSum
-    count += other.count
+  def merge(other: Accumulator): Accumulator = {
+    val o = other.asInstanceOf[SOSAccumulator]
+    sum += o.sum
+    powerSum += o.powerSum
+    count += o.count
     this
   }
 
@@ -52,6 +55,12 @@ final class SOSAccumulator(var sum: Double = 0.0, var powerSum: Double = 0.0, va
     val variance = math.max(powerSum / count.toDouble - mean * mean, 0.0)
     math.sqrt(variance + 0.000001)
   }
+
+  def toPosInfo(pos: Int): PosInfo =
+    PosInfo(pos, sum, powerSum, count, 0.0, 0.0)
+
+  def mergeIntoPosInfo(existing: PosInfo, pos: Int): PosInfo =
+    existing.copy(pos = pos).merge(this)
 }
 
 /**
@@ -63,9 +72,9 @@ final class SOSAccumulator(var sum: Double = 0.0, var powerSum: Double = 0.0, va
  * (Chan et al., 1982).
  */
 final class WelfordAccumulator(var count: Long = 0L, var runningMean: Double = 0.0, var m2: Double = 0.0)
-  extends Accumulator[WelfordAccumulator] {
+  extends Accumulator {
 
-  def add(value: Float): WelfordAccumulator = {
+  def add(value: Float): Accumulator = {
     count += 1L
     val x = value.toDouble
     val delta = x - runningMean
@@ -76,12 +85,13 @@ final class WelfordAccumulator(var count: Long = 0L, var runningMean: Double = 0
   }
 
   /** Chan's pairwise merge formula. Equivalent to processing all elements sequentially
-   * up to floating-point reassociation order. */
-  def merge(other: WelfordAccumulator): WelfordAccumulator = {
-    val nAB = count + other.count
-    val delta = other.runningMean - runningMean
-    runningMean = (count.toDouble * runningMean + other.count.toDouble * other.runningMean) / nAB.toDouble
-    m2 = m2 + other.m2 + (count.toDouble * other.count.toDouble / nAB.toDouble) * delta * delta
+   *  up to floating-point reassociation order. */
+  def merge(other: Accumulator): Accumulator = {
+    val o = other.asInstanceOf[WelfordAccumulator]
+    val nAB = count + o.count
+    val delta = o.runningMean - runningMean
+    runningMean = (count.toDouble * runningMean + o.count.toDouble * o.runningMean) / nAB.toDouble
+    m2 = m2 + o.m2 + (count.toDouble * o.count.toDouble / nAB.toDouble) * delta * delta
     count = nAB
     this
   }
@@ -93,6 +103,12 @@ final class WelfordAccumulator(var count: Long = 0L, var runningMean: Double = 0
     val variance = m2 / count.toDouble
     math.sqrt(math.max(variance, 0.0) + 0.000001)
   }
+
+  def toPosInfo(pos: Int): PosInfo =
+    PosInfo.fromWelford(pos, runningMean, m2, count)
+
+  def mergeIntoPosInfo(existing: PosInfo, pos: Int): PosInfo =
+    existing.copy(pos = pos).merge(this)
 }
 
 /**

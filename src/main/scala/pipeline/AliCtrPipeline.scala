@@ -3,6 +3,7 @@ package pipeline
 import com.alibaba.fastjson.JSON
 import featurizer.Featurizer
 import featurizer.alictr.{AliCtrFeaturizer, AliCtrSample}
+import pipeline.stats.{Accumulator, WelfordAccumulator}
 import org.apache.commons.cli.{DefaultParser, Options}
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.rdd.RDD
@@ -20,6 +21,8 @@ object AliCtrPipeline extends Pipeline[AliCtrSample] {
   override def featurizer: Featurizer[AliCtrSample] = {
     new AliCtrFeaturizer(featureConfigPath, targetMode).setup()
   }
+
+  override def createAccumulator(): Accumulator = new WelfordAccumulator()
 
   override def loadTrainingSamples(spark: SparkSession, inputDir: String, parts: Int): RDD[(AliCtrSample, Boolean)] = {
     spark.read
