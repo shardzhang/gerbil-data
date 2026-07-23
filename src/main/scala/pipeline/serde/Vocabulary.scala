@@ -89,7 +89,9 @@ class Vocabulary(val hadoopConf: Configuration) {
             pos = entry.getInt("pos"),
             sum = entry.getDouble("sum"),
             powerSum = entry.getDouble("power_sum"),
-            count = entry.getLong("count")
+            count = entry.getLong("count"),
+            welfordMean = if (entry.has("welford_mean")) entry.getDouble("welford_mean") else 0.0,
+            welfordM2 = if (entry.has("welford_m2")) entry.getDouble("welford_m2") else 0.0
           )
           posMap.put((field_index, entry.getLong("hash")), posInfo)
           entryIndex = entryIndex + 1
@@ -354,6 +356,10 @@ class Vocabulary(val hadoopConf: Configuration) {
             entry.put("sum", posInfo.sum)
             entry.put("power_sum", posInfo.powerSum)
             entry.put("count", posInfo.count)
+            if (posInfo.welfordMean != 0.0 || posInfo.welfordM2 != 0.0) {
+              entry.put("welford_mean", posInfo.welfordMean)
+              entry.put("welford_m2", posInfo.welfordM2)
+            }
             entry.put("mean", mean)
             entry.put("std", std)
             entries.put(entry)

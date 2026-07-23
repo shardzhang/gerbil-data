@@ -11,7 +11,7 @@ import org.apache.spark.storage.StorageLevel
 import featurizer.{Featurizer, FieldType}
 import utils.LogUtils.green_println
 import pipeline.serde.{BaseRecord, TFRecord, ParquetRecord, Vocabulary}
-import pipeline.stats.{DataQualityTracker, PosInfo, RunningValueStats}
+import pipeline.stats.{DataQualityTracker, PosInfo, SOSAccumulator}
 
 
 /**
@@ -215,17 +215,17 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     green_println(s"old posDim.size: ${posDim.size}.")
 
     /** Collect hash statistics across all samples: aggregates sum/powerSum/count per (f_name, f_index, f_type, hash) key */
-    val trainSample: Array[((String, Int, Byte, Long), RunningValueStats)] = trainingSample
+    val trainSample: Array[((String, Int, Byte, Long), SOSAccumulator)] = trainingSample
       .filter(r => r._2)
       .map { case (sample, _) => sample }
       .mapPartitions(samples => {
         val encoder = featurizer
-        val posInfo = new mutable.HashMap[(String, Int, Byte, Long), RunningValueStats]()
+        val posInfo = new mutable.HashMap[(String, Int, Byte, Long), SOSAccumulator]()
         for (sample <- samples) {
           val oneSampleHashArr = getHashInfo(sample, encoder)
           for ((field_name, field_index, field_type, raw, hash, value) <- oneSampleHashArr) {
             val key = (field_name, field_index, field_type, hash)
-            posInfo.getOrElseUpdate(key, new RunningValueStats()).add(value)
+            posInfo.getOrElseUpdate(key, new SOSAccumulator()).add(value)
           }
         }
         posInfo.iterator

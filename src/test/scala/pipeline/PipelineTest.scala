@@ -5,14 +5,14 @@ import org.scalatest.{Matchers, WordSpec}
 
 import java.io.{BufferedReader, StringReader}
 import java.util.concurrent.ThreadLocalRandom
-import pipeline.stats.{PosInfo, RunningValueStats}
+import pipeline.stats.{PosInfo, SOSAccumulator}
 
 class PipelineTest extends WordSpec with Matchers {
 
-  // RunningValueStats tests
-  "RunningValueStats" should {
+  // SOSAccumulator tests
+  "SOSAccumulator" should {
     "add values and track sum/count/powerSum" in {
-      val stat = new RunningValueStats()
+      val stat = new SOSAccumulator()
       stat.add(2.0F).add(3.0F).add(4.0F)
       assert(stat.sum === 9.0D)
       assert(stat.count === 3L)
@@ -20,9 +20,9 @@ class PipelineTest extends WordSpec with Matchers {
       assert(stat.powerSum === 29.0D)
     }
 
-    "merge two RunningValueStatss" in {
-      val s1 = new RunningValueStats(5.0D, 25.0D, 2L)
-      val s2 = new RunningValueStats(10.0D, 100.0D, 3L)
+    "merge two SOSAccumulators" in {
+      val s1 = new SOSAccumulator(5.0D, 25.0D, 2L)
+      val s2 = new SOSAccumulator(10.0D, 100.0D, 3L)
       s1.merge(s2)
       assert(s1.sum === 15.0D)
       assert(s1.powerSum === 125.0D)
@@ -56,9 +56,9 @@ class PipelineTest extends WordSpec with Matchers {
       assert(info.std === 1.0D)
     }
 
-    "merge with RunningValueStats" in {
+    "merge with SOSAccumulator" in {
       val info = PosInfo(pos = 1, sum = 5.0D, powerSum = 13.0D, count = 3L)
-      val stat = new RunningValueStats(3.0D, 5.0D, 1L)
+      val stat = new SOSAccumulator(3.0D, 5.0D, 1L)
       val merged = info.merge(stat)
       assert(merged.pos === 1)
       assert(merged.sum === 8.0D)
