@@ -64,7 +64,66 @@ final class SOSAccumulator(var sum: Double = 0.0, var powerSum: Double = 0.0, va
 }
 
 /**
- * Welford's online accumulator — Algorithm 2.
+ * Kahan-compensated SOS accumulator — Algorithm 2.
+ *
+ * Applies Kahan compensated summation to both S and Q accumulations, reducing
+ * rounding error in the running sums. Maintains {count, sum, powerSum, cSum, cPowerSum}
+ * where cSum and cPowerSum are compensation terms that capture low-order bits lost
+ * in floating-point addition. Merge discards compensation state (element-wise addition,
+ * same as naive SOS) since the compensation is only valid within a single accumulation
+ * sequence. Variance still suffers catastrophic cancellation when μ/σ ≫ 1 because
+ * the subtraction Q/n − μ² is not compensated.
+ */
+final class KahanSOSAccumulator(var count: Long = 0L,
+                                 var sum: Double = 0.0,
+                                 var powerSum: Double = 0.0,
+                                 var cSum: Double = 0.0,
+                                 var cPowerSum: Double = 0.0)
+  extends Accumulator {
+
+  def add(value: Float): Accumulator = {
+    val x = value.toDouble
+
+    var y = x - cSum
+    var t = sum + y
+    cSum = (t - sum) - y
+    sum = t
+
+    val x2 = x * x
+    y = x2 - cPowerSum
+    t = powerSum + y
+    cPowerSum = (t - powerSum) - y
+    powerSum = t
+
+    count += 1L
+    this
+  }
+
+  def merge(other: Accumulator): Accumulator = {
+    val o = other.asInstanceOf[KahanSOSAccumulator]
+    sum += o.sum
+    powerSum += o.powerSum
+    count += o.count
+    this
+  }
+
+  def mean: Double = if (count <= 0L) 0.0 else sum / count.toDouble
+
+  def std: Double = {
+    if (count <= 0L) return 1.0
+    val variance = math.max(powerSum / count.toDouble - mean * mean, 0.0)
+    math.sqrt(variance + 0.000001)
+  }
+
+  def toPosInfo(pos: Int): PosInfo =
+    PosInfo(pos, sum, powerSum, count, 0.0, 0.0)
+
+  def mergeIntoPosInfo(existing: PosInfo, pos: Int): PosInfo =
+    existing.copy(pos = pos).merge(this)
+}
+
+/**
+ * Welford's online accumulator — Algorithm 3.
  *
  * Maintains {count, runningMean, M₂} where M₂ = Σ(xᵢ − x̄)².
  * Avoids catastrophic cancellation by computing variance through deviations

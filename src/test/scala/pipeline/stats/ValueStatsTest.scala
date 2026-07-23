@@ -78,6 +78,109 @@ class ValueStatsTest extends WordSpec with Matchers {
     }
   }
 
+  "KahanSOSAccumulator" should {
+    "start with zero values" in {
+      val k = new KahanSOSAccumulator()
+      assert(k.count === 0L)
+      assert(k.sum === 0.0)
+      assert(k.powerSum === 0.0)
+      assert(k.cSum === 0.0)
+      assert(k.cPowerSum === 0.0)
+    }
+
+    "accumulate single value correctly" in {
+      val k = new KahanSOSAccumulator()
+      k.add(3.0F)
+      assert(k.count === 1L)
+      assert(k.sum === 3.0)
+      assert(k.powerSum === 9.0)
+    }
+
+    "accumulate multiple values" in {
+      val k = new KahanSOSAccumulator()
+      k.add(1.0F)
+      k.add(2.0F)
+      k.add(3.0F)
+      assert(k.count === 3L)
+      assert(k.sum === 6.0)
+      assert(k.powerSum === 14.0)
+    }
+
+    "merge two accumulators correctly" in {
+      val a = new KahanSOSAccumulator()
+      a.add(1.0F)
+      a.add(3.0F)
+
+      val b = new KahanSOSAccumulator()
+      b.add(5.0F)
+      b.add(7.0F)
+
+      a.merge(b)
+      assert(a.count === 4L)
+      assert(a.sum === 16.0)
+      assert(a.powerSum === 84.0)
+    }
+
+    "be chainable" in {
+      val k = new KahanSOSAccumulator()
+      k.add(5.0F).add(5.0F)
+      assert(k.count === 2L)
+      assert(k.sum === 10.0)
+    }
+
+    "compute mean correctly" in {
+      val k = new KahanSOSAccumulator()
+      k.add(2.0F)
+      k.add(4.0F)
+      assert(k.mean === 3.0)
+    }
+
+    "compute std correctly" in {
+      val k = new KahanSOSAccumulator()
+      k.add(1.0F)
+      k.add(2.0F)
+      k.add(3.0F)
+      val expectedStd = math.sqrt(2.0 / 3.0 + 0.000001)
+      assert(math.abs(k.std - expectedStd) < 1e-12)
+    }
+
+    "produce same result as SOS for normal data" in {
+      val sos = new SOSAccumulator()
+      val kahan = new KahanSOSAccumulator()
+      val values = Array(1.5F, 2.3F, 4.7F, 3.1F, 2.8F, 5.0F)
+      for (v <- values) {
+        sos.add(v)
+        kahan.add(v)
+      }
+      assert(math.abs(sos.mean - kahan.mean) < 1e-12)
+      assert(math.abs(sos.std - kahan.std) < 1e-12)
+    }
+
+    "toPosInfo produces correct PosInfo" in {
+      val k = new KahanSOSAccumulator()
+      k.add(2.0F)
+      k.add(4.0F)
+      k.add(6.0F)
+      val pi = k.toPosInfo(7)
+      assert(pi.pos === 7)
+      assert(pi.count === 3L)
+      assert(pi.sum === 12.0)
+      assert(pi.powerSum === 56.0)
+    }
+
+    "mergeIntoPosInfo works" in {
+      val existing = PosInfo(pos = 5, sum = 10.0, powerSum = 30.0, count = 5L)
+      val k = new KahanSOSAccumulator()
+      k.add(5.0F)
+      k.add(5.0F)
+      val merged = k.mergeIntoPosInfo(existing, 3)
+      assert(merged.pos === 3)
+      assert(merged.sum === 20.0)
+      assert(merged.powerSum === 80.0)
+      assert(merged.count === 7L)
+    }
+  }
+
   "WelfordAccumulator" should {
     "start with zero values" in {
       val w = new WelfordAccumulator()
