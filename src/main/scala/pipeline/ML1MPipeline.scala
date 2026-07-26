@@ -24,10 +24,11 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
   var featureConfigPath: Option[String] = None
 
   /** Target mode: "binary" (default, uses sample.label) or "multi" (uses sample.target). */
+  // 仅影响负样本采样率和用于统计的标签解析
   var targetMode: String = "binary"
 
   override def featurizer: Featurizer[ML1MSample] = {
-    new ML1MFeaturizer(featureConfigPath, targetMode).setup()
+    new ML1MFeaturizer(featureConfigPath).setup()
   }
 
   override def createAccumulator(): Accumulator = new WelfordAccumulator()
@@ -62,9 +63,6 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
       case _        => throw new IllegalArgumentException(s"Unknown target_mode: '$targetMode'. Expected 'binary', 'multi', or 'rating'")
     }
   }
-
-  /** Only multi-class mode needs target_map re-encoding (sparse item_id → dense index). */
-  override def useTargetMap: Boolean = targetMode == "multi"
 
   /**
    * Down-sampling by target value, mode-aware:

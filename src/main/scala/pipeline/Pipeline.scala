@@ -63,12 +63,6 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
   /** Extracts the timestamp (millis) from a sample for time-based split. */
   def parseTimestamp(sample: T): Long
 
-  /**
-   * Whether to re-encode target values through target_map (sequential indexing).
-   * Override to return false when raw target values should be written directly.
-   */
-  def useTargetMap: Boolean = true
-
   /** Down-samples negative samples (target == 0) by `sample_ratio`. Positive samples are always kept. */
   def keepSample(sample: T, sample_ratio: Double): Boolean
 
@@ -189,11 +183,6 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     qualityTracker.record("train_stats", totalCount, validCount, targetOccurs.toSeq)
 
     //====================== part1: target position vocabulary ======================
-    // Only needed for multi-class mode to re-index sparse target IDs into dense indices
-    if (!useTargetMap) {
-      targetMap.clear()
-    }
-
     var newCount = 0 // 本次样本中新增target个数(冷启动物品)
     var existingCount = 0 // 历史累计样本中已存在target个数(老物品)
     var ignoredCount = 0 // 本次样本中新增但被忽略target个数
@@ -317,7 +306,6 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
                      outputFormat: String): Unit = {
     val record = createRecord(outputFormat)
     val localPosMap = posMap.map { case (k, v) => (k, v.pos) }
-    val localTargetMap = if (useTargetMap) targetMap else null
     val basePath = s"${outputDir.stripSuffix("/")}/${yesterday}"
     val splitsToWrite = if (valSample != null) {
       Seq(("train", trainingSample), ("val", valSample), ("test", testSample))
@@ -327,7 +315,7 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     for ((suffix, data) <- splitsToWrite) {
       val filterdData = data.filter(r => r._2) // 过滤有效样本
       val subdir = if (suffix.isEmpty) "" else s"/${suffix}"
-      record.write(filterdData, localPosMap, localTargetMap, s"${basePath}${subdir}/${outputFormat}")
+      record.write(filterdData, localPosMap, targetMap, s"${basePath}${subdir}/${outputFormat}")
     }
   }
 

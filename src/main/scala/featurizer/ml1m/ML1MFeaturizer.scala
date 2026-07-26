@@ -12,7 +12,7 @@ import utils.LogUtils.green_println
 /** Featurizes each ML1M sample before feeding to the model.
  * Reads feature registry from multi_features.yaml; all parse() logic stays in Scala classes.
  */
-class ML1MFeaturizer(configPath: Option[String] = None, targetMode: String = "binary") extends Featurizer[ML1MSample] {
+class ML1MFeaturizer(configPath: Option[String] = None) extends Featurizer[ML1MSample] {
 
   private lazy val config: FeatureConfig = configPath match {
     case Some(path) => FeatureConfigLoader.loadFromFile(path)

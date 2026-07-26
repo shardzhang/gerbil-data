@@ -91,7 +91,7 @@ class PipelineTest extends WordSpec with Matchers {
     override def parseTimestamp(sample: String): Long = 0L
 
     override def keepSample(sample: String, sample_ratio: Double): Boolean = {
-      parseTarget(sample) != 0 || ThreadLocalRandom.current().nextDouble() <= sample_ratio
+      true
     }
 
     // Expose persistence methods for testing
