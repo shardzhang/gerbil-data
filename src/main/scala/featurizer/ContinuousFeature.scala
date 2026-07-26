@@ -11,12 +11,14 @@ import scala.collection.mutable.ArrayBuffer
  * Continuous feature encoder for numerical values.
  *
  * Unlike categorical features (which hash discrete IDs), continuous features
- * use the raw numerical value index directly as the embedding position (identity mapping, 此时入参pos_map实际无效, 仅用作占位符).
+ * use the raw numerical value index directly as the embedding position
+ * (identity mapping; pos_map is unused for continuous features).
  * This preserves the ordinal relationship between values in embedding space.
  *
  * Each feature produces three TFRecord fields:
  *  - `{field_name}_raw`: the original string representation
- *  - `{field_name}_index`: the index itself (used as embedding position, 单值特征为1L, 多值特征为从1开始的下标)
+ *  - `{field_name}_index`: the embedding position (1L for single-valued,
+ *    sequential index starting from 1 for multi-valued)
  *  - `{field_name}_value`: the numerical value (used as embedding weight)
  *
  * @tparam T the raw sample type from which this feature is extracted
@@ -40,19 +42,21 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FieldType
     value_list.clear()
   }
 
-  // fixme:
+  /** Computes embedding positions for all non-zero continuous values.
+   *  For continuous features, fea serves as both the value and the hash (identity mapping). */
   override def getHash(dim: Long): ArrayBuffer[Long] = {
     val pos_list = new ArrayBuffer[Long]()
     for (fea <- feature_list) {
       if (fea != 0) {
-        val hash = fea // 对于连续新特征, fea即为hash, 两者一一映射
-        pos_list.append(hash)
+        pos_list.append(fea)
       }
     }
     pos_list
   }
 
-  // fixme:
+  /** Returns detailed hash info for each non-zero continuous value:
+   *  (field_name, field_index, field_type, "f_index:raw", fea, value).
+   *  fea serves as both the value and the hash (identity mapping). */
   override def getHashInfo(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     val pos_info_list = new ArrayBuffer[(String, Int, Byte, String, Long, Float)]()
     for (i <- feature_list.indices) {
@@ -61,7 +65,7 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FieldType
       val value = value_list(i)
       if (fea != 0) {
         val fmt = field_index.toString + ":" + raw
-        val hash = fea // 对于连续新特征, fea即为hash, 两者一一映射
+        val hash = fea
         pos_info_list.append((field_name, field_index, field_type, fmt, hash, value))
       }
     }
@@ -84,9 +88,8 @@ abstract class ContinuousFeature[T](f_i: Int, f_n: String, f_t: Byte = FieldType
       val fea = feature_list(i)
       val value = value_list(i)
       if (fea != 0) {
-        val hash = fea // 对于连续新特征, fea即为hash, 两者一一映射
         raw_buf.append(raw)
-        pos_buf.append(hash)
+        pos_buf.append(fea)
         value_buf.append(value)
       }
     }

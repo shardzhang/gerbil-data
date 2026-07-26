@@ -188,28 +188,38 @@ case class PosInfo(
                     welfordM2: Double = 0.0
                   ) extends Serializable {
 
-  def mean: Double = if (count <= 0L) {
-    0.0
-  } else {
-    sum / count.toDouble
+  def mean: Double = {
+    if (count <= 0L) 0.0
+    else sum / count.toDouble
   }
 
   def std: Double = {
-    if (count <= 0L) return 1.0
-    val variance = math.max(powerSum / count.toDouble - mean * mean, 0.0)
-    math.sqrt(variance + 0.000001)
+    if (count <= 0L) 1.0
+    else {
+      val m = sum / count.toDouble
+      val variance = math.max(powerSum / count.toDouble - m * m, 0.0)
+      math.sqrt(variance + 0.000001)
+    }
   }
 
+  /** Merges SOS accumulator data. Invalidates Welford state so that a subsequent
+   *  Welford merge will reconstruct it from the updated SOS fields. */
   def merge(stat: SOSAccumulator): PosInfo = copy(
     sum = sum + stat.sum,
     powerSum = powerSum + stat.powerSum,
-    count = count + stat.count
+    count = count + stat.count,
+    welfordMean = 0.0,
+    welfordM2 = 0.0
   )
 
+  /** Merges Kahan SOS accumulator data (same fields as SOS). Invalidates
+   *  Welford state for the same reason as the SOS variant. */
   def merge(stat: KahanSOSAccumulator): PosInfo = copy(
     sum = sum + stat.sum,
     powerSum = powerSum + stat.powerSum,
-    count = count + stat.count
+    count = count + stat.count,
+    welfordMean = 0.0,
+    welfordM2 = 0.0
   )
 
   def merge(stat: WelfordAccumulator): PosInfo = {
@@ -241,6 +251,9 @@ case class PosInfo(
 
 object PosInfo {
   def fromSOS(pos: Int, sum: Double, powerSum: Double, count: Long): PosInfo =
+    PosInfo(pos, sum, powerSum, count, 0.0, 0.0)
+
+  def fromKahan(pos: Int, sum: Double, powerSum: Double, count: Long): PosInfo =
     PosInfo(pos, sum, powerSum, count, 0.0, 0.0)
 
   def fromWelford(pos: Int, runningMean: Double, m2: Double, n: Long): PosInfo = {

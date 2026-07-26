@@ -1,4 +1,5 @@
 # ##################### ML1M dataset feature configuration. #####################
+# introduction: 隐式反馈数据集, 仅存在正样本(负样本从缺失值中随机采样), 一般用作推荐排序任务建模
 # filed_name: 全局唯一
 # filed_index: 可重复, 重复时表示特征词表共享
 # field_type: 1 = categorical, 0 = continuous
@@ -9,7 +10,7 @@
 pkg: featurizer.ml1m
 features:
   # ── User ID ──
-  - {field_name: user_id, field_index: 1, field_type: 1, class_name: UserID, enabled: false}  # user ID
+  - {field_name: user_id, field_index: 1, field_type: 1, class_name: UserID, enabled: true}  # user ID
 
   # ── User demographics ──
   - {field_name: user_age, field_index: 2, field_type: 1, class_name: UserAge, enabled: true}  # age bucket (1/18/25/35/45/50/56)
@@ -53,17 +54,17 @@ features:
   - {field_name: user_movie_rate_30day_cnt_continue, field_index: 29, field_type: 0, class_name: UserMovieRate30DayCntContinue, enabled: true}
 
   # ── Item ID ──
-  - {field_name: movie_id, field_index: 101, field_type: 1, class_name: MovieID, enabled: false}  # movie ID
+  - {field_name: movie_id, field_index: 101, field_type: 1, class_name: MovieID, enabled: true}  # movie ID
 
   # ── Item features ──
-  - {field_name: movie_title, field_index: 102, field_type: 1, class_name: MovieTitle, enabled: false}  # tokenized title (multi-value)
-  - {field_name: movie_genres, field_index: 103, field_type: 1, class_name: MovieGenres, enabled: false}  # genre list (multi-value)
-  - {field_name: movie_rate_count, field_index: 104, field_type: 1, class_name: MovieRateCount, enabled: false}  # total ratings (bucketed)
-  - {field_name: movie_rate_avg, field_index: 105, field_type: 1, class_name: MovieRateAvg, enabled: false}  # average rating (bucketed)
-  - {field_name: movie_genre_cnt, field_index: 106, field_type: 1, class_name: MovieGenreCnt, enabled: false}  # number of genres
-  - {field_name: item_hot_rank, field_index: 107, field_type: 1, class_name: MovieHotRank, enabled: false}  # popularity rank (bucketed)
-  - {field_name: movie_publish_year, field_index: 108, field_type: 1, class_name: MoviePublishYear, enabled: false}  # release year (bucketed)
-  - {field_name: movie_rate_avg_continue, field_index: 109, field_type: 0, class_name: MovieRateAvgContinue, enabled: false}  # average rating (continuous)
+  - {field_name: movie_title, field_index: 102, field_type: 1, class_name: MovieTitle, enabled: true}  # tokenized title (multi-value)
+  - {field_name: movie_genres, field_index: 103, field_type: 1, class_name: MovieGenres, enabled: true}  # genre list (multi-value)
+  - {field_name: movie_rate_count, field_index: 104, field_type: 1, class_name: MovieRateCount, enabled: true}  # total ratings (bucketed)
+  - {field_name: movie_rate_avg, field_index: 105, field_type: 1, class_name: MovieRateAvg, enabled: true}  # average rating (bucketed)
+  - {field_name: movie_genre_cnt, field_index: 106, field_type: 1, class_name: MovieGenreCnt, enabled: true}  # number of genres
+  - {field_name: item_hot_rank, field_index: 107, field_type: 1, class_name: MovieHotRank, enabled: true}  # popularity rank (bucketed)
+  - {field_name: movie_publish_year, field_index: 108, field_type: 1, class_name: MoviePublishYear, enabled: true}  # release year (bucketed)
+  - {field_name: movie_rate_avg_continue, field_index: 109, field_type: 0, class_name: MovieRateAvgContinue, enabled: true}  # average rating (continuous)
 
   # ── Context features ──
   - {field_name: context_time_hour, field_index: 201, field_type: 1, class_name: ContextTimeHour, enabled: true}  # hour of day (0-23)
@@ -72,11 +73,11 @@ features:
   - {field_name: context_is_weekend, field_index: 204, field_type: 1, class_name: IsWeekend, enabled: true}  # whether it is weekend
 
   # ── User behaviors (attention): recent movie rating ids sequences (shared vocabulary) ──
-  - {field_name: user_movie_rate_ids, field_index: 101, field_type: 1, class_name: UserMovieRateIds, enabled: false}
-  - {field_name: user_movie_rate_id_1days, field_index: 101, field_type: 1, class_name: UserMovieRateId1Days, enabled: false}
-  - {field_name: user_movie_rate_id_3days, field_index: 101, field_type: 1, class_name: UserMovieRateId3Days, enabled: false}
-  - {field_name: user_movie_rate_id_7days, field_index: 101, field_type: 1, class_name: UserMovieRateId7Days, enabled: false}
-  - {field_name: user_movie_rate_id_15days, field_index: 101, field_type: 1, class_name: UserMovieRateId15Days, enabled: false}
+  - {field_name: user_movie_rate_ids, field_index: 101, field_type: 1, class_name: UserMovieRateIds, enabled: true}
+  - {field_name: user_movie_rate_id_1days, field_index: 101, field_type: 1, class_name: UserMovieRateId1Days, enabled: true}
+  - {field_name: user_movie_rate_id_3days, field_index: 101, field_type: 1, class_name: UserMovieRateId3Days, enabled: true}
+  - {field_name: user_movie_rate_id_7days, field_index: 101, field_type: 1, class_name: UserMovieRateId7Days, enabled: true}
+  - {field_name: user_movie_rate_id_15days, field_index: 101, field_type: 1, class_name: UserMovieRateId15Days, enabled: true}
 
   # ── User behaviors (attention): recent movie rating category sequences (shared vocabulary) ──
   - {field_name: user_movie_rate_genres, field_index: 103, field_type: 1, class_name: UserMovieRateGenres, enabled: true}
@@ -86,18 +87,18 @@ features:
   - {field_name: user_movie_rate_genre_15days, field_index: 103, field_type: 1, class_name: UserMovieRateGenre15Days, enabled: true}
 
   # ── User behaviors (no attention): recent genre rating sequences (shared vocabulary) ──
-  - {field_name: user_genres_rate, field_index: 103, field_type: 1, class_name: UserGenresRates, enabled: false}
-  - {field_name: user_genres_rate_1day, field_index: 103, field_type: 1, class_name: UserGenresRate1Days, enabled: false}
-  - {field_name: user_genres_rate_3day, field_index: 103, field_type: 1, class_name: UserGenresRate3Days, enabled: false}
-  - {field_name: user_genres_rate_7day, field_index: 103, field_type: 1, class_name: UserGenresRate7Days, enabled: false}
-  - {field_name: user_genres_rate_15day, field_index: 103, field_type: 1, class_name: UserGenresRate15Days, enabled: false}
+  - {field_name: user_genres_rate, field_index: 103, field_type: 1, class_name: UserGenresRates, enabled: true}
+  - {field_name: user_genres_rate_1day, field_index: 103, field_type: 1, class_name: UserGenresRate1Days, enabled: true}
+  - {field_name: user_genres_rate_3day, field_index: 103, field_type: 1, class_name: UserGenresRate3Days, enabled: true}
+  - {field_name: user_genres_rate_7day, field_index: 103, field_type: 1, class_name: UserGenresRate7Days, enabled: true}
+  - {field_name: user_genres_rate_15day, field_index: 103, field_type: 1, class_name: UserGenresRate15Days, enabled: true}
 
   # ── User behaviors (no attention): User recent genre rating counts (shared vocabulary) ──
-  - {field_name: user_genres_rate_cnts, field_index: 103, field_type: 1, class_name: UserGenresRateCnts, enabled: false}
-  - {field_name: user_genres_rate_cnt_1days, field_index: 103, field_type: 1, class_name: UserGenresRateCnt1Days, enabled: false}
-  - {field_name: user_genres_rate_cnt_3days, field_index: 103, field_type: 1, class_name: UserGenresRateCnt3Days, enabled: false}
-  - {field_name: user_genres_rate_cnt_7days, field_index: 103, field_type: 1, class_name: UserGenresRateCnt7Days, enabled: false}
-  - {field_name: user_genres_rate_cnt_15days, field_index: 103, field_type: 1, class_name: UserGenresRateCnt15Days, enabled: false}
+  - {field_name: user_genres_rate_cnts, field_index: 103, field_type: 1, class_name: UserGenresRateCnts, enabled: true}
+  - {field_name: user_genres_rate_cnt_1days, field_index: 103, field_type: 1, class_name: UserGenresRateCnt1Days, enabled: true}
+  - {field_name: user_genres_rate_cnt_3days, field_index: 103, field_type: 1, class_name: UserGenresRateCnt3Days, enabled: true}
+  - {field_name: user_genres_rate_cnt_7days, field_index: 103, field_type: 1, class_name: UserGenresRateCnt7Days, enabled: true}
+  - {field_name: user_genres_rate_cnt_15days, field_index: 103, field_type: 1, class_name: UserGenresRateCnt15Days, enabled: true}
 
   # ── User behaviors (no attention): User top genres ──
   - {field_name: user_top3_genres, field_index: 103, field_type: 1, class_name: UserTop3Genres, enabled: true}  # top-3 genres by rating frequency

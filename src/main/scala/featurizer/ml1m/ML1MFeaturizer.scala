@@ -34,12 +34,7 @@ class ML1MFeaturizer(configPath: Option[String] = None, targetMode: String = "bi
     raw_cate_features.clear()
     raw_conti_features.clear()
     cross_features.clear()
-    target = targetMode match {
-      case "binary" => new Label()
-      case "multi"  => new Target()
-      case "rating" => new Rating()
-      case _        => throw new IllegalArgumentException(s"Unknown target_mode: '$targetMode'. Expected 'binary', 'multi', or 'rating'")
-    }
+    target = new ML1MTarget()
 
     val featureDefs: Seq[FeatureDef] = config.features.filter(_.isEnabled)
     val featureInstances: mutable.Map[String, Any] = mutable.Map.empty

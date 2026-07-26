@@ -58,7 +58,8 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FieldTyp
     hash
   }
 
-  // fixme:
+  /** Computes hashed embedding positions for all non-zero feature values.
+   *  Skips values with fea == 0 (padding placeholder). Returns position list. */
   override def getHash(dim: Long): ArrayBuffer[Long] = {
     val pos_list = new ArrayBuffer[Long]()
     for (i <- feature_list.indices) {
@@ -71,7 +72,9 @@ abstract class CategoricalFeature[T](f_i: Int, f_n: String, f_t: Byte = FieldTyp
     pos_list
   }
 
-  // fixme:
+  /** Returns detailed hash info for each non-zero feature value:
+   *  (field_name, field_index, field_type, "f_index:raw", hash, value).
+   *  Used for vocabulary building and statistics collection. */
   override def getHashInfo(dim: Long): ArrayBuffer[(String, Int, Byte, String, Long, Float)] = {
     val pos_info_list = new ArrayBuffer[(String, Int, Byte, String, Long, Float)]()
     for (i <- feature_list.indices) {
