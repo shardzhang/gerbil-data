@@ -29,9 +29,7 @@ trait Accumulator extends Serializable {
  * Variance derived as max(Q/n − μ², 0) with an epsilon guard.
  * Suffers catastrophic cancellation when μ/σ ≫ 1.
  */
-final class SOSAccumulator(var sum: Double = 0.0, var powerSum: Double = 0.0, var count: Long = 0L)
-  extends Accumulator {
-
+final class SOSAccumulator(var sum: Double = 0.0, var powerSum: Double = 0.0, var count: Long = 0L) extends Accumulator {
   def add(value: Float): Accumulator = {
     val v = value.toDouble
     sum += v
@@ -48,7 +46,11 @@ final class SOSAccumulator(var sum: Double = 0.0, var powerSum: Double = 0.0, va
     this
   }
 
-  def mean: Double = if (count <= 0L) 0.0 else sum / count.toDouble
+  def mean: Double = if (count <= 0L) {
+    0.0
+  } else {
+    sum / count.toDouble
+  }
 
   def std: Double = {
     if (count <= 0L) return 1.0
@@ -74,16 +76,9 @@ final class SOSAccumulator(var sum: Double = 0.0, var powerSum: Double = 0.0, va
  * sequence. Variance still suffers catastrophic cancellation when μ/σ ≫ 1 because
  * the subtraction Q/n − μ² is not compensated.
  */
-final class KahanSOSAccumulator(var count: Long = 0L,
-                                 var sum: Double = 0.0,
-                                 var powerSum: Double = 0.0,
-                                 var cSum: Double = 0.0,
-                                 var cPowerSum: Double = 0.0)
-  extends Accumulator {
-
+final class KahanSOSAccumulator(var count: Long = 0L, var sum: Double = 0.0, var powerSum: Double = 0.0, var cSum: Double = 0.0, var cPowerSum: Double = 0.0) extends Accumulator {
   def add(value: Float): Accumulator = {
     val x = value.toDouble
-
     var y = x - cSum
     var t = sum + y
     cSum = (t - sum) - y
@@ -107,7 +102,11 @@ final class KahanSOSAccumulator(var count: Long = 0L,
     this
   }
 
-  def mean: Double = if (count <= 0L) 0.0 else sum / count.toDouble
+  def mean: Double = if (count <= 0L) {
+    0.0
+  } else {
+    sum / count.toDouble
+  }
 
   def std: Double = {
     if (count <= 0L) return 1.0
@@ -130,9 +129,7 @@ final class KahanSOSAccumulator(var count: Long = 0L,
  * (xᵢ − x̄) that are on the order of σ. Merge uses Chan's pairwise formula
  * (Chan et al., 1982).
  */
-final class WelfordAccumulator(var count: Long = 0L, var runningMean: Double = 0.0, var m2: Double = 0.0)
-  extends Accumulator {
-
+final class WelfordAccumulator(var count: Long = 0L, var runningMean: Double = 0.0, var m2: Double = 0.0) extends Accumulator {
   def add(value: Float): Accumulator = {
     count += 1L
     val x = value.toDouble
@@ -155,7 +152,11 @@ final class WelfordAccumulator(var count: Long = 0L, var runningMean: Double = 0
     this
   }
 
-  def mean: Double = if (count <= 0L) 0.0 else runningMean
+  def mean: Double = if (count <= 0L) {
+    0.0
+  } else {
+    runningMean
+  }
 
   def std: Double = {
     if (count <= 0L) return 1.0
@@ -187,7 +188,11 @@ case class PosInfo(
                     welfordM2: Double = 0.0
                   ) extends Serializable {
 
-  def mean: Double = if (count <= 0L) 0.0 else sum / count.toDouble
+  def mean: Double = if (count <= 0L) {
+    0.0
+  } else {
+    sum / count.toDouble
+  }
 
   def std: Double = {
     if (count <= 0L) return 1.0
@@ -201,10 +206,15 @@ case class PosInfo(
     count = count + stat.count
   )
 
+  def merge(stat: KahanSOSAccumulator): PosInfo = copy(
+    sum = sum + stat.sum,
+    powerSum = powerSum + stat.powerSum,
+    count = count + stat.count
+  )
+
   def merge(stat: WelfordAccumulator): PosInfo = {
     if (count == 0L) {
-      PosInfo(
-        pos,
+      PosInfo(pos,
         stat.runningMean * stat.count.toDouble,
         stat.m2 + stat.count.toDouble * stat.runningMean * stat.runningMean,
         stat.count,

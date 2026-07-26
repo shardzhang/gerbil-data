@@ -2,7 +2,7 @@ package pipeline.stats
 
 import org.scalatest.{Matchers, WordSpec}
 
-class ValueStatsTest extends WordSpec with Matchers {
+class AccumulatorTest extends WordSpec with Matchers {
 
   "SOSAccumulator" should {
     "start with zero values" in {

@@ -102,6 +102,23 @@ class AccumulatorBenchmark extends WordSpec with Matchers {
       }
       println(f"  SOS: ${N_MERGE / sosMergeTime / 1e6}%.1f M merges/sec")
 
+      val kahanBatches: Array[KahanSOSAccumulator] = Array.tabulate(N_MERGE)(_ => {
+        val k = new KahanSOSAccumulator()
+        k.add(random.nextFloat() * 100)
+        k
+      })
+
+      val kahanMergeTime = timedAvg("Kahan SOS merge (10^6)", WARMUP, ITER) {
+        val acc = new KahanSOSAccumulator()
+        var i = 0
+        while (i < N_MERGE) {
+          acc.merge(kahanBatches(i))
+          i += 1
+        }
+      }
+      println(f"  Kahan SOS: ${N_MERGE / kahanMergeTime / 1e6}%.1f M merges/sec")
+      println(f"  Ratio (Kahan/SOS): ${kahanMergeTime / sosMergeTime * 100}%.0f%%")
+
       val welfBatches: Array[WelfordAccumulator] = Array.tabulate(N_MERGE)(_ => {
         val w = new WelfordAccumulator()
         w.add(random.nextFloat() * 100)
@@ -205,6 +222,23 @@ class AccumulatorBenchmark extends WordSpec with Matchers {
           k += 1
         }
       }
+
+      val kahanE2E = timedAvg("Kahan SOS sim (10^6 vals, 100 keys)", WARMUP, ITER) {
+        val maps = ArrayBuffer.fill(features)(new KahanSOSAccumulator())
+        var i = 0
+        while (i < N_VALUES) {
+          val key = i % features
+          maps(key).add(vals(i))
+          i += 1
+        }
+        val merged = new KahanSOSAccumulator()
+        var k = 0
+        while (k < features) {
+          merged.merge(maps(k))
+          k += 1
+        }
+      }
+      println(f"  Ratio (Kahan/SOS): ${kahanE2E / sosE2E * 100}%.0f%%")
 
       val welfE2E = timedAvg("Welford map-reduce sim (10^6 vals, 100 keys)", WARMUP, ITER) {
         val maps = ArrayBuffer.fill(features)(new WelfordAccumulator())
