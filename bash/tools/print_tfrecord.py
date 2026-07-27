@@ -14,7 +14,7 @@ FeatureValue = Dict[str, object]
 FeatureMap = Dict[str, FeatureValue]
 
 FEATURE_SUFFIXES = ("_raw", "_index", "_value")
-FEATURE_MAP_FILE_NAMES = ("nn_pos_map.txt", "pos_map.txt")
+FEATURE_MAP_FILE_NAMES = ("pos_map.txt")
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(

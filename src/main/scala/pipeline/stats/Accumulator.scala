@@ -194,8 +194,9 @@ case class PosInfo(
   }
 
   def std: Double = {
-    if (count <= 0L) 1.0
-    else {
+    if (count <= 0L) {
+      1.0
+    } else {
       val m = sum / count.toDouble
       val variance = math.max(powerSum / count.toDouble - m * m, 0.0)
       math.sqrt(variance + 0.000001)
@@ -257,8 +258,9 @@ object PosInfo {
     PosInfo(pos, sum, powerSum, count, 0.0, 0.0)
 
   def fromWelford(pos: Int, runningMean: Double, m2: Double, n: Long): PosInfo = {
-    if (n <= 0L) PosInfo(pos, 0.0, 0.0, 0L, 0.0, 0.0)
-    else {
+    if (n <= 0L) {
+      PosInfo(pos, 0.0, 0.0, 0L, 0.0, 0.0)
+    } else {
       val derivedSum = runningMean * n.toDouble
       val derivedPowerSum = m2 + n.toDouble * runningMean * runningMean
       PosInfo(pos, derivedSum, derivedPowerSum, n, runningMean, m2)

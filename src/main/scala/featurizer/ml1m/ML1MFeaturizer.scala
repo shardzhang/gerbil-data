@@ -14,9 +14,13 @@ import utils.LogUtils.green_println
  */
 class ML1MFeaturizer(configPath: Option[String] = None) extends Featurizer[ML1MSample] {
 
-  private lazy val config: FeatureConfig = configPath match {
-    case Some(path) => FeatureConfigLoader.loadFromFile(path)
-    case None => FeatureConfigLoader.loadFromResource("/ml1m/multi_features.yaml")
+  private lazy val config: FeatureConfig = {
+    val (loaded, source) = configPath match {
+      case Some(path) => (FeatureConfigLoader.loadFromFile(path), s"file: $path")
+      case None => (FeatureConfigLoader.loadFromResource("/ml1m/multi_features.yaml"), "resource classpath: /ml1m/multi_features.yaml")
+    }
+    green_println(s"Loaded feature config from $source")
+    loaded
   }
 
   private def instantiate(featureDef: FeatureDef): Any = {
@@ -37,6 +41,8 @@ class ML1MFeaturizer(configPath: Option[String] = None) extends Featurizer[ML1MS
     target = new ML1MTarget()
 
     val featureDefs: Seq[FeatureDef] = config.features.filter(_.isEnabled)
+    green_println(s"Feature config: enabled=${featureDefs.size}/${config.features.size}, cross=${config.cross_features.map(_.count(_.isEnabled)).getOrElse(0)}, features: ${featureDefs.map(f => s"${f.field_name}[${f.field_index}]").mkString(", ")}")
+
     val featureInstances: mutable.Map[String, Any] = mutable.Map.empty
     for (defn <- featureDefs) {
       val inst = instantiate(defn)

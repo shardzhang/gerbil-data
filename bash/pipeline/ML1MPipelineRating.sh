@@ -8,7 +8,7 @@ cd "$(dirname "$0")"
 
 source ../conf/env.sh
 
-day="20260717"
+day="20260728"
 input_path=${ML_1M_PATH}
 output_path=${input_path}/train_sample/rating
 
@@ -33,8 +33,8 @@ log_file="${log_path}/${timestamp}.log"
 --driver-memory 8g \
 --executor-memory 8g \
 --conf spark.hadoop.fs.defaultFS=file:/// \
---conf spark.driver.extraJavaOptions='-XX:ReservedCodeCacheSize=512m -XX:+UseCodeCacheFlushing -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log' \
---conf spark.executor.extraJavaOptions='-XX:ReservedCodeCacheSize=512m -XX:+UseCodeCacheFlushing -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps' \
+--conf spark.driver.extraJavaOptions='-XX:ReservedCodeCacheSize=2g -XX:+UseCodeCacheFlushing -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log' \
+--conf spark.executor.extraJavaOptions='-XX:ReservedCodeCacheSize=2g -XX:+UseCodeCacheFlushing -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps' \
 ${JAR_PATH} \
 --feature_threshold 5 \
 --target_threshold 0 \
@@ -45,6 +45,6 @@ ${JAR_PATH} \
 --output_format tfrecord \
 --train_ratio 0.8 \
 --val_ratio 0.1 \
---feature_config ${PROJECT_HOME}/src/main/resources/ml1m/binary_features.yaml \
+--feature_config ${PROJECT_HOME}/src/main/resources/ml1m/features.yaml \
 --target_mode rating
 ) 2>&1 | tee "${log_file}"

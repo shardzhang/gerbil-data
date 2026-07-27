@@ -48,7 +48,9 @@ class ML1MTarget extends RawTarget[ML1MSample] {
       builder.getFeaturesBuilder.putFeature("target", FloatListFeatureEncoder.encode(Seq(target)))
       builder.getFeaturesBuilder.putFeature("label", FloatListFeatureEncoder.encode(Seq(label)))
       builder.getFeaturesBuilder.putFeature("rating", FloatListFeatureEncoder.encode(Seq(rating)))
-    } else if (target_map.contains(target.toInt)) {
+      return true
+    }
+    if (target_map.contains(target.toInt)) {
       builder.getFeaturesBuilder.putFeature("target", FloatListFeatureEncoder.encode(Seq(target_map(target.toInt).toFloat)))
       builder.getFeaturesBuilder.putFeature("label", FloatListFeatureEncoder.encode(Seq(label)))
       builder.getFeaturesBuilder.putFeature("rating", FloatListFeatureEncoder.encode(Seq(rating)))
