@@ -337,6 +337,87 @@ Select the prediction target with `--target_mode` when running the pipeline:
 | **Multi-class** | `multi` | rating (1-5) as classes | app/adgroup_id as classes |
 | **Regression** | `rating` | raw rating value | N/A |
 
+## Data Split Methods
+
+The pipeline supports two train/val/test split strategies, selectable by overriding `useLeaveOneOut` in the `Pipeline` subclass (default: `false`, time-ratio split).
+
+### Time-Ratio Split (`useLeaveOneOut = false`, default)
+
+Samples are sorted by timestamp globally, then split by ratio:
+
+```
+train = first 80%  (by count, earliest in time)
+val   = next  10%
+test  = last  10%  (latest in time)
+```
+
+**When to use:**
+
+| Task | Reason |
+|------|--------|
+| CTR prediction (binary) | Evaluates model on **future data** — mimics online serving where the model faces unseen future samples. Prevents cross-user temporal leakage (a sample from User B's future does not appear in User A's training set). |
+| Rating regression | Same as CTR — pointwise prediction tasks require a strict time wall between train and test. |
+| Any IID evaluation | When temporal order matters and the evaluation goal is generalization to future time windows. |
+
+**Pros/Cons:**
+
+- ✅ Strict time wall between train and test — no future data leaks into training
+- ✅ Simple and deterministic
+- ❌ Users with only late-interaction data may not appear in the training set
+- ❌ Does not evaluate per-user ranking performance
+
+### Leave-One-Out Split (`useLeaveOneOut = true`)
+
+For each user, interactions are sorted by timestamp. The last interaction becomes **test**, the second-to-last becomes **val**, and all earlier interactions become **train**:
+
+```
+User A: [t1, t2, t3, t4, t5]  →  train: t1-t3,  val: t4,  test: t5
+User B: [t1, t2]              →  val: t1,        test: t2          (no train)
+User C: [t1]                  →  test: t1                          (no train, no val)
+```
+
+**When to use:**
+
+| Task | Reason |
+|------|--------|
+| Item recommendation (multi-class) | Evaluates top-N ranking performance per user — the standard evaluation protocol for recommender systems papers. |
+| User-level generalization | Each user contributes one test interaction, enabling per-user metrics like HitRate@K, NDCG@K. |
+| Cold-start simulation | Users with few interactions test the model's ability to recommend from limited history. |
+
+**Pros/Cons:**
+
+- ✅ Every user appears in the test set — enables per-user ranking evaluation
+- ✅ Widely adopted in recommender system literature
+- ❌ **Cross-user temporal leakage** — User A's test sample (timestamp t5) may be earlier than User B's training samples (timestamp t6..tn), meaning information from the "future" (User B) leaks into the training data. This is acceptable for ranking evaluation but not for CTR/regression.
+- ❌ Users with 1-2 interactions have no meaningful training set
+- ❌ Not suitable for pointwise tasks (CTR, regression) where temporal isolation is critical
+
+### Summary
+
+| | Time-Ratio | Leave-One-Out |
+|--|-----------|---------------|
+| **Temporal isolation** | ✅ Strict | ❌ Cross-user leakage |
+| **Per-user evaluation** | ❌ | ✅ Every user in test |
+| **CTR / Regression** | ✅ **Recommended** | ❌ |
+| **Top-N Recommendation** | Acceptable | ✅ **Recommended** |
+| **Citation** | — | Standard in RecSys papers [[1](#reference)] |
+
+### Implementation
+
+The split method is selected by overriding `useLeaveOneOut` in your `Pipeline` subclass. When enabled, you must also implement `parseUserId(sample)` to return a unique user identifier for each sample.
+
+```scala
+// ML1MPipeline.scala
+override def useLeaveOneOut: Boolean = true    // enable LOO
+override def parseUserId(sample: ML1MSample): String = sample.user_id
+```
+
+```scala
+// Pipeline.scala (default — time-ratio split)
+def useLeaveOneOut: Boolean = false
+def parseUserId(sample: T): String
+```
+
 ## Output Formats
 
 ### TFRecord

@@ -24,8 +24,11 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
   var featureConfigPath: Option[String] = None
 
   /** Target mode: "binary" (default, uses sample.label) or "multi" (uses sample.target). */
-  // 仅影响负样本采样率和用于统计的标签解析
-  var targetMode: String = "binary"
+  // 仅影响负样本采样率和用于统计的标签解析, 以及item_id词表构建
+  var targetMode: String = TargetType.BINARY
+
+  /** Only multi-class mode needs target_map re-encoding (sparse item_id → dense index). */
+  override def useTargetMap: Boolean = targetMode == TargetType.MULTI
 
   override def featurizer: Featurizer[ML1MSample] = {
     new ML1MFeaturizer(featureConfigPath).setup()
@@ -57,9 +60,9 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
    */
   override def parseTarget(sample: ML1MSample): Int = {
     targetMode match {
-      case "binary" => sample.label
-      case "multi"  => sample.target
-      case "rating" => sample.rating.toInt
+      case TargetType.BINARY => sample.label
+      case TargetType.MULTI  => sample.target
+      case TargetType.RATING => sample.rating.toInt
       case _        => throw new IllegalArgumentException(s"Unknown target_mode: '$targetMode'. Expected 'binary', 'multi', or 'rating'")
     }
   }
@@ -72,9 +75,9 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
    */
   override def keepSample(sample: ML1MSample, sample_ratio: Double = 1.0): Boolean = {
     targetMode match {
-      case "binary" => sample.label != 0 || ThreadLocalRandom.current().nextDouble() <= sample_ratio
-      case "multi"  => true
-      case "rating" => true
+      case TargetType.BINARY => sample.label != 0 || ThreadLocalRandom.current().nextDouble() <= sample_ratio
+      case TargetType.MULTI  => true
+      case TargetType.RATING => true
       case _        => throw new IllegalArgumentException(s"Unknown target_mode: '$targetMode'")
     }
   }
