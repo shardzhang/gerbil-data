@@ -138,8 +138,10 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
                    valRatio: Double
                   ): (RDD[(T, Boolean)], RDD[(T, Boolean)], RDD[(T, Boolean)]) = {
     if (useLeaveOneOut) {
+      green_println("splitSamples by LeaveOneOut")
       return leaveOneOutSplit(allSamples)
     }
+    green_println("splitSamples by Time")
     if (trainRatio >= 1.0) {
       return (allSamples, null, null)
     }

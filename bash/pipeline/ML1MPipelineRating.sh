@@ -46,5 +46,6 @@ ${JAR_PATH} \
 --train_ratio 0.8 \
 --val_ratio 0.1 \
 --feature_config ${PROJECT_HOME}/src/main/resources/ml1m/features.yaml \
---target_mode rating
+--target_mode rating \
+--split_mode leave_one
 ) 2>&1 | tee "${log_file}"

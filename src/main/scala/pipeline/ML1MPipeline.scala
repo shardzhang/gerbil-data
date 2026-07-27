@@ -25,14 +25,15 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
 
   /** Target mode: "binary" (default, uses sample.label) or "multi" (uses sample.target). */
   // 仅影响负样本采样率和用于统计的标签解析, 以及item_id词表构建
-  var targetMode: TargetType = TargetType.BINARY
+  var targetMode: String = TargetType.MULTI
 
-  var splitMode: String = SplitType.LEAVEONE
+  // 留一法
+  var splitMode: String = SplitType.TIME
 
   /** Only multi-class mode needs target_map re-encoding (sparse item_id → dense index). */
   override def useTargetMap: Boolean = targetMode == TargetType.MULTI
 
-  override def useLeaveOneOut: Boolean = true
+  override def useLeaveOneOut: Boolean = splitMode == SplitType.LEAVEONE
 
   override def featurizer: Featurizer[ML1MSample] = {
     new ML1MFeaturizer(featureConfigPath).setup()
@@ -136,12 +137,10 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
     opts.addOption(null, "val_ratio", true, "Fraction of data for validation (default: 0.1)")
     opts.addOption(null, "feature_config", true, "Path to external feature config YAML (default: classpath /ml1m/multi_features.yaml)")
     opts.addOption(null, "target_mode", true, "Target mode: 'binary' (label 0/1, default) or 'multi' (item_id)")
-    opts.addOption(null, "split_mode", true, "Split mode: '?' (default) or 'leave_one'")
+    opts.addOption(null, "split_mode", true, "Split mode: 'time' (default) or 'leave_one'")
 
     val parser = new DefaultParser()
     val cl = parser.parse(opts, args)
-    featureConfigPath = Option(cl.getOptionValue("feature_config"))
-    targetMode = Option(cl.getOptionValue("target_mode")).getOrElse("binary")
     val feature_threshold = cl.getOptionValue("feature_threshold").toInt
     val target_threshold = cl.getOptionValue("target_threshold").toInt
     val sample_ratio = Option(cl.getOptionValue("sample_ratio")).map(_.toDouble).getOrElse(0.1)
@@ -152,6 +151,9 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
     val output_format = Option(cl.getOptionValue("output_format")).getOrElse("tfrecord")
     val train_ratio = Option(cl.getOptionValue("train_ratio")).map(_.toDouble).getOrElse(0.8)
     val val_ratio = Option(cl.getOptionValue("val_ratio")).map(_.toDouble).getOrElse(0.1)
+    featureConfigPath = Option(cl.getOptionValue("feature_config"))
+    targetMode = Option(cl.getOptionValue("target_mode")).getOrElse("multi")
+    splitMode = Option(cl.getOptionValue("split_mode")).getOrElse("time")
 
     setLogLevel()
 
