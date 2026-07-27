@@ -8,7 +8,7 @@ cd "$(dirname "$0")"
 
 source ../conf/env.sh
 
-day="20260728"
+day="20260727"
 input_path=${ML_1M_PATH}
 output_path=${input_path}/train_sample/rating
 
@@ -18,6 +18,8 @@ timestamp=$(date +"%Y%m%d_%H%M%S")
 log_file="${log_path}/${timestamp}.log"
 
 (
+cat "$0"
+echo "----------------------------------------"
 "${SPARK_HOME}/bin/spark-submit" \
 --master 'local[*]' \
 --class pipeline.ML1MPipeline \

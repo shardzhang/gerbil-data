@@ -20,6 +20,8 @@ timestamp=$(date +"%Y%m%d_%H%M%S")
 log_file="${log_path}/${timestamp}.log"
 
 (
+cat "$0"
+echo "----------------------------------------"
 "${SPARK_HOME}/bin/spark-submit" \
 --master 'local[*]' \
 --class pipeline.alictr.AliCtrPipeline \
