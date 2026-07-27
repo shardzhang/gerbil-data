@@ -13,11 +13,17 @@ import utils.LogUtils.green_println
 import pipeline.serde.{BaseRecord, TFRecord, ParquetRecord, Vocabulary}
 import pipeline.stats.{Accumulator, SOSAccumulator, WelfordAccumulator, DataQualityTracker, PosInfo}
 
-
+/** 预测目标类型 */
 object TargetType {
   val MULTI: String = "multi"   // 多分类
   val BINARY: String = "binary" // 二分类
   val RATING: String = "rating" // 回归
+}
+
+/** 数据集切分方式 */
+object SplitType {
+  val TIME: String = "time"           // 时间顺序
+  val LEAVEONE : String = "leave_one" // 留一法
 }
 
 

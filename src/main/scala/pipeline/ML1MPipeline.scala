@@ -4,10 +4,10 @@ import org.apache.commons.cli.{DefaultParser, Options}
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
-import java.util.concurrent.ThreadLocalRandom
 
+import java.util.concurrent.ThreadLocalRandom
 import featurizer.Featurizer
-import featurizer.ml1m.{ML1MSample, ML1MFeaturizer}
+import featurizer.ml1m.{ML1MFeaturizer, ML1MSample}
 import pipeline.stats.{Accumulator, WelfordAccumulator}
 import utils.LogUtils.green_println
 import utils.LogUtils.setLogLevel
@@ -25,10 +25,14 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
 
   /** Target mode: "binary" (default, uses sample.label) or "multi" (uses sample.target). */
   // 仅影响负样本采样率和用于统计的标签解析, 以及item_id词表构建
-  var targetMode: String = TargetType.BINARY
+  var targetMode: TargetType = TargetType.BINARY
+
+  var splitMode: String = SplitType.LEAVEONE
 
   /** Only multi-class mode needs target_map re-encoding (sparse item_id → dense index). */
   override def useTargetMap: Boolean = targetMode == TargetType.MULTI
+
+  override def useLeaveOneOut: Boolean = true
 
   override def featurizer: Featurizer[ML1MSample] = {
     new ML1MFeaturizer(featureConfigPath).setup()
@@ -132,6 +136,7 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
     opts.addOption(null, "val_ratio", true, "Fraction of data for validation (default: 0.1)")
     opts.addOption(null, "feature_config", true, "Path to external feature config YAML (default: classpath /ml1m/multi_features.yaml)")
     opts.addOption(null, "target_mode", true, "Target mode: 'binary' (label 0/1, default) or 'multi' (item_id)")
+    opts.addOption(null, "split_mode", true, "Split mode: '?' (default) or 'leave_one'")
 
     val parser = new DefaultParser()
     val cl = parser.parse(opts, args)
