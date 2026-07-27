@@ -270,6 +270,23 @@ class UserGenresRateCnt1Days(f_i: Int, f_n: String) extends CategoricalFeature[M
 }
 
 /** 仅行为序列特征, 不做target attentsion */
+class UserGenresRateCnt3Days(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val seq = sample.user_genres_rate_cnt_3days
+    for (i <- 0 until Math.min(200, seq.size)) {
+      val gen = seq(i)._1.trim.toLowerCase
+      val p = new MurmurHash3.LongPair()
+      MurmurHash3.murmurhash3_x64_128(gen.getBytes(), 0, gen.length, SEED, p)
+      val total_cnt = seq(i)._2
+      raw_list.append(gen)
+      feature_list.append(p.val1)
+      value_list.append(total_cnt.toFloat)
+    }
+    this
+  }
+}
+
+/** 仅行为序列特征, 不做target attentsion */
 class UserGenresRateCnt7Days(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
   override def parse(sample: ML1MSample): RawFeature = {
     val seq = sample.user_genres_rate_cnt_7days

@@ -566,6 +566,60 @@ class UserWatchSameGenre1Day(f_i: Int, f_n: String) extends CategoricalFeature[M
   }
 }
 
+class UserWatchSameGenre3Day(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val hit = try {
+      val currentGenres = sample.movie_genres.toSet
+      val recentGenres = sample.user_genres_rate_3days.map(_._1).toSet
+      if (currentGenres.intersect(recentGenres).nonEmpty) 2 else 1
+    } catch {
+      case e: Exception =>
+        green_println(s"Featurizer4ML1M parse error: ${e.getMessage}")
+        1
+    }
+    raw_list.append(hit.toString)
+    feature_list.append(hit)
+    value_list.append(1.0F)
+    this
+  }
+}
+
+class UserWatchSameGenre7Day(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val hit = try {
+      val currentGenres = sample.movie_genres.toSet
+      val recentGenres = sample.user_genres_rate_7days.map(_._1).toSet
+      if (currentGenres.intersect(recentGenres).nonEmpty) 2 else 1
+    } catch {
+      case e: Exception =>
+        green_println(s"Featurizer4ML1M parse error: ${e.getMessage}")
+        1
+    }
+    raw_list.append(hit.toString)
+    feature_list.append(hit)
+    value_list.append(1.0F)
+    this
+  }
+}
+
+class UserWatchSameGenre15Day(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
+  override def parse(sample: ML1MSample): RawFeature = {
+    val hit = try {
+      val currentGenres = sample.movie_genres.toSet
+      val recentGenres = sample.user_genres_rate_15days.map(_._1).toSet
+      if (currentGenres.intersect(recentGenres).nonEmpty) 2 else 1
+    } catch {
+      case e: Exception =>
+        green_println(s"Featurizer4ML1M parse error: ${e.getMessage}")
+        1
+    }
+    raw_list.append(hit.toString)
+    feature_list.append(hit)
+    value_list.append(1.0F)
+    this
+  }
+}
+
 class UserSameGenreAvgRate(f_i: Int, f_n: String) extends CategoricalFeature[ML1MSample](f_i, f_n) {
   override def parse(sample: ML1MSample): RawFeature = {
     var finalRate = 3.0

@@ -10,6 +10,7 @@ import scala.math
  * identical results to single-machine sequential accumulation for all 7 test
  * configurations used in the paper.
  *
+ * 本质上就是验证 `Merge(partition1.Add(data1), partition2.Add(data2)) == Add(concat(data1, data2))`
  * Run: mvn test -Dtest=MergeAccuracyBench
  */
 class MergeAccuracyBench extends SharedSparkSessionSuite {
@@ -32,7 +33,7 @@ class MergeAccuracyBench extends SharedSparkSessionSuite {
       val sc = spark.sparkContext
       val results = for ((cfg, idx) <- configs.zipWithIndex) yield {
         val seed = 42 + idx * 1000
-        val data = generateData(cfg, seed)
+        val data: Array[Double] = generateData(cfg, seed)
 
         // Single-machine reference for all three accumulators
         val sosRef = new SOSAccumulator()
@@ -49,7 +50,7 @@ class MergeAccuracyBench extends SharedSparkSessionSuite {
 
         // Distributed: mapPartitions -> reduceByKey
         val rdd = sc.parallelize(data.map(_.toFloat), numSlices = 4)
-        val merged = rdd.mapPartitions { iter =>
+        val merged: Array[(String, (SOSAccumulator, KahanSOSAccumulator, WelfordAccumulator))] = rdd.mapPartitions { iter =>
           val sos = new SOSAccumulator()
           val kahan = new KahanSOSAccumulator()
           val welf = new WelfordAccumulator()
@@ -75,9 +76,21 @@ class MergeAccuracyBench extends SharedSparkSessionSuite {
         val kahanVarDist = kahanDist.std * kahanDist.std
         val welfVarDist = welfDist.std * welfDist.std
 
-        val sosRelDiff = if (math.abs(sosVarRef) > 1e-30) math.abs(sosVarDist - sosVarRef) / math.abs(sosVarRef) else 0.0
-        val kahanRelDiff = if (math.abs(kahanVarRef) > 1e-30) math.abs(kahanVarDist - kahanVarRef) / math.abs(kahanVarRef) else 0.0
-        val welfRelDiff = if (math.abs(welfVarRef) > 1e-30) math.abs(welfVarDist - welfVarRef) / math.abs(welfVarRef) else 0.0
+        val sosRelDiff = if (math.abs(sosVarRef) > 1e-30) {
+          math.abs(sosVarDist - sosVarRef) / math.abs(sosVarRef)
+        } else {
+          0.0
+        }
+        val kahanRelDiff = if (math.abs(kahanVarRef) > 1e-30) {
+          math.abs(kahanVarDist - kahanVarRef) / math.abs(kahanVarRef)
+        } else {
+          0.0
+        }
+        val welfRelDiff = if (math.abs(welfVarRef) > 1e-30) {
+          math.abs(welfVarDist - welfVarRef) / math.abs(welfVarRef)
+        } else {
+          0.0
+        }
 
         val pass = if (cfg.variance == 0.0) {
           sosRelDiff < 1e-15 && kahanRelDiff < 1e-15 && welfRelDiff < 1e-15
@@ -128,7 +141,7 @@ object MergeAccuracyBench {
     Config("High precision small",      0.001,   1e-7,       10000000),
     Config("Extreme cancellation",        1e6,   1e-2,       10000000),
     Config("Zero variance",              42.0,     0.0,      10000000),
-    Config("Tiny variance large mean",    1e4,    1e-4,       10000000)
+    Config("Tiny variance large mean",    1e4,    1e-4,      10000000)
   )
 
   def generateData(cfg: Config, seed: Int): Array[Double] = {
