@@ -90,6 +90,8 @@ class PipelineTest extends WordSpec with Matchers {
 
     override def parseTimestamp(sample: String): Long = 0L
 
+    override def parseUserId(sample: String): String = "test_user"
+
     override def keepSample(sample: String, sample_ratio: Double): Boolean = {
       true
     }

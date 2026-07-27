@@ -63,6 +63,13 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
   /** Extracts the timestamp (millis) from a sample for time-based split. */
   def parseTimestamp(sample: T): Long
 
+  /** Extracts the user identifier from a sample for leave-one-out split. */
+  def parseUserId(sample: T): String
+
+  /** Whether to use leave-one-out split (last interaction per user as test,
+   *  second-to-last as val) instead of the default ratio-based split. */
+  def useLeaveOneOut: Boolean = false
+
   /** Down-samples negative samples (target == 0) by `sample_ratio`. Positive samples are always kept. */
   def keepSample(sample: T, sample_ratio: Double): Boolean
 
@@ -111,6 +118,9 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
                    trainRatio: Double,
                    valRatio: Double
                   ): (RDD[(T, Boolean)], RDD[(T, Boolean)], RDD[(T, Boolean)]) = {
+    if (useLeaveOneOut) {
+      return leaveOneOutSplit(allSamples)
+    }
     if (trainRatio >= 1.0) {
       return (allSamples, null, null)
     }
@@ -143,6 +153,51 @@ abstract class Pipeline[T: ClassTag] extends Serializable {
     qualityTracker.recordCounts("val_split", valCount)
     qualityTracker.recordCounts("test_split", testCount)
 
+    (train, valid, test)
+  }
+
+  /**
+   * Leave-one-out split: for each user, the last interaction (by timestamp) becomes test,
+   * the second-to-last becomes val, all earlier interactions become train.
+   *
+   * Edge cases:
+   *   - 1 interaction → test only (skipped for val and train)
+   *   - 2 interactions → val + test, no train
+   *   - 3+ interactions → train + val + test
+   */
+  def leaveOneOutSplit(allSamples: RDD[(T, Boolean)]
+                      ): (RDD[(T, Boolean)], RDD[(T, Boolean)], RDD[(T, Boolean)]) = {
+    val tagged: RDD[(String, T, Boolean)] = allSamples
+      .groupBy { case (sample, _) => parseUserId(sample) }
+      .flatMap { case (_, iter) =>
+        val sorted = iter.toSeq.sortBy { case (sample, _) => parseTimestamp(sample) }
+        sorted.zipWithIndex.map { case ((sample, success), idx) =>
+          val n = sorted.length
+          val tag = if (idx < n - 2) "train"
+                    else if (idx < n - 1) "val"
+                    else "test"
+          (tag, sample, success)
+        }
+      }
+      .persist(StorageLevel.MEMORY_AND_DISK_SER)
+
+    val train: RDD[(T, Boolean)] = tagged.filter(_._1 == "train").map(t => (t._2, t._3))
+      .persist(StorageLevel.MEMORY_AND_DISK_SER)
+    val valid: RDD[(T, Boolean)] = tagged.filter(_._1 == "val").map(t => (t._2, t._3))
+      .persist(StorageLevel.MEMORY_AND_DISK_SER)
+    val test: RDD[(T, Boolean)] = tagged.filter(_._1 == "test").map(t => (t._2, t._3))
+      .persist(StorageLevel.MEMORY_AND_DISK_SER)
+
+    val total = tagged.count()
+    val trainCount = train.count()
+    val valCount = valid.count()
+    val testCount = test.count()
+    tagged.unpersist()
+
+    green_println(s"leave-one-out split: ${total}=total, train=${trainCount}, val=${valCount}, test=${testCount}")
+    qualityTracker.recordCounts("train_split", trainCount)
+    qualityTracker.recordCounts("val_split", valCount)
+    qualityTracker.recordCounts("test_split", testCount)
     (train, valid, test)
   }
 

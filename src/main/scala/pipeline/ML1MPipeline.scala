@@ -82,6 +82,9 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
   /** Extract timestamp (millis) from sample for time-based split. */
   override def parseTimestamp(sample: ML1MSample): Long = sample.time_stamp
 
+  /** Extract user ID from sample for leave-one-out split. */
+  override def parseUserId(sample: ML1MSample): String = sample.user_id
+
   /** Load movie metadata (title, genres) from item_feature CSV, keyed by movie_id. */
   def getMovieInfo(spark: SparkSession, path: String): collection.Map[Int, (String, Array[String])] = {
     // item_feature.csv
