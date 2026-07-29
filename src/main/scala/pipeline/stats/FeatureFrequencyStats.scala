@@ -1,4 +1,7 @@
+package pipeline.stats
+
 import org.json.JSONObject
+
 import java.io.{BufferedReader, FileInputStream, InputStreamReader}
 import scala.collection.mutable
 

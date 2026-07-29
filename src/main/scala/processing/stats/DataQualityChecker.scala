@@ -3,6 +3,8 @@ package processing.stats
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.types.{NumericType, StringType => SparkStringType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import scala.collection.mutable
+import org.apache.spark.sql.types._
 import utils.LogUtils.green_println
 
 /**
@@ -79,7 +81,6 @@ case class QualityReport(
   * for cross-run drift detection.
   */
 object DataQualityChecker {
-
   /** Computes and prints quality metrics for a DataFrame, then persists stats for drift detection. */
   def check(df: DataFrame, stage: String, outputPath: String): QualityReport = {
     val totalCount = df.count()
@@ -94,7 +95,7 @@ object DataQualityChecker {
     val cardinalities = computeCardinalities(df, schema)
     val numericStats = computeNumericStats(df, schema)
 
-    val columns = for (field <- schema.fields) yield {
+    val columns: Array[ColumnQuality] = for (field <- schema.fields) yield {
       ColumnQuality(
         name = field.name,
         dataType = field.dataType.simpleString,
@@ -113,14 +114,14 @@ object DataQualityChecker {
   }
 
   // ────────────────────────────── stats computation ──────────────────────────────
-
   /** Returns per-column null counts via single SQL pass. */
   private def computeNullCounts(df: DataFrame, schema: StructType): Map[String, Long] = {
-    val cols = schema.fields.map(_.name)
-    val selects = cols.map(c => "SUM(IF(`" + c + "` IS NULL, 1, 0)) AS `" + c + "`").mkString(", ")
+    val cols: Array[String] = schema.fields.map(_.name)
+    val selects: String = cols.map(c => "SUM(IF(`" + c + "` IS NULL, 1, 0)) AS `" + c + "`").mkString(", ")
+
     df.createOrReplaceTempView("_quality_null_tmp")
     val row = df.sparkSession.sql("SELECT " + selects + " FROM _quality_null_tmp").first()
-    val result = scala.collection.mutable.Map.empty[String, Long]
+    val result = mutable.Map.empty[String, Long]
     for (colName <- cols) {
       val idx = row.fieldIndex(colName)
       result(colName) = row.getLong(idx)
@@ -130,14 +131,17 @@ object DataQualityChecker {
 
   /** Returns distinct-count per string column. */
   private def computeCardinalities(df: DataFrame, schema: StructType): Map[String, Long] = {
-    val stringFields = schema.fields.filter(_.dataType.isInstanceOf[SparkStringType])
-    if (stringFields.isEmpty) return Map.empty
+    val stringFields: Array[StructField] = schema.fields.filter(_.dataType.isInstanceOf[SparkStringType])
+    if (stringFields.isEmpty) {
+      return Map.empty
+    }
 
-    val cols = stringFields.map(_.name)
+    val cols: Array[String] = stringFields.map(_.name)
     val selects = cols.map(c => "COUNT(DISTINCT `" + c + "`) AS `" + c + "`").mkString(", ")
+
     df.createOrReplaceTempView("_quality_card_tmp")
     val row = df.sparkSession.sql("SELECT " + selects + " FROM _quality_card_tmp").first()
-    val result = scala.collection.mutable.Map.empty[String, Long]
+    val result = mutable.Map.empty[String, Long]
     for (colName <- cols) {
       val idx = row.fieldIndex(colName)
       result(colName) = row.getLong(idx)
@@ -148,15 +152,16 @@ object DataQualityChecker {
   /** Returns min/max/mean/stddev per numeric column. */
   private def computeNumericStats(df: DataFrame, schema: StructType): Map[String, NumericColStats] = {
     val numericFields = schema.fields.filter(_.dataType.isInstanceOf[NumericType])
-    if (numericFields.isEmpty) return Map.empty
+    if (numericFields.isEmpty) {
+      return Map.empty
+    }
 
     df.createOrReplaceTempView("_quality_num_tmp")
-    val result = scala.collection.mutable.Map.empty[String, NumericColStats]
+    val result = mutable.Map.empty[String, NumericColStats]
     for (field <- numericFields) {
       val sqlStmt = "SELECT MIN(`" + field.name + "`) AS min, MAX(`" + field.name + "`) AS max, " +
         "AVG(`" + field.name + "`) AS avg, STDDEV(`" + field.name + "`) AS std FROM _quality_num_tmp"
       val row = df.sparkSession.sql(sqlStmt).first()
-
       var vMin: Option[Double] = None
       var vMax: Option[Double] = None
       var vAvg: Option[Double] = None
@@ -165,14 +170,12 @@ object DataQualityChecker {
       if (row.get(1) != null) { vMax = Some(row.get(1).toString.toDouble) }
       if (row.get(2) != null) { vAvg = Some(row.get(2).toString.toDouble) }
       if (row.get(3) != null) { vStd = Some(row.get(3).toString.toDouble) }
-
       result(field.name) = NumericColStats(min = vMin, max = vMax, mean = vAvg, stddev = vStd)
     }
     result.toMap
   }
 
   // ────────────────────────────── persistence ──────────────────────────────
-
   /** Parent directory for all quality stats (parent_of_output/_quality/). */
   private def qualityDir(outputPath: String): Path = {
     val parent = new Path(outputPath).getParent.toString
@@ -195,7 +198,7 @@ object DataQualityChecker {
       fs.mkdirs(qualityDir(outputPath))
 
       // Build rows: one per column, with all stats as flat fields
-      val rows = scala.collection.mutable.ListBuffer.empty[Row]
+      val rows = mutable.ListBuffer.empty[Row]
       for (c <- report.columns) {
         val minVal: String  = if (c.numericStats.isDefined && c.numericStats.get.min.isDefined)    { c.numericStats.get.min.get.toString } else { null }
         val maxVal: String  = if (c.numericStats.isDefined && c.numericStats.get.max.isDefined)    { c.numericStats.get.max.get.toString } else { null }
@@ -203,27 +206,36 @@ object DataQualityChecker {
         val stdVal: String  = if (c.numericStats.isDefined && c.numericStats.get.stddev.isDefined) { c.numericStats.get.stddev.get.toString } else { null }
         val cardVal: java.lang.Long = if (c.cardinality.isDefined) { c.cardinality.get } else { null }
         rows += Row(
-          report.stage, report.totalCount, c.name, c.dataType,
-          c.nullCount, c.nullRatio, cardVal,
-          minVal, maxVal, meanVal, stdVal)
+          report.stage,
+          report.totalCount,
+          c.name,
+          c.dataType,
+          c.nullCount,
+          c.nullRatio,
+          cardVal,
+          minVal, maxVal, meanVal, stdVal
+        )
       }
 
       val outputSchema = StructType(Seq(
-        StructField("stage", org.apache.spark.sql.types.StringType, nullable = true),
-        StructField("total_count", org.apache.spark.sql.types.LongType, nullable = true),
-        StructField("name", org.apache.spark.sql.types.StringType, nullable = true),
-        StructField("type", org.apache.spark.sql.types.StringType, nullable = true),
-        StructField("null_count", org.apache.spark.sql.types.LongType, nullable = true),
-        StructField("null_ratio", org.apache.spark.sql.types.DoubleType, nullable = true),
-        StructField("cardinality", org.apache.spark.sql.types.LongType, nullable = true),
-        StructField("min", org.apache.spark.sql.types.StringType, nullable = true),
-        StructField("max", org.apache.spark.sql.types.StringType, nullable = true),
-        StructField("mean", org.apache.spark.sql.types.StringType, nullable = true),
-        StructField("stddev", org.apache.spark.sql.types.StringType, nullable = true)
+        StructField("stage", StringType, nullable = true),
+        StructField("total_count", LongType, nullable = true),
+        StructField("name", StringType, nullable = true),
+        StructField("type", StringType, nullable = true),
+        StructField("null_count", LongType, nullable = true),
+        StructField("null_ratio", DoubleType, nullable = true),
+        StructField("cardinality", LongType, nullable = true),
+        StructField("min", StringType, nullable = true),
+        StructField("max", StringType, nullable = true),
+        StructField("mean", StringType, nullable = true),
+        StructField("stddev", StringType, nullable = true)
       ))
-
-      spark.createDataFrame(spark.sparkContext.parallelize(rows), outputSchema)
-        .repartition(1).write.mode("overwrite").json(path.toString)
+      spark
+        .createDataFrame(spark.sparkContext.parallelize(rows), outputSchema)
+        .repartition(1)
+        .write
+        .mode("overwrite")
+        .json(path.toString)
     } catch {
       case e: Exception =>
         green_println("[Quality] Failed to save quality stats: " + e.getMessage)
@@ -247,7 +259,6 @@ object DataQualityChecker {
       green_println("[Drift] No previous stats at " + path + ", skipping drift detection.")
       return
     }
-
     green_println("[Drift] Comparing " + curr.stage + " against " + path + " ...")
 
     val prevDf = spark.read.json(path.toString).cache()
@@ -305,7 +316,6 @@ object DataQualityChecker {
         }
       }
     }
-
     prevDf.unpersist()
   }
 }

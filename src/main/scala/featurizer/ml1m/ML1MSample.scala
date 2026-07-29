@@ -206,7 +206,8 @@ class ML1MSample extends Serializable {
   /** ***************************** target *********************************** */
   // Multi-class classification. item_id.
   var target: Int = 0
-  // Binary classification. 0/1
+  // Binary classification: 0/1
+  // 隐式负反馈Top-N推荐: 1
   var label: Int = 0
   // Relevance regression. 1-5
   var rating: Float = 0.0F
@@ -268,6 +269,7 @@ object ML1MSample {
     var ret = true
 
     // parse target
+    // NOTE: 这里把target固定写死为item_id
     train_sample.target =
       try {
         row.getAs[String]("item_id").toInt
@@ -310,6 +312,8 @@ object ML1MSample {
           ret = false
           0
       }
+
+    // 这里ML1M是隐式反馈数据集, 因此只有正样本, 没有负样本
     train_sample.label = 1
 
     // parse context

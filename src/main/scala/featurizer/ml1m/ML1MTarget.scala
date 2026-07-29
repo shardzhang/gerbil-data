@@ -29,7 +29,7 @@ class ML1MTarget extends RawTarget[ML1MSample] {
    * - Regression target: using rating as label
    */
   override def parse(sample: ML1MSample) = {
-    target = sample.target
+    target = sample.target // item_id
     label = sample.label
     rating = sample.rating
     this

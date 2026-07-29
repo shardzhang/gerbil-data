@@ -10,7 +10,7 @@ source ../conf/env.sh
 
 day="20260727"
 input_path=${ML_1M_PATH}
-output_path=${input_path}/train_sample/rating
+output_path=${input_path}/train_sample/rating_full
 
 log_path="${output_path}"
 mkdir -p "${log_path}"
@@ -38,7 +38,7 @@ echo "----------------------------------------"
 --conf spark.driver.extraJavaOptions='-XX:ReservedCodeCacheSize=2g -XX:+UseCodeCacheFlushing -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:./gc.log' \
 --conf spark.executor.extraJavaOptions='-XX:ReservedCodeCacheSize=2g -XX:+UseCodeCacheFlushing -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps' \
 ${JAR_PATH} \
---feature_threshold 5 \
+--feature_threshold 0 \
 --target_threshold 0 \
 --input_dir ${input_path} \
 --output_dir ${output_path} \

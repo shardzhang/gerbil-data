@@ -31,6 +31,9 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
   var splitMode: String = SplitType.TIME
 
   /** Only multi-class mode needs target_map re-encoding (sparse item_id → dense index). */
+  // 仅在item_id多分类情况下启用词表(1是通过target_map重新映射下标, 2是导出target_map用于线上推理的反映射), 此时target=item_id, target_map用于将原始item_id -> emb_index
+  // ctr任务二分类不启用, 因为映射后可能将target=1映射为0或者将target=0映射为1, 没有必要
+  // 评分任务不启用, 同上. 因为映射后没法保证target在经过target_map映射后恒等一致, 没有必要
   override def useTargetMap: Boolean = targetMode == TargetType.MULTI
 
   override def useLeaveOneOut: Boolean = splitMode == SplitType.LEAVEONE
@@ -60,13 +63,13 @@ object ML1MPipeline extends Pipeline[ML1MSample] {
 
   /** Extract target label:
    * binary mode → sample.label (0/1)
-   * multi mode → sample.target (item_id).
+   * multiclass mode → sample.target (item_id).
    * rating mode → sample.rating (1-5).
    */
   override def parseTarget(sample: ML1MSample): Int = {
     targetMode match {
-      case TargetType.BINARY => sample.label
       case TargetType.MULTI  => sample.target
+      case TargetType.BINARY => sample.label
       case TargetType.RATING => sample.rating.toInt
       case _        => throw new IllegalArgumentException(s"Unknown target_mode: '$targetMode'. Expected 'binary', 'multi', or 'rating'")
     }
