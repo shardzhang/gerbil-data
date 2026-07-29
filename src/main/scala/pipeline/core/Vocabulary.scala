@@ -1,4 +1,4 @@
-package pipeline.serde
+package pipeline.core
 
 import com.google.common.io.{LittleEndianDataInputStream, LittleEndianDataOutputStream}
 import featurizer.FieldType
@@ -11,7 +11,6 @@ import java.net.URI
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import utils.LogUtils.green_println
-import pipeline.stats.PosInfo
 
 /**
  * Vocabulary serialization — saves/restores feature position maps in JSON/text/binary formats

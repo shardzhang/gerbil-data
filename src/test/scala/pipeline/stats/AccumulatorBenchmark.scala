@@ -3,6 +3,7 @@ package pipeline.stats
 import com.google.common.io.LittleEndianDataOutputStream
 import org.json.JSONObject
 import org.scalatest.{Matchers, WordSpec}
+import pipeline.core.{KahanSOSAccumulator, PosInfo, SOSAccumulator, WelfordAccumulator}
 
 import java.io.ByteArrayOutputStream
 import scala.collection.mutable.ArrayBuffer

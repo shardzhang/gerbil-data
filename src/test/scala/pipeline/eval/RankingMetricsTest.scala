@@ -1,5 +1,6 @@
 package pipeline.eval
 
+import eval.RankingMetrics
 import org.scalatest.{Matchers, WordSpec}
 
 class RankingMetricsTest extends WordSpec with Matchers {

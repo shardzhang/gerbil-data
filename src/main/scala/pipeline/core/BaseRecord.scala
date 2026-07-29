@@ -1,8 +1,7 @@
-package pipeline.serde
+package pipeline.core
 
 import scala.reflect.ClassTag
 import org.apache.spark.rdd.RDD
-
 import featurizer.Featurizer
 
 /**
@@ -17,7 +16,7 @@ import featurizer.Featurizer
  *   - [[TFRecord]]     — writes samples as TensorFlow Example protobuf via Hadoop TFRecord
  *   - [[ParquetRecord]] — writes samples as Parquet columnar format via Spark DataFrame
  *
- * Instances are created through [[pipeline.Pipeline.createRecord]] which selects the
+ * Instances are created through [[Pipeline.createRecord]] which selects the
  * appropriate subclass based on the `--output_format` CLI parameter.
  *
  * @tparam T the raw sample type (e.g. ML1MSample, MobileRecSample, AliCtrSample)

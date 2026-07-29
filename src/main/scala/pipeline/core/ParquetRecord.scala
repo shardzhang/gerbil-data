@@ -1,4 +1,4 @@
-package pipeline.serde
+package pipeline.core
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer

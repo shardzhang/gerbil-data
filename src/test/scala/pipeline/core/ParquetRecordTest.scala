@@ -1,4 +1,4 @@
-package pipeline.serde
+package pipeline.core
 
 import com.google.protobuf.ByteString
 import org.scalatest.{Matchers, WordSpec}

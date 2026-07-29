@@ -1,6 +1,8 @@
 package pipeline.stats
 
+import pipeline.core.{KahanSOSAccumulator, SOSAccumulator, WelfordAccumulator}
 import tfrecords.SharedSparkSessionSuite
+
 import scala.util.Random
 import scala.math
 

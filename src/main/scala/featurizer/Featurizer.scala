@@ -4,7 +4,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 import org.tensorflow.example.Example
-import pipeline.serde.ParquetRecordData
+import pipeline.core.ParquetRecordData
 
 
 /**

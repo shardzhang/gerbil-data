@@ -1,4 +1,4 @@
-package pipeline.stats
+package pipeline.core
 
 /**
  * ETL quality tracking — per-stage count, parse success rate, target distribution

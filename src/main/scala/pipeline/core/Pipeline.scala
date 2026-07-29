@@ -1,17 +1,15 @@
-package pipeline
+package pipeline.core
 
-import scala.collection.mutable
-import scala.collection.mutable.{ArrayBuffer, HashMap}
-import scala.reflect.ClassTag
+import featurizer.{Featurizer, FieldType}
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
-
-import featurizer.{Featurizer, FieldType}
 import utils.LogUtils.green_println
-import pipeline.serde.{BaseRecord, TFRecord, ParquetRecord, Vocabulary}
-import pipeline.stats.{Accumulator, SOSAccumulator, WelfordAccumulator, DataQualityTracker, PosInfo}
+
+import scala.collection.mutable
+import scala.collection.mutable.{ArrayBuffer, HashMap}
+import scala.reflect.ClassTag
 
 /** 预测目标类型 */
 object TargetType {

@@ -1,6 +1,7 @@
 package pipeline.stats
 
 import org.scalatest.{Matchers, WordSpec}
+import pipeline.core.{KahanSOSAccumulator, PosInfo, SOSAccumulator, WelfordAccumulator}
 
 class AccumulatorTest extends WordSpec with Matchers {
 

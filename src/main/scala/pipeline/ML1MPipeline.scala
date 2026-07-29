@@ -8,7 +8,7 @@ import org.apache.spark.sql.SparkSession
 import java.util.concurrent.ThreadLocalRandom
 import featurizer.Featurizer
 import featurizer.ml1m.{ML1MFeaturizer, ML1MSample}
-import pipeline.stats.{Accumulator, WelfordAccumulator}
+import pipeline.core.{Accumulator, Pipeline, SplitType, TargetType, WelfordAccumulator}
 import utils.LogUtils.green_println
 import utils.LogUtils.setLogLevel
 

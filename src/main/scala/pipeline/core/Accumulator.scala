@@ -1,4 +1,4 @@
-package pipeline.stats
+package pipeline.core
 
 /**
  * Online statistics accumulators for distributed feature engineering.

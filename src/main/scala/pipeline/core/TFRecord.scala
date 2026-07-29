@@ -1,4 +1,4 @@
-package pipeline.serde
+package pipeline.core
 
 import scala.reflect.ClassTag
 import org.apache.hadoop.io.{BytesWritable, NullWritable}

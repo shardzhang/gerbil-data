@@ -1,6 +1,7 @@
 package pipeline.stats
 
 import org.scalatest.{Matchers, WordSpec}
+import pipeline.core.{DataQualityTracker, StageQuality}
 
 class DataQualityTrackerTest extends WordSpec with Matchers {
 

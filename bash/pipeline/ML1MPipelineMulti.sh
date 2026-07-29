@@ -8,9 +8,9 @@ cd "$(dirname "$0")"
 
 source ../conf/env.sh
 
-day="20260729"
+day="20260727"
 input_path=${ML_1M_PATH}
-output_path=${input_path}/train_sample/rating_full
+output_path=${input_path}/train_sample/multi
 
 log_path="${output_path}"
 mkdir -p "${log_path}"
@@ -48,6 +48,6 @@ ${JAR_PATH} \
 --train_ratio 0.8 \
 --val_ratio 0.1 \
 --feature_config ${PROJECT_HOME}/src/main/resources/ml1m/features.yaml \
---target_mode rating \
+--target_mode multi \
 --split_mode leave_one
 ) 2>&1 | tee "${log_file}"
