@@ -16,9 +16,10 @@ class TFRecord[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Long) e
             posMap: collection.Map[(Int, Long), Int],
             /** HashMap[target, pos] */
             targetMap: collection.Map[Int, Int],
-            tfRecordPath: String
+            tfRecordPath: String,
+            shuffle_files: Boolean = false
            ): Unit = {
-    trainingSample
+    val serialized = trainingSample
       .map { case (sample, _) => sample }
       .mapPartitions(samples => {
         // Factory function ensures each Spark partition gets its own featurizer instance, avoiding shared mutable state
@@ -37,7 +38,15 @@ class TFRecord[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Long) e
         val value = NullWritable.get()
         (key, value)
       })
-      .saveAsNewAPIHadoopFile[TFRecordFileOutputFormat](tfRecordPath)
+
+    val toWrite = if (shuffle_files) {
+      serialized
+        .repartition(serialized.getNumPartitions)
+        .mapPartitions(_.toList.sortBy(_ => scala.util.Random.nextDouble()).iterator)
+    } else {
+      serialized
+    }
+    toWrite.saveAsNewAPIHadoopFile[TFRecordFileOutputFormat](tfRecordPath)
   }
 
   /** Encodes a single sample into a TensorFlow Example. Returns (example, has_feature, has_target). */

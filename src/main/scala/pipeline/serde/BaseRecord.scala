@@ -37,6 +37,7 @@ abstract class BaseRecord[T: ClassTag](val createEncoder: () => Featurizer[T], v
   def write(trainingSample: RDD[(T, Boolean)],
             posMap: collection.Map[(Int, Long), Int],
             targetMap: collection.Map[Int, Int],
-            path: String
+            path: String,
+            shuffle_files: Boolean = false
            ): Unit
 }

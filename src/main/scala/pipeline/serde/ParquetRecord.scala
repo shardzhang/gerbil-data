@@ -68,7 +68,8 @@ class ParquetRecord[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Lo
   override def write(trainingSample: RDD[(T, Boolean)],
                      posMap: collection.Map[(Int, Long), Int],
                      targetMap: collection.Map[Int, Int],
-                     path: String): Unit = {
+                     path: String,
+                     shuffle_files: Boolean = false): Unit = {
     val encoder = createEncoder()
     val fieldInfo = encoder.getFieldInfo()
     val schema = buildParquetSchema(fieldInfo)
@@ -88,8 +89,15 @@ class ParquetRecord[T: ClassTag](createEncoder: () => Featurizer[T], max_dim: Lo
         })
       })
 
+    val toWrite = if (shuffle_files) {
+      parquetRows
+        .repartition(parquetRows.getNumPartitions)
+        .mapPartitions(_.toList.sortBy(_ => scala.util.Random.nextDouble()).iterator)
+    } else {
+      parquetRows
+    }
     SparkSession.active
-      .createDataFrame(parquetRows, schema)
+      .createDataFrame(toWrite, schema)
       .write
       .mode("overwrite")
       .parquet(path)
